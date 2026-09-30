@@ -1,0 +1,294 @@
+// SmartSchool LMS schema.
+//
+// Phase 0 bootstrap: identity, organisation, feature permissions, audit, and the
+// scheduler lock table. Every other domain is added when the full schema is
+// generated from the previous EF Core snapshot (docs/07 section 5) and merged here.
+// Table and column names are preserved exactly (ADR-003); enums are integers (docs/03 section 6).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity (ASP.NET Identity table shape, kept for account portability, ADR-011)
+// ---------------------------------------------------------------------------
+
+model AspNetUsers {
+  Id                     String    @id @db.VarChar(255)
+  UserName               String?   @db.VarChar(256)
+  NormalizedUserName     String?   @unique(map: "UserNameIndex") @db.VarChar(256)
+  Email                  String?   @db.VarChar(256)
+  NormalizedEmail        String?   @db.VarChar(256)
+  EmailConfirmed         Boolean   @default(false)
+  PasswordHash           String?   @db.LongText
+  SecurityStamp          String?   @db.LongText
+  ConcurrencyStamp       String?   @db.LongText
+  PhoneNumber            String?   @db.LongText
+  PhoneNumberConfirmed   Boolean   @default(false)
+  TwoFactorEnabled       Boolean   @default(false)
+  LockoutEnd             DateTime? @db.DateTime(6)
+  LockoutEnabled         Boolean   @default(false)
+  AccessFailedCount      Int       @default(0)
+
+  // Application columns
+  FirstName              String    @db.VarChar(100)
+  LastName               String    @db.VarChar(100)
+  Role                   Int       @default(4) // Role enum: SuperAdmin 0 … Assistant 6 (docs/03 section 6)
+  IsActive               Boolean   @default(true)
+  CreatedAt              DateTime  @default(now()) @db.DateTime(6)
+  UpdatedAt              DateTime? @db.DateTime(6)
+  LastLoginAt            DateTime? @db.DateTime(6)
+  RefreshToken           String?   @db.LongText
+  RefreshTokenExpiryTime DateTime? @db.DateTime(6)
+  TwoFactorSecret        String?   @db.LongText
+  BackupCodes            String?   @db.LongText
+
+  userRoles   AspNetUserRoles[]
+  claims      AspNetUserClaims[]
+  logins      AspNetUserLogins[]
+  tokens      AspNetUserTokens[]
+  admins      Admins[]
+  appUsers    AppUsers[]
+  overrides   UserFeatureOverrides[]
+  auditLogs   AuditLogs[]
+
+  @@index([NormalizedEmail], map: "EmailIndex")
+}
+
+model AspNetRoles {
+  Id               String  @id @db.VarChar(255)
+  Name             String? @db.VarChar(256)
+  NormalizedName   String? @unique(map: "RoleNameIndex") @db.VarChar(256)
+  ConcurrencyStamp String? @db.LongText
+
+  userRoles  AspNetUserRoles[]
+  claims     AspNetRoleClaims[]
+  features   RoleFeatures[]
+}
+
+model AspNetUserRoles {
+  UserId String @db.VarChar(255)
+  RoleId String @db.VarChar(255)
+
+  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+  role AspNetRoles @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
+
+  @@id([UserId, RoleId])
+  @@index([RoleId])
+}
+
+model AspNetUserClaims {
+  Id         Int     @id @default(autoincrement())
+  UserId     String  @db.VarChar(255)
+  ClaimType  String? @db.LongText
+  ClaimValue String? @db.LongText
+
+  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@index([UserId])
+}
+
+model AspNetRoleClaims {
+  Id         Int     @id @default(autoincrement())
+  RoleId     String  @db.VarChar(255)
+  ClaimType  String? @db.LongText
+  ClaimValue String? @db.LongText
+
+  role AspNetRoles @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
+
+  @@index([RoleId])
+}
+
+model AspNetUserLogins {
+  LoginProvider       String  @db.VarChar(255)
+  ProviderKey         String  @db.VarChar(255)
+  ProviderDisplayName String? @db.LongText
+  UserId              String  @db.VarChar(255)
+
+  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@id([LoginProvider, ProviderKey])
+  @@index([UserId])
+}
+
+model AspNetUserTokens {
+  UserId        String  @db.VarChar(255)
+  LoginProvider String  @db.VarChar(255)
+  Name          String  @db.VarChar(255)
+  Value         String? @db.LongText
+
+  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@id([UserId, LoginProvider, Name])
+}
+
+// ---------------------------------------------------------------------------
+// Organisation
+// ---------------------------------------------------------------------------
+
+model Organizations {
+  Id          String    @id @default(uuid()) @db.Char(36)
+  Name        String    @db.VarChar(200)
+  Description String?   @db.VarChar(500)
+  Email       String?   @db.VarChar(100)
+  Phone       String?   @db.VarChar(20)
+  Address     String?   @db.VarChar(500)
+  IsActive    Boolean   @default(true)
+  CreatedAt   DateTime  @default(now()) @db.DateTime(6)
+  UpdatedAt   DateTime? @db.DateTime(6)
+  DeletedAt   DateTime? @db.DateTime(6) // soft delete
+
+  admins     Admins[]
+  users      AppUsers[]
+  whitelists IPWhitelists[]
+
+  @@index([Name])
+  @@index([IsActive])
+}
+
+model Admins {
+  Id             String    @id @default(uuid()) @db.Char(36)
+  OrganizationId String    @db.Char(36)
+  IdentityUserId String    @db.VarChar(255)
+  IsActive       Boolean   @default(true)
+  CreatedAt      DateTime  @default(now()) @db.DateTime(6)
+  UpdatedAt      DateTime? @db.DateTime(6)
+
+  organization Organizations @relation(fields: [OrganizationId], references: [Id], onDelete: Restrict)
+  user         AspNetUsers   @relation(fields: [IdentityUserId], references: [Id], onDelete: Cascade)
+
+  @@index([OrganizationId])
+  @@index([IdentityUserId])
+}
+
+model AppUsers {
+  Id             String    @id @default(uuid()) @db.Char(36)
+  OrganizationId String    @db.Char(36)
+  IdentityUserId String    @unique @db.VarChar(255)
+  IsActive       Boolean   @default(true)
+  CreatedAt      DateTime  @default(now()) @db.DateTime(6)
+  UpdatedAt      DateTime? @db.DateTime(6)
+
+  organization Organizations @relation(fields: [OrganizationId], references: [Id], onDelete: Restrict)
+  user         AspNetUsers   @relation(fields: [IdentityUserId], references: [Id], onDelete: Cascade)
+
+  @@index([OrganizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Feature permissions and flags (docs/02 section 2)
+// ---------------------------------------------------------------------------
+
+model Features {
+  Id          String    @id @default(uuid()) @db.Char(36)
+  Code        String    @unique @db.VarChar(100)
+  Name        String    @db.VarChar(200)
+  Description String?   @db.Text
+  Category    String    @db.VarChar(100)
+  IsActive    Boolean   @default(true)
+  CreatedAt   DateTime  @default(now()) @db.DateTime(6)
+  UpdatedAt   DateTime? @db.DateTime(6)
+
+  roleFeatures RoleFeatures[]
+  overrides    UserFeatureOverrides[]
+
+  @@index([Category])
+}
+
+model RoleFeatures {
+  Id         String   @id @default(uuid()) @db.Char(36)
+  RoleId     String   @db.VarChar(255)
+  FeatureId  String   @db.Char(36)
+  AssignedBy String?  @db.VarChar(255)
+  AssignedAt DateTime @default(now()) @db.DateTime(6)
+
+  role    AspNetRoles @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
+  feature Features    @relation(fields: [FeatureId], references: [Id], onDelete: Cascade)
+
+  @@unique([RoleId, FeatureId])
+  @@index([FeatureId])
+}
+
+model UserFeatureOverrides {
+  Id         String    @id @default(uuid()) @db.Char(36)
+  UserId     String    @db.VarChar(255)
+  FeatureId  String    @db.Char(36)
+  IsGranted  Boolean
+  Reason     String?   @db.Text
+  AssignedBy String?   @db.VarChar(255)
+  ExpiresAt  DateTime? @db.DateTime(6)
+  CreatedAt  DateTime  @default(now()) @db.DateTime(6)
+
+  user    AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+  feature Features    @relation(fields: [FeatureId], references: [Id], onDelete: Cascade)
+
+  @@unique([UserId, FeatureId])
+  @@index([FeatureId])
+}
+
+model FeatureFlags {
+  Id          String    @id @default(uuid()) @db.Char(36)
+  Name        String    @unique @db.VarChar(100)
+  IsEnabled   Boolean   @default(false)
+  Description String?   @db.VarChar(500)
+  CreatedAt   DateTime  @default(now()) @db.DateTime(6)
+  UpdatedAt   DateTime? @db.DateTime(6)
+}
+
+// ---------------------------------------------------------------------------
+// Security
+// ---------------------------------------------------------------------------
+
+model AuditLogs {
+  Id          String   @id @default(uuid()) @db.Char(36)
+  UserId      String   @db.VarChar(255)
+  Action      String   @db.VarChar(100)
+  EntityType  String?  @db.VarChar(100)
+  EntityId    String?  @db.VarChar(100)
+  IPAddress   String?  @db.VarChar(45)
+  UserAgent   String?  @db.VarChar(500)
+  RequestPath String?  @db.VarChar(500)
+  HttpMethod  String?  @db.VarChar(10)
+  StatusCode  Int?
+  Details     String?  @db.LongText
+  Timestamp   DateTime @default(now()) @db.DateTime(6)
+
+  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@index([UserId, Timestamp])
+  @@index([Action])
+  @@index([EntityType, EntityId])
+}
+
+model IPWhitelists {
+  Id             String   @id @default(uuid()) @db.Char(36)
+  OrganizationId String   @db.Char(36)
+  IPAddress      String   @db.VarChar(45)
+  Description    String?  @db.VarChar(200)
+  IsActive       Boolean  @default(true)
+  CreatedAt      DateTime @default(now()) @db.DateTime(6)
+
+  organization Organizations @relation(fields: [OrganizationId], references: [Id], onDelete: Cascade)
+
+  @@index([OrganizationId, IsActive])
+  @@index([IPAddress])
+}
+
+// ---------------------------------------------------------------------------
+// Platform (new in the Node build, ADR-007)
+// ---------------------------------------------------------------------------
+
+model JobRuns {
+  JobName    String    @id @db.VarChar(100)
+  LockedAt   DateTime? @db.DateTime(6)
+  LockedBy   String?   @db.VarChar(100)
+  LastRunAt  DateTime? @db.DateTime(6)
+  LastStatus String?   @db.VarChar(20) // success | failed | running
+  LastError  String?   @db.Text
+  RunCount   Int       @default(0)
+}

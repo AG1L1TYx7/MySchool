@@ -1,0 +1,28 @@
+{
+  "name": "smartschool",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SmartSchool: AI-native K-12 learning platform on local infrastructure",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "api": "pnpm --filter @smartschool/api",
+    "dev": "pnpm --filter @smartschool/api start:dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "argon2",
+      "prisma",
+      "@parcel/watcher",
+      "unrs-resolver"
+    ]
+  }
+}

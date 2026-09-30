@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API on ${{ matrix.db.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db:
+          - name: mariadb-10.4
+            image: mariadb:10.4
+            env: MARIADB_ROOT_PASSWORD
+          - name: mysql-8
+            image: mysql:8.0
+            env: MYSQL_ROOT_PASSWORD
+    services:
+      db:
+        image: ${{ matrix.db.image }}
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: root
+          MARIADB_DATABASE: smartschooldb_test
+          MYSQL_DATABASE: smartschooldb_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -proot || mariadb-admin ping -h 127.0.0.1 -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/smartschooldb_test
+      JWT_SECRET: ci-only-secret-value-that-is-long-enough-0123456789
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @smartschool/api prisma:generate
+      - run: pnpm --filter @smartschool/api lint
+      - run: pnpm --filter @smartschool/api typecheck
+      - run: pnpm --filter @smartschool/api prisma:deploy
+      - run: pnpm --filter @smartschool/api test
+      - run: pnpm --filter @smartschool/api test:e2e
+      - run: pnpm audit --audit-level=high || true

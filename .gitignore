@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+
+# runtime data
+uploads/
+data/
+logs/
+*.log
+
+# prisma
+apps/api/prisma/*.db
+
+# python (apps/ai)
+__pycache__/
+*.pyc
+.venv/
+venv/
+chroma_db/
+chromadb_data/
+image_cache/
+
+# editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
