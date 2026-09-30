@@ -31,6 +31,32 @@ enum Role {
   ASSISTANT
 }
 
+enum EnrollmentStatus {
+  ACTIVE
+  INACTIVE
+  GRADUATED
+  TRANSFERRED
+  WITHDRAWN
+  SUSPENDED
+}
+
+enum LearningStyle {
+  VISUAL
+  AUDITORY
+  KINESTHETIC
+  READING_WRITING
+  MIXED
+}
+
+enum GuardianRelationship {
+  MOTHER
+  FATHER
+  GUARDIAN
+  GRANDPARENT
+  SIBLING
+  OTHER
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -54,7 +80,8 @@ model Organization {
   updatedAt   DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt   DateTime? @map("DeletedAt") @db.DateTime(6)
 
-  users User[]
+  users    User[]
+  students Student[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -98,6 +125,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   featureOverrides    UserFeatureOverride[]
   auditLogs           AuditLog[]
+  student             Student?
+  guardianLinks       StudentGuardian[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -140,6 +169,65 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("PasswordResetTokens")
+}
+
+// ---------------------------------------------------------------------------
+// Students and guardians (docs/02 section 3). Release 1 slice 2.
+// ---------------------------------------------------------------------------
+
+model Student {
+  id                     String           @id @map("Id") @db.Char(36)
+  organizationId         String           @map("OrganizationId") @db.Char(36)
+  userId                 String?          @unique @map("UserId") @db.Char(36)
+  studentNumber          String           @map("StudentNumber") @db.VarChar(50)
+  firstName              String           @map("FirstName") @db.VarChar(100)
+  lastName               String           @map("LastName") @db.VarChar(100)
+  email                  String?          @map("Email") @db.VarChar(256)
+  phone                  String?          @map("Phone") @db.VarChar(32)
+  dateOfBirth            DateTime?        @map("DateOfBirth") @db.Date
+  gender                 String?          @map("Gender") @db.VarChar(32)
+  gradeLevel             String?          @map("GradeLevel") @db.VarChar(16)
+  enrollmentStatus       EnrollmentStatus @default(ACTIVE) @map("EnrollmentStatus")
+  enrollmentDate         DateTime?        @map("EnrollmentDate") @db.Date
+  preferredLearningStyle LearningStyle?   @map("PreferredLearningStyle")
+  accessibilityNeeds     String?          @map("AccessibilityNeeds") @db.Text
+  goals                  String?          @map("Goals") @db.Text
+  notes                  String?          @map("Notes") @db.Text
+  address                String?          @map("Address") @db.VarChar(500)
+  gpa                    Decimal?         @map("GPA") @db.Decimal(4, 2)
+  attendanceRate         Decimal?         @map("AttendanceRate") @db.Decimal(5, 2)
+  createdAt              DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt              DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt              DateTime?        @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guardians    StudentGuardian[]
+
+  @@unique([organizationId, studentNumber])
+  @@index([organizationId, enrollmentStatus, deletedAt])
+  @@index([organizationId, gradeLevel])
+  @@index([lastName, firstName])
+  @@map("Students")
+}
+
+model StudentGuardian {
+  id                    String               @id @map("Id") @db.Char(36)
+  studentId             String               @map("StudentId") @db.Char(36)
+  guardianUserId        String               @map("GuardianUserId") @db.Char(36)
+  relationship          GuardianRelationship @default(GUARDIAN) @map("Relationship")
+  isPrimary             Boolean              @default(false) @map("IsPrimary")
+  receivesNotifications Boolean              @default(true) @map("ReceivesNotifications")
+  canViewGrades         Boolean              @default(true) @map("CanViewGrades")
+  canViewAttendance     Boolean              @default(true) @map("CanViewAttendance")
+  createdAt             DateTime             @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian User    @relation(fields: [guardianUserId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, guardianUserId])
+  @@index([guardianUserId])
+  @@map("StudentGuardians")
 }
 
 // ---------------------------------------------------------------------------

@@ -101,13 +101,21 @@ POST   /organizations/{id}/members    link an existing user
 
 ### Students and guardians
 ```
-GET    /students                      search, gradeLevel, status, classId
-POST   /students
+GET    /students                      search, gradeLevel, status, organizationId (district roles); classId from slice 3
+GET    /students/mine                 own record (students) or linked children (parents)
+GET    /students/export               CSV, same columns as the import template
+GET    /students/import/template      CSV template
+POST   /students/import               { csv, dryRun?, organizationId? } or a text/csv body; upsert by studentNumber,
+                                      links or invites guardians, per-line errors; 5,000 rows per file
+POST   /students                      studentNumber generated when omitted; createAccount invites a student login
 GET    /students/{id}
 PATCH  /students/{id}
-DELETE /students/{id}
-GET    /students/{id}/guardians
-POST   /students/{id}/guardians       parentUserId or invite by email, relationship, isPrimary, notifications
+DELETE /students/{id}                 soft delete (status withdrawn)
+GET    /students/{id}/guardians       staff, the student, or their guardians
+POST   /students/{id}/guardians       guardianUserId or email (unknown email -> parent account + invitation),
+                                      relationship, isPrimary, receivesNotifications, canViewGrades, canViewAttendance
+PATCH  /students/{id}/guardians/{guardianId}
+DELETE /students/{id}/guardians/{guardianId}
 DELETE /students/{id}/guardians/{guardianId}
 POST   /students/import               CSV, per-row results
 GET    /students/export               CSV

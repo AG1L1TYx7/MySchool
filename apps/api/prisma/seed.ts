@@ -6,6 +6,7 @@
  * organisation, and demo accounts for every role. Demo passwords are development-only.
  */
 import { PrismaClient, Role } from '@prisma/client';
+import type { EnrollmentStatus } from '@prisma/client';
 import argon2 from 'argon2';
 import { v7 as uuidv7 } from 'uuid';
 import { FEATURE_CATALOG } from '../src/modules/access/feature-catalog';
@@ -179,11 +180,131 @@ async function seedUsers(organizationId: string): Promise<void> {
   );
 }
 
+const DEMO_STUDENTS: Array<{
+  studentNumber: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  gradeLevel: string;
+  dateOfBirth: string;
+  enrollmentStatus?: EnrollmentStatus;
+}> = [
+  {
+    studentNumber: 'S2026-000001',
+    firstName: 'Emma',
+    lastName: 'Johnson',
+    email: 'student@smartschool.local',
+    gradeLevel: '7',
+    dateOfBirth: '2013-04-12',
+  },
+  {
+    studentNumber: 'S2026-000002',
+    firstName: 'Liam',
+    lastName: 'Garcia',
+    gradeLevel: '7',
+    dateOfBirth: '2013-08-03',
+  },
+  {
+    studentNumber: 'S2026-000003',
+    firstName: 'Olivia',
+    lastName: 'Chen',
+    gradeLevel: '8',
+    dateOfBirth: '2012-01-27',
+  },
+  {
+    studentNumber: 'S2026-000004',
+    firstName: 'Noah',
+    lastName: 'Patel',
+    gradeLevel: '8',
+    dateOfBirth: '2012-11-15',
+  },
+  {
+    studentNumber: 'S2026-000005',
+    firstName: 'Ava',
+    lastName: 'Okafor',
+    gradeLevel: '9',
+    dateOfBirth: '2011-06-30',
+  },
+  {
+    studentNumber: 'S2026-000006',
+    firstName: 'Ethan',
+    lastName: 'Novak',
+    gradeLevel: '9',
+    dateOfBirth: '2011-02-09',
+    enrollmentStatus: 'INACTIVE',
+  },
+];
+
+/** Demo student records; Emma is linked to the student@ account and to parent@ as her father. */
+async function seedStudents(organizationId: string): Promise<void> {
+  const studentUser = await prisma.user.findUnique({
+    where: { email: 'student@smartschool.local' },
+    select: { id: true },
+  });
+  const parentUser = await prisma.user.findUnique({
+    where: { email: 'parent@smartschool.local' },
+    select: { id: true },
+  });
+  for (const s of DEMO_STUDENTS) {
+    const userId =
+      s.email === 'student@smartschool.local'
+        ? (studentUser?.id ?? null)
+        : null;
+    const data = {
+      firstName: s.firstName,
+      lastName: s.lastName,
+      email: s.email ?? null,
+      gradeLevel: s.gradeLevel,
+      dateOfBirth: new Date(s.dateOfBirth + 'T00:00:00Z'),
+      enrollmentStatus: s.enrollmentStatus ?? 'ACTIVE',
+      enrollmentDate: new Date('2026-09-01T00:00:00Z'),
+      userId,
+    };
+    const student = await prisma.student.upsert({
+      where: {
+        organizationId_studentNumber: {
+          organizationId,
+          studentNumber: s.studentNumber,
+        },
+      },
+      update: data,
+      create: {
+        id: uuidv7(),
+        organizationId,
+        studentNumber: s.studentNumber,
+        ...data,
+      },
+    });
+    if (userId && parentUser) {
+      await prisma.studentGuardian.upsert({
+        where: {
+          studentId_guardianUserId: {
+            studentId: student.id,
+            guardianUserId: parentUser.id,
+          },
+        },
+        update: {},
+        create: {
+          id: uuidv7(),
+          studentId: student.id,
+          guardianUserId: parentUser.id,
+          relationship: 'FATHER',
+          isPrimary: true,
+        },
+      });
+    }
+  }
+  console.log(
+    `students: ${DEMO_STUDENTS.length} demo records present (Emma Johnson linked to student@ and parent@)`,
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedFlags();
   const orgId = await seedOrganization();
   await seedUsers(orgId);
+  await seedStudents(orgId);
 }
 
 main()

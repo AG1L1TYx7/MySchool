@@ -18,6 +18,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { StudentsModule } from './modules/students/students.module';
 import { UsersModule } from './modules/users/users.module';
 
 /**
@@ -66,6 +68,8 @@ import { UsersModule } from './modules/users/users.module';
     AccessModule,
     AuthModule,
     UsersModule,
+    OrganizationsModule,
+    StudentsModule,
     HealthModule,
     MetricsModule,
   ],

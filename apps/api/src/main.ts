@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
@@ -8,7 +9,14 @@ import { AppModule } from './app.module';
 import { AppConfigService } from './config/app-config.service';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    bodyParser: false,
+  });
+  // JSON for the API, raw text/csv for bulk imports (docs/09: imports accept a CSV body).
+  app.useBodyParser('json', { limit: '5mb' });
+  app.useBodyParser('urlencoded', { extended: true, limit: '5mb' });
+  app.useBodyParser('text', { type: 'text/csv', limit: '10mb' });
   app.useLogger(app.get(Logger));
 
   const config = app.get(AppConfigService);

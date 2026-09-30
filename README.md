@@ -49,6 +49,6 @@ Sign in with `teacher@smartschool.local` / `SmartSchool!Demo2026` (development s
 
 ## Status
 
-Release 1 slice 1 (identity and access) is implemented: registration, sign-in with lockout, rotating refresh tokens with reuse detection, password reset, TOTP two-factor with backup codes, sessions, users, roles, a feature catalogue with per-role and per-user permissions, feature flags, and an audit log, plus the web pages for all of it. Next: slice 2, school and people (`/organizations`, `/students`, guardians, CSV import).
+Release 1 slices 1 and 2 are implemented. Slice 1 (identity and access): registration, sign-in with lockout, rotating refresh tokens with reuse detection, password reset, TOTP two-factor with backup codes, sessions, users, roles, a feature catalogue with per-role and per-user permissions, feature flags, and an audit log. Slice 2 (school and people): organisations with members, student records, guardians with invitations, CSV import with dry run and per-line errors, CSV export. Both have web pages. Next: slice 3, courses and classes.
 
 The full week-1 checklist, including freeing port 3306 from an existing MySQL 8 service, is in [docs/07-BUILD-PLAN.md](docs/07-BUILD-PLAN.md).
