@@ -50,6 +50,8 @@
 ```
 POST   /auth/register                 email, password, firstName, lastName, role?, organizationId?, captchaToken?
 POST   /auth/login                    email, password, rememberMe        -> accessToken, refreshToken, expiresAt, user
+                                      or { mfaRequired: true, mfaToken } when 2FA is on (5 failures lock for 15 min)
+POST   /auth/2fa/challenge            mfaToken, code (authenticator or backup) -> token pair
 POST   /auth/refresh                  refreshToken                        -> new pair (rotation)
 POST   /auth/logout                   revokes the refresh token
 GET    /auth/me                       current user with roles and effective feature codes
@@ -69,7 +71,8 @@ DELETE /auth/sessions/{id}
 ```
 GET    /users                         admin list with search, role, status filters
 GET    /users/{id}
-PATCH  /users/{id}                    name, status (activate, deactivate), role
+POST   /users                         create; without a password an invitation code is emailed (72 h)
+PATCH  /users/{id}                    name, status (activate, deactivate), role, organisation (SuperAdmin)
 POST   /users/{id}/reset-password     admin-triggered reset email
 GET    /roles                         role names and levels
 GET    /features                      the catalogue, grouped by category
@@ -78,6 +81,8 @@ PUT    /roles/{role}/features         replace the role's feature set
 GET    /users/{id}/feature-overrides
 PUT    /users/{id}/feature-overrides/{code}   grant or revoke with reason and expiry
 DELETE /users/{id}/feature-overrides/{code}
+GET    /feature-flags                 global switches (unknown flag = off)
+PATCH  /feature-flags/{name}          isEnabled
 GET    /feature-flags
 PATCH  /feature-flags/{name}
 GET    /audit-logs                    filters: userId, action, entityType, from, to

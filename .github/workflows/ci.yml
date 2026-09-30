@@ -55,3 +55,20 @@ jobs:
       - run: pnpm --filter @smartschool/api test
       - run: pnpm --filter @smartschool/api test:e2e
       - run: pnpm audit --audit-level=high || true
+
+  web:
+    name: Web client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @smartschool/web lint
+      - run: pnpm --filter @smartschool/web typecheck
+      - run: pnpm --filter @smartschool/web build

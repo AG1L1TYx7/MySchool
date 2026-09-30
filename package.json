@@ -9,7 +9,9 @@
   },
   "scripts": {
     "api": "pnpm --filter @smartschool/api",
+    "web": "pnpm --filter @smartschool/web",
     "dev": "pnpm --filter @smartschool/api start:dev",
+    "dev:web": "pnpm --filter @smartschool/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

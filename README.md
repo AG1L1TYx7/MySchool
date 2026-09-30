@@ -10,8 +10,8 @@ This repository was started fresh on 30 September 2026 from the design in [docs/
 smartschool/
 ├── apps/
 │   ├── api/        @smartschool/api   Node.js LMS API (NestJS 11, Prisma 6), port 5000
-│   ├── ai/         @smartschool/ai    Python AI service (FastAPI, Ollama), port 8000  [restored from the old repo in Phase 4]
-│   └── web/        @smartschool/web   Next.js client, port 3000                        [Phase 11]
+│   ├── ai/         @smartschool/ai    Python AI service (FastAPI, Ollama), port 8000  [restored from the old repo in Release 1 slice 5]
+│   └── web/        @smartschool/web   Next.js 14 client, port 3000 (proxies /api/* to the API)
 ├── packages/       shared code when a second app needs it
 ├── docs/           system architecture, feature catalog, data model, contracts, ADRs, build plan
 └── .github/        CI
@@ -37,9 +37,18 @@ Prerequisites: Node 22 or newer, pnpm, XAMPP (MariaDB on port 3306), Ollama with
 
 ```powershell
 pnpm install
-copy apps\api\.env.example apps\api\.env      # fill DATABASE_URL and JWT_SECRET
-pnpm --filter @smartschool/api prisma:migrate  # creates the schema in XAMPP MariaDB
-pnpm --filter @smartschool/api dev             # http://localhost:5000/swagger, /health
+copy appsapi.env.example appsapi.env      # fill DATABASE_URL, JWT_SECRET, AI_CALLBACK_TOKEN
+pnpm --filter @smartschool/api prisma:deploy   # applies migrations to XAMPP MariaDB
+pnpm --filter @smartschool/api db:seed         # feature catalogue, flags, demo school, one demo user per role
+pnpm dev                                       # API: http://localhost:5000/swagger, /health
+copy appsweb.env.example appsweb.env
+pnpm dev:web                                   # Web: http://localhost:3000
 ```
+
+Sign in with `teacher@smartschool.local` / `SmartSchool!Demo2026` (development seed; every role has a matching account).
+
+## Status
+
+Release 1 slice 1 (identity and access) is implemented: registration, sign-in with lockout, rotating refresh tokens with reuse detection, password reset, TOTP two-factor with backup codes, sessions, users, roles, a feature catalogue with per-role and per-user permissions, feature flags, and an audit log, plus the web pages for all of it. Next: slice 2, school and people (`/organizations`, `/students`, guardians, CSV import).
 
 The full week-1 checklist, including freeing port 3306 from an existing MySQL 8 service, is in [docs/07-BUILD-PLAN.md](docs/07-BUILD-PLAN.md).

@@ -91,7 +91,9 @@ Goal: a school can run a class on SmartSchool. Exit: a pilot class completes a f
 
 | Slice | Weeks | User outcome | API (docs/09) | Data | Client | AI |
 |---|---|---|---|---|---|---|
-| 1 Sign in | 1–2 | A teacher and a student can register, sign in, refresh, sign out, reset a password, enable 2FA | `/auth/*`, `/users`, `/roles`, `/features`, `/audit-logs` | `AspNetUsers` (camelCase fields), roles, features, overrides, audit, sessions | Next.js app: login, register, reset, 2FA, protected layout, role-based nav | |
+| 1 Sign in | 1–2 | A teacher and a student can register, sign in, refresh, sign out, reset a password, enable 2FA | `/auth/*`, `/users`, `/roles`, `/features`, `/feature-flags`, `/audit-logs` | `Users`, `AuthSessions`, `PasswordResetTokens`, `Features`, `RoleFeatures`, `UserFeatureOverrides`, `FeatureFlags`, `AuditLogs`, `Organizations` | Next.js app: login, register, reset, 2FA, protected layout, feature-driven nav, users and audit pages | |
+
+Slice 1 status (30 Sep 2026): API and web client code complete and green in CI gates (lint, typecheck, 32 unit tests, build). Outstanding before the slice is closed: run the first migration and seed against XAMPP MariaDB (section 9, step 1), then `test:e2e`, then sign in through the web client with the demo accounts.
 | 2 School and people | 3 | An admin creates the school, invites staff, adds students and guardians | `/organizations/*`, `/students/*`, guardians, import and export | `Organizations`, `Admins`, `AppUsers`, `Students`, `StudentParents` | Admin pages: organisation, users, students (table, CSV import) | |
 | 3 Courses and classes | 4 | A teacher creates a course with modules and lessons, opens a class, enrols students; a student sees their classes | `/courses/*`, `/modules`, `/lessons`, `/classes/*`, enrollments | `Courses`, `Modules`, `Lessons`, `CoursePrerequisites`, `Classes`, `TeacherClassAssignments`, `ClassEnrollments` | Teacher: course builder, class roster; Student: my classes | |
 | 4 Assignments and grades | 5–6 | A teacher sets an assignment with a rubric, students submit text and files, the teacher grades, the gradebook updates, attendance is taken | `/assignments/*`, `/submissions/*`, `/grades`, `/classes/{id}/gradebook`, `/rubrics`, `/attendance/*`, `/files/*` | `Assignments`, `AssignmentSubmissions`, `Grades`, `Rubrics`, `Attendances`, `FileUploads` | Teacher: assignment editor, grading view, gradebook, attendance sheet; Student: submit | |
@@ -188,9 +190,12 @@ pnpm --filter @smartschool/api prisma:migrate -- --name release1_slice1_identity
 pnpm --filter @smartschool/api db:seed
 pnpm --filter @smartschool/api dev            # http://localhost:5000/swagger
 
-# 3. Web client (slice 1)
-pnpm dlx create-next-app@14 apps/web --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
-# then follow slice 1 tasks
+# 3. Web client (already scaffolded, proxies /api/* to the API)
+copy appsweb.env.example appsweb.env      # API_URL=http://localhost:5000
+pnpm dev:web                                  # http://localhost:3000 -> sign in as teacher@smartschool.local
+
+# Demo accounts from db:seed (development only): superadmin@, superintendent@, principal@,
+# teacher@, student@, parent@, assistant@smartschool.local, password SmartSchool!Demo2026
 
 # 4. Old repository (needed from slice 5)
 git clone <old-repo-url> C:\src\smartschool-previous
