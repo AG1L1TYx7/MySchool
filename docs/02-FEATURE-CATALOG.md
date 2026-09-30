@@ -5,6 +5,16 @@
 
 Endpoint totals: 1,126 LMS routes in 77 controllers (19 in three test controllers are dropped), 155 AI service routes.
 
+## Release assignment (ADR-018)
+
+| Release | Domains |
+|---|---|
+| 1 Core | 1 Identity and access, 2 Organisation and permissions, 3 Students and guardians, 4 Curriculum, 5 Classes and enrolment, 6 Attendance, 7 Assignments and submissions, 8 Grades, 9 Announcements, 10 Files (library moves to Release 3), 11 Notifications, 12 Messaging, 18 AI tutor and AI content, 23 H5P (player, results, AI generation), 35 Platform health |
+| 2 Depth | 13 Calendar, 14 Gamification, 15 Parent portal, 16 Analytics and reports, 17 Mobile API, 19 Teacher AI assistant, 24 xAPI and H5P bridge, 25 Learning science, 26 SEL and emotion, 27 Accessibility (adaptations; audits in Release 3), plus Google and Microsoft SSO and push notifications |
+| 3 Platform | 10 Digital library, 20 Superintendent AI and district, 21 AI agents, 22 Recommendations and learning paths (AI data), 27 Accessibility audits, 28 Career, 29 Integrated learning profile, 30 Content library and collections, 31 Community and forums, 32 Multi-tenant SaaS, 33 Webhooks, IP whitelist and audit export, 34 Portfolio and careers, plus LTI 1.3, OneRoster import, API keys and gateway |
+
+Route paths in this catalog describe the previous implementation; the target routes follow [09-API-DESIGN.md](09-API-DESIGN.md).
+
 ---
 
 ## 1. Identity and access

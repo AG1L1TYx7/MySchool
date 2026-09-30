@@ -1,7 +1,7 @@
 # SmartSchool Integration Contracts
 
 **Version:** 1.1, 30 September 2026
-**Purpose:** every boundary the system crosses, with the exact contract on both sides. Changing anything here requires updating the other side and the contract tests.
+**Purpose:** every boundary the system crosses, with the exact contract on both sides. Changing anything here requires updating the other side and the contract tests. LMS routes named here follow docs/09 (`/api/v1/...`); the three AI callback routes keep their previous paths (ADR-017).
 
 ---
 

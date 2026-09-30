@@ -20,11 +20,22 @@ async function bootstrap(): Promise<void> {
       : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    exposedHeaders: [
+      'ETag',
+      'Location',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+    ],
   });
 
-  // Routes are declared with their full previous path (e.g. 'api/Course', 'api/v1/srs' style is expressed
-  // through URI versioning), so no global prefix is applied. See ADR-010.
-  app.enableVersioning({ type: VersioningType.URI, prefix: 'api/v' });
+  // All resources live under /api/v1 (docs/09, ADR-017). Controllers default to version 1;
+  // probes and the three legacy AI callbacks opt out with VERSION_NEUTRAL.
+  app.enableVersioning({
+    type: VersioningType.URI,
+    prefix: 'api/v',
+    defaultVersion: '1',
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -38,9 +49,9 @@ async function bootstrap(): Promise<void> {
   const swagger = new DocumentBuilder()
     .setTitle('SmartSchool API')
     .setDescription(
-      'LMS API for SmartSchool. Routes are preserved from the previous implementation; see docs/06-ENDPOINT-INVENTORY.md.',
+      'LMS API for SmartSchool. Conventions: docs/09-API-DESIGN.md. Errors use RFC 9457 problem details.',
     )
-    .setVersion('0.1.0')
+    .setVersion('1.0')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       'bearer',
@@ -51,6 +62,7 @@ async function bootstrap(): Promise<void> {
     app,
     SwaggerModule.createDocument(app, swagger),
     {
+      jsonDocumentUrl: 'openapi.json',
       swaggerOptions: { persistAuthorization: true },
     },
   );

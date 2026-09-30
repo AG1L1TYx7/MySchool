@@ -9,16 +9,17 @@ interface HealthBody {
   checks?: Record<string, { status: string }>;
 }
 
-interface ErrorBody {
-  success: boolean;
-  errorCode: string;
+interface ProblemBody {
+  status: number;
+  code: string;
+  traceId: string;
 }
 
 /**
  * Requires a reachable DATABASE_URL (XAMPP locally, service container in CI).
  * The AI service is not required: health reports "degraded" without it.
  */
-describe('Health (e2e)', () => {
+describe('Health and conventions (e2e)', () => {
   let app: INestApplication;
   let server: Server;
 
@@ -27,7 +28,11 @@ describe('Health (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication();
-    app.enableVersioning({ type: VersioningType.URI, prefix: 'api/v' });
+    app.enableVersioning({
+      type: VersioningType.URI,
+      prefix: 'api/v',
+      defaultVersion: '1',
+    });
     await app.init();
     server = app.getHttpServer() as Server;
   });
@@ -49,8 +54,8 @@ describe('Health (e2e)', () => {
     );
   });
 
-  it('GET /api/Health returns dependency checks', async () => {
-    const res = await request(server).get('/api/Health');
+  it('GET /api/v1/health returns dependency checks', async () => {
+    const res = await request(server).get('/api/v1/health');
     const body = res.body as HealthBody;
     expect(body.checks).toHaveProperty('database');
     expect(body.checks).toHaveProperty('aiService');
@@ -61,11 +66,11 @@ describe('Health (e2e)', () => {
     expect(res.text).toContain('smartschool_api_');
   });
 
-  it('unknown routes use the error envelope', async () => {
-    const res = await request(server).get('/api/does-not-exist').expect(404);
-    expect(res.body as ErrorBody).toMatchObject({
-      success: false,
-      errorCode: 'NOT_FOUND',
-    });
+  it('unknown routes return RFC 9457 problem details', async () => {
+    const res = await request(server).get('/api/v1/does-not-exist').expect(404);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    const body = res.body as ProblemBody;
+    expect(body).toMatchObject({ status: 404, code: 'resource.not_found' });
+    expect(body.traceId).toBeTruthy();
   });
 });

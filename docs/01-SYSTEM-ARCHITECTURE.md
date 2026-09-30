@@ -2,7 +2,7 @@
 
 **Version:** 1.1, 30 September 2026
 **Audience:** engineers building, reviewing or operating SmartSchool.
-**Scope:** the whole system as it is being built: a Node.js LMS API on XAMPP MySQL (`apps/api`), the retained Python AI service (`apps/ai`), local LLM inference, and the planned web client (`apps/web`).
+**Scope:** the whole system as it is being built (releases and slices in 07, quality bar in 08): a Node.js LMS API on XAMPP MySQL (`apps/api`), the retained Python AI service (`apps/ai`), local LLM inference, and the planned web client (`apps/web`).
 
 ---
 
@@ -19,7 +19,7 @@ Design principles:
 1. **Local first.** No student data leaves the deployment. Cloud providers (SendGrid, Twilio, Firebase, Stripe) are optional adapters for notifications and billing only.
 2. **One database, clear ownership.** Both services share `smartschooldb`; each table has exactly one writing owner (see the Data Model).
 3. **AI is a dependency, not a decoration.** Every AI-backed endpoint either calls the model or reports that it cannot. No canned answers (ADR-008).
-4. **Preserve contracts across the rewrite.** Routes, JSON shapes, socket events, job schedules and table names are kept so the client and the AI service do not change when the LMS implementation does (ADR-010).
+4. **Design the API fresh, keep the service contracts.** The LMS API is a clean `/api/v1` design (ADR-017); the three AI callback routes, the socket event names, the job schedules and the 12 AI-owned tables are preserved so the AI service does not change.
 5. **Optional infrastructure degrades gracefully.** Redis, RabbitMQ, external providers and the code sandbox all have in-process or disabled fallbacks (ADR-014).
 
 ---
@@ -62,7 +62,7 @@ flowchart LR
   WEB[Web client<br/>Next.js, apps/web<br/>:3000  planned]
   subgraph LMS[LMS API  apps/api  :5000]
     direction TB
-    API[REST controllers<br/>/api, /api/v1, /api/v2]
+    API[REST controllers<br/>/api/v1]
     HUB[Socket.IO gateways<br/>/hubs/notifications /hubs/messaging /hubs/agents /hubs/collaboration]
     JOB[Scheduler<br/>7 recurring jobs]
   end
@@ -114,7 +114,7 @@ flowchart TB
   subgraph Edge
     MW1[Tenant resolution] --> MW2[Rate limiting] --> MW3[Compression] --> MW4[Authentication JWT] --> MW5[Authorisation guards<br/>role level, feature, flag] --> MW6[Validation pipe] --> MW7[Audit interceptor]
   end
-  MW7 --> CTRL[Controllers: 74 modules, 1,107 routes]
+  MW7 --> CTRL[Controllers: one module per bounded context, /api/v1]
   CTRL --> SVC[Domain services]
   SVC --> REPO[Data access: Prisma client with soft-delete and tenant extensions]
   REPO --> DB[(smartschooldb)]
@@ -330,7 +330,7 @@ One database, 145 tables, PascalCase names, `char(36)` UUID keys, UTC `datetime(
 | Identity | ASP.NET Identity table shape kept. Argon2id for new passwords; PBKDF2 (Identity v3) verified and upgraded on login. Refresh tokens are opaque, stored on the user, rotated on use, revocable. TOTP 2FA with hashed backup codes. Password policy: 12+ chars with upper, lower, digit, symbol. |
 | Authorisation | Three layers: role hierarchy for coarse gates; feature codes (`students.create`, `ai.tutor.chat`, 200 seeded) resolved from role assignments plus per-user overrides with expiry, cached five minutes; ownership checks in services. |
 | Multi-tenancy | Shared database, `TenantId` column, request-scoped tenant context. Tenant status (Pending, Active, Suspended, Cancelled, Expired, Inactive) enforced at the edge. Branding and feature configuration loaded with the tenant. Organisations nest inside tenants. |
-| API conventions | Base `/api`; URI versioning with v1 default and explicit v2 controllers; camelCase JSON; ISO-8601 UTC; GUID strings; `PagedResponse` (`data, pageNumber, pageSize, totalRecords, totalPages, hasPrevious, hasNext`); v2 error envelope (`success, message, errorCode, errors, timestamp`); OpenAPI at `/swagger` per version. |
+| API conventions | Base `/api/v1`; plural kebab-case resources; camelCase JSON; string enums; ISO-8601 UTC; UUID v7 ids; `{ data, meta }` lists; RFC 9457 problem details with a stable `code` and `traceId`; `202` plus job polling for long operations; ETags and idempotency keys where state is mutable or money moves. Full rules in [09-API-DESIGN.md](09-API-DESIGN.md) (ADR-017, ADR-020). |
 | Validation | DTO validation at the edge (class-validator); LLM output validated against schemas before persistence. |
 | Errors | Domain exceptions map to 400/403/404/409; unexpected errors return 500 with a reference id and are logged with stack traces; 501 is reserved for features deliberately not implemented. |
 | Resilience | Every outbound call has a timeout (AI 30 s default, 120 s generation), retry with backoff on transient failures, and a circuit breaker (5 failures per minute opens for 30 s). Rate limiting and tenant resolution fail open. |

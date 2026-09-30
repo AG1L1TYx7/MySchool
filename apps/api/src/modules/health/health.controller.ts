@@ -10,11 +10,10 @@ import type { Response } from 'express';
 import { HealthService } from './health.service';
 
 /**
- * Routes preserved from the previous API:
- *   GET /health           basic health (outside the /api prefix)
- *   GET /health/live      liveness
- *   GET /health/ready     readiness (503 when the database is down)
- *   GET /api/Health       detailed health
+ * Probes outside the API prefix (docs/09 section 2):
+ *   GET /health          basic status
+ *   GET /health/live     liveness, never touches dependencies
+ *   GET /health/ready    readiness, 503 when the database is down
  */
 @ApiTags('Health')
 @Controller({ path: 'health', version: VERSION_NEUTRAL })
@@ -45,8 +44,9 @@ export class HealthController {
   }
 }
 
+/** GET /api/v1/health: detailed dependency health for operators and dashboards. */
 @ApiTags('Health')
-@Controller({ path: 'api/Health', version: VERSION_NEUTRAL })
+@Controller({ path: 'health', version: '1' })
 export class DetailedHealthController {
   constructor(private readonly health: HealthService) {}
 

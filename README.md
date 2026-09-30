@@ -27,7 +27,9 @@ smartschool/
 | [docs/03-DATA-MODEL.md](docs/03-DATA-MODEL.md) | Tables, relationships, enums |
 | [docs/04-INTEGRATION-CONTRACTS.md](docs/04-INTEGRATION-CONTRACTS.md) | Every boundary the system crosses |
 | [docs/05-ADR.md](docs/05-ADR.md) | Decision records |
-| [docs/07-BUILD-PLAN.md](docs/07-BUILD-PLAN.md) | Phased build plan on XAMPP MySQL |
+| [docs/07-BUILD-PLAN.md](docs/07-BUILD-PLAN.md) | Three releases as vertical slices, on XAMPP MySQL |
+| [docs/08-PRODUCT-STRATEGY.md](docs/08-PRODUCT-STRATEGY.md) | Why it is outstanding: competitors, differentiators, quality bar |
+| [docs/09-API-DESIGN.md](docs/09-API-DESIGN.md) | API conventions and the Release 1 resource map |
 
 ## Quick start (development, Windows)
 

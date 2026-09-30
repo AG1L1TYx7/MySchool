@@ -10,11 +10,24 @@ import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
 /**
- * Error envelope shared by v1 and v2 routes (docs/01 section 8):
- * { success:false, message, errorCode, errors?, timestamp, referenceId? }
- * v1 clients read `message`; v2 clients read the whole envelope.
- * Unexpected errors never leak internals: they get a referenceId that is also logged.
+ * RFC 9457 problem details for every error (docs/09 section 1, ADR-020):
+ * { type, title, status, detail, instance, code, errors?, traceId }
+ * `code` is a stable machine string; `traceId` matches the request log line.
+ * Unexpected errors never leak internals.
  */
+export interface ProblemDetails {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+  instance: string;
+  code: string;
+  errors?: string[];
+  traceId: string;
+}
+
+const TYPE_BASE = 'https://docs.smartschool.local/errors/';
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -22,7 +35,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
-    const req = ctx.getRequest<Request>();
+    const req = ctx.getRequest<Request & { id?: string }>();
+    const traceId = typeof req.id === 'string' ? req.id : randomUUID();
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
@@ -31,57 +45,91 @@ export class HttpExceptionFilter implements ExceptionFilter {
         typeof body === 'string'
           ? { message: body }
           : (body as Record<string, unknown>);
-      const message = Array.isArray(payload.message)
-        ? 'Validation failed'
-        : ((payload.message as string) ?? exception.message);
-      const errors = Array.isArray(payload.message)
+      const validationErrors = Array.isArray(payload.message)
         ? (payload.message as string[])
-        : (payload.errors as string[] | undefined);
-      res.status(status).json({
-        success: false,
-        message,
-        errorCode: (payload.errorCode as string) ?? defaultErrorCode(status),
+        : undefined;
+      const detail = validationErrors
+        ? 'One or more fields are invalid.'
+        : ((payload.detail as string) ??
+          (payload.message as string) ??
+          exception.message);
+      const code =
+        (payload.code as string) ??
+        (validationErrors ? 'validation.failed' : defaultCode(status));
+      const errors =
+        validationErrors ?? (payload.errors as string[] | undefined);
+
+      this.send(res, {
+        type: TYPE_BASE + code,
+        title: titleFor(status),
+        status,
+        detail,
+        instance: req.originalUrl ?? req.url,
+        code,
         ...(errors ? { errors } : {}),
-        timestamp: new Date().toISOString(),
+        traceId,
       });
       return;
     }
 
-    const referenceId = randomUUID();
     this.logger.error(
-      `Unhandled error ${referenceId} on ${req.method} ${req.url}`,
+      `Unhandled error ${traceId} on ${req.method} ${req.url}`,
       exception instanceof Error ? exception.stack : String(exception),
     );
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message:
-        'An unexpected error occurred. Quote the reference id when reporting it.',
-      errorCode: 'INTERNAL_ERROR',
-      referenceId,
-      timestamp: new Date().toISOString(),
+    this.send(res, {
+      type: TYPE_BASE + 'internal.error',
+      title: 'Internal Server Error',
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      detail:
+        'An unexpected error occurred. Quote the trace id when reporting it.',
+      instance: req.originalUrl ?? req.url,
+      code: 'internal.error',
+      traceId,
     });
+  }
+
+  private send(res: Response, problem: ProblemDetails): void {
+    res.status(problem.status).type('application/problem+json').json(problem);
   }
 }
 
-function defaultErrorCode(status: number): string {
+function defaultCode(status: number): string {
   switch (status) {
     case 400:
-      return 'BAD_REQUEST';
+      return 'request.invalid';
     case 401:
-      return 'UNAUTHORIZED';
+      return 'auth.unauthorized';
     case 403:
-      return 'FORBIDDEN';
+      return 'authz.forbidden';
     case 404:
-      return 'NOT_FOUND';
+      return 'resource.not_found';
     case 409:
-      return 'CONFLICT';
+      return 'resource.conflict';
+    case 422:
+      return 'validation.failed';
     case 429:
-      return 'RATE_LIMITED';
+      return 'rate.limited';
     case 501:
-      return 'NOT_IMPLEMENTED';
+      return 'feature.not_implemented';
     case 503:
-      return 'SERVICE_UNAVAILABLE';
+      return 'service.unavailable';
     default:
-      return `HTTP_${status}`;
+      return `http.${status}`;
   }
+}
+
+function titleFor(status: number): string {
+  const titles: Record<number, string> = {
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'Not Found',
+    409: 'Conflict',
+    422: 'Unprocessable Content',
+    429: 'Too Many Requests',
+    500: 'Internal Server Error',
+    501: 'Not Implemented',
+    503: 'Service Unavailable',
+  };
+  return titles[status] ?? `HTTP ${status}`;
 }
