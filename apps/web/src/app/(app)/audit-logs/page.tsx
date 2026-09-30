@@ -18,7 +18,7 @@ interface AuditRow {
 }
 interface Paged<T> {
   data: T[];
-  meta: { page: number; pageSize: number; total: number; totalPages: number };
+  meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }
 
 export default function AuditLogsPage() {
@@ -81,7 +81,7 @@ export default function AuditLogsPage() {
         </div>
         {result && (
           <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-            <span>{result.meta.total} entries</span>
+            <span>{result.meta.totalItems} entries</span>
             <span className="flex gap-2">
               <button className="disabled:opacity-40" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                 Previous

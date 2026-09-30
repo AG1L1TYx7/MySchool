@@ -33,7 +33,7 @@ smartschool/
 
 ## Quick start (development, Windows)
 
-Prerequisites: Node 22 or newer, pnpm, XAMPP (MariaDB on port 3306), Ollama with `llama3.1:8b` and `llava`.
+Prerequisites: Node 22 or newer, pnpm, XAMPP MariaDB (port 3307 on the development machine, see docs/07 section 2.1), Ollama with `llama3.1:8b` and `llava`.
 
 ```powershell
 pnpm install

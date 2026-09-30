@@ -1,12 +1,10 @@
-import {
-  INestApplication,
-  ValidationPipe,
-  VersioningType,
-} from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 
 interface Problem {
@@ -44,14 +42,10 @@ describe('Students (e2e)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication();
-    app.enableVersioning({
-      type: VersioningType.URI,
-      prefix: 'api/v',
-      defaultVersion: '1',
-    });
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
+    app = configureApp(
+      moduleRef.createNestApplication<NestExpressApplication>({
+        bodyParser: false,
+      }),
     );
     await app.init();
     server = app.getHttpServer() as Server;
@@ -146,7 +140,9 @@ describe('Students (e2e)', () => {
       .get(`/api/v1/students?search=E2E-${stamp}`)
       .set(auth())
       .expect(200);
-    expect((list.body as { meta: { total: number } }).meta.total).toBe(2);
+    expect(
+      (list.body as { meta: { totalItems: number } }).meta.totalItems,
+    ).toBe(2);
     const csv = await request(server)
       .get(`/api/v1/students/export?search=E2E-${stamp}`)
       .set(auth())
@@ -196,10 +192,22 @@ describe('Students (e2e)', () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
-  it('soft-deletes a student', async () => {
+  it('lets a district administrator soft-delete a student, but not a principal', async () => {
     await request(server)
       .delete(`/api/v1/students/${studentId}`)
       .set(auth())
+      .expect(403);
+    const login = await request(server)
+      .post('/api/v1/auth/login')
+      .send({
+        email: 'superintendent@smartschool.local',
+        password: 'SmartSchool!Demo2026',
+      })
+      .expect(200);
+    const district = (login.body as { accessToken: string }).accessToken;
+    await request(server)
+      .delete(`/api/v1/students/${studentId}`)
+      .set('Authorization', `Bearer ${district}`)
       .expect(204);
     await request(server)
       .get(`/api/v1/students/${studentId}`)

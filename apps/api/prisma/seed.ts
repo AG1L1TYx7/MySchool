@@ -8,7 +8,7 @@
 import { PrismaClient, Role } from '@prisma/client';
 import type { EnrollmentStatus } from '@prisma/client';
 import argon2 from 'argon2';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../src/common/utils/ids';
 import { FEATURE_CATALOG } from '../src/modules/access/feature-catalog';
 
 const prisma = new PrismaClient();

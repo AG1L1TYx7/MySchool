@@ -100,19 +100,18 @@ export class StudentsController {
       'Bulk import from CSV; upserts by student number, links guardians, reports per-line errors. ?dryRun=true validates only.',
   })
   import(
-    @Body() body: ImportStudentsDto | string,
+    @Body() body: ImportStudentsDto | string | undefined,
     @Query('dryRun') dryRun: string | undefined,
     @Query('organizationId') organizationId: string | undefined,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    const dto: ImportStudentsDto =
-      typeof body === 'string'
-        ? { csv: body, dryRun: dryRun === 'true', organizationId }
-        : {
-            ...body,
-            dryRun: body.dryRun ?? dryRun === 'true',
-            organizationId: body.organizationId ?? organizationId,
-          };
+    const raw: Partial<ImportStudentsDto> =
+      typeof body === 'string' ? { csv: body } : (body ?? {});
+    const dto: ImportStudentsDto = {
+      csv: raw.csv ?? '',
+      dryRun: raw.dryRun ?? dryRun === 'true',
+      organizationId: raw.organizationId ?? organizationId,
+    };
     if (typeof dto.csv !== 'string' || dto.csv.trim() === '')
       throw new BadRequestException({
         code: 'request.invalid',

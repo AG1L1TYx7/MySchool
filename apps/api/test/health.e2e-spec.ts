@@ -1,8 +1,10 @@
-import { INestApplication, VersioningType } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
 
 interface HealthBody {
   status: string;
@@ -27,12 +29,11 @@ describe('Health and conventions (e2e)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication();
-    app.enableVersioning({
-      type: VersioningType.URI,
-      prefix: 'api/v',
-      defaultVersion: '1',
-    });
+    app = configureApp(
+      moduleRef.createNestApplication<NestExpressApplication>({
+        bodyParser: false,
+      }),
+    );
     await app.init();
     server = app.getHttpServer() as Server;
   });

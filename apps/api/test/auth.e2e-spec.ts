@@ -1,12 +1,10 @@
-import {
-  INestApplication,
-  ValidationPipe,
-  VersioningType,
-} from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 
 interface TokenBody {
@@ -41,14 +39,10 @@ describe('Auth (e2e)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication();
-    app.enableVersioning({
-      type: VersioningType.URI,
-      prefix: 'api/v',
-      defaultVersion: '1',
-    });
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
+    app = configureApp(
+      moduleRef.createNestApplication<NestExpressApplication>({
+        bodyParser: false,
+      }),
     );
     await app.init();
     server = app.getHttpServer() as Server;

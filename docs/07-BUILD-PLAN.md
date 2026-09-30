@@ -35,6 +35,8 @@ Not yet done on this machine: XAMPP's MariaDB is not started (the `MySQL800` ser
 
 ### 2.1 Port 3306 is taken
 
+Resolved on 1 Oct 2026 without touching the MySQL 8 service: XAMPP MariaDB 10.4.32 runs on **port 3307** (`C:\xampp\mysql\bin\my.ini`, `port=3307` under both `[client]` and `[mysqld]`), while the `MySQL800` service (MySQL Server 8.0) keeps 3306. `DATABASE_URL` therefore points at `127.0.0.1:3307`; the `smartschool` user and both databases exist. The steps below remain the way to reclaim 3306 if that is ever wanted.
+
 `MySQL800` (MySQL 8) owns 3306; XAMPP's MariaDB wants it. Stop and disable both MySQL services, let XAMPP own 3306. Alternative: XAMPP on 3307 and `DATABASE_URL` on 3307.
 
 ```powershell

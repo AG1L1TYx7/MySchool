@@ -36,7 +36,7 @@ export interface Guardian {
 
 export interface Paged<T> {
   data: T[];
-  meta: { page: number; pageSize: number; total: number; totalPages: number };
+  meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }
 
 export interface ImportResult {

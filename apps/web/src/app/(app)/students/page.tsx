@@ -133,7 +133,7 @@ export default function StudentsPage() {
         {result && (
           <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
             <span>
-              {result.meta.total} student{result.meta.total === 1 ? '' : 's'}
+              {result.meta.totalItems} student{result.meta.totalItems === 1 ? '' : 's'}
             </span>
             <span className="flex gap-2">
               <button className="disabled:opacity-40" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
