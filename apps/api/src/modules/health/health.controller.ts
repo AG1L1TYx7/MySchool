@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { Public } from '../auth/decorators/public.decorator';
 import { HealthService } from './health.service';
 
 /**
@@ -16,6 +17,7 @@ import { HealthService } from './health.service';
  *   GET /health/ready    readiness, 503 when the database is down
  */
 @ApiTags('Health')
+@Public()
 @Controller({ path: 'health', version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(private readonly health: HealthService) {}
@@ -46,6 +48,7 @@ export class HealthController {
 
 /** GET /api/v1/health: detailed dependency health for operators and dashboards. */
 @ApiTags('Health')
+@Public()
 @Controller({ path: 'health', version: '1' })
 export class DetailedHealthController {
   constructor(private readonly health: HealthService) {}

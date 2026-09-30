@@ -39,6 +39,8 @@ export const envSchema = z
     JWT_ACCESS_TTL_MINUTES: z.coerce.number().int().positive().default(15),
     JWT_REMEMBER_ME_TTL_DAYS: z.coerce.number().int().positive().default(30),
     JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    /** Optional base64 32-byte key for field encryption (TOTP secrets); derived from JWT_SECRET when unset. */
+    ENCRYPTION_KEY: z.string().optional(),
 
     AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
     AI_SERVICE_API_KEY: z.string().optional().default(''),

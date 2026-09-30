@@ -1,9 +1,12 @@
-// SmartSchool LMS schema.
+// SmartSchool LMS schema (docs/03-DATA-MODEL.md).
 //
-// Phase 0 bootstrap: identity, organisation, feature permissions, audit, and the
-// scheduler lock table. Every other domain is added when the full schema is
-// generated from the previous EF Core snapshot (docs/07 section 5) and merged here.
-// Table and column names are preserved exactly (ADR-003); enums are integers (docs/03 section 6).
+// Conventions (ADR-003, ADR-020): PascalCase table and column names in the database,
+// camelCase fields in Prisma via @map, application-generated UUID v7 keys stored as
+// char(36), UTC datetime(6), soft delete via DeletedAt where listed in docs/03 section 4.
+// The 12 AI-owned tables (added in Release 1 slice 5 and Release 2) keep the exact
+// names and columns the Python service expects.
+//
+// Release 1 slice 1: identity and access.
 
 generator client {
   provider = "prisma-client-js"
@@ -15,280 +18,235 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// Identity (ASP.NET Identity table shape, kept for account portability, ADR-011)
+// Enums (stored as MySQL ENUM on tables this API owns)
 // ---------------------------------------------------------------------------
 
-model AspNetUsers {
-  Id                     String    @id @db.VarChar(255)
-  UserName               String?   @db.VarChar(256)
-  NormalizedUserName     String?   @unique(map: "UserNameIndex") @db.VarChar(256)
-  Email                  String?   @db.VarChar(256)
-  NormalizedEmail        String?   @db.VarChar(256)
-  EmailConfirmed         Boolean   @default(false)
-  PasswordHash           String?   @db.LongText
-  SecurityStamp          String?   @db.LongText
-  ConcurrencyStamp       String?   @db.LongText
-  PhoneNumber            String?   @db.LongText
-  PhoneNumberConfirmed   Boolean   @default(false)
-  TwoFactorEnabled       Boolean   @default(false)
-  LockoutEnd             DateTime? @db.DateTime(6)
-  LockoutEnabled         Boolean   @default(false)
-  AccessFailedCount      Int       @default(0)
-
-  // Application columns
-  FirstName              String    @db.VarChar(100)
-  LastName               String    @db.VarChar(100)
-  Role                   Int       @default(4) // Role enum: SuperAdmin 0 … Assistant 6 (docs/03 section 6)
-  IsActive               Boolean   @default(true)
-  CreatedAt              DateTime  @default(now()) @db.DateTime(6)
-  UpdatedAt              DateTime? @db.DateTime(6)
-  LastLoginAt            DateTime? @db.DateTime(6)
-  RefreshToken           String?   @db.LongText
-  RefreshTokenExpiryTime DateTime? @db.DateTime(6)
-  TwoFactorSecret        String?   @db.LongText
-  BackupCodes            String?   @db.LongText
-
-  userRoles   AspNetUserRoles[]
-  claims      AspNetUserClaims[]
-  logins      AspNetUserLogins[]
-  tokens      AspNetUserTokens[]
-  admins      Admins[]
-  appUsers    AppUsers[]
-  overrides   UserFeatureOverrides[]
-  auditLogs   AuditLogs[]
-
-  @@index([NormalizedEmail], map: "EmailIndex")
+enum Role {
+  SUPER_ADMIN
+  SUPERINTENDENT
+  PRINCIPAL
+  TEACHER
+  STUDENT
+  PARENT
+  ASSISTANT
 }
 
-model AspNetRoles {
-  Id               String  @id @db.VarChar(255)
-  Name             String? @db.VarChar(256)
-  NormalizedName   String? @unique(map: "RoleNameIndex") @db.VarChar(256)
-  ConcurrencyStamp String? @db.LongText
-
-  userRoles  AspNetUserRoles[]
-  claims     AspNetRoleClaims[]
-  features   RoleFeatures[]
-}
-
-model AspNetUserRoles {
-  UserId String @db.VarChar(255)
-  RoleId String @db.VarChar(255)
-
-  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
-  role AspNetRoles @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
-
-  @@id([UserId, RoleId])
-  @@index([RoleId])
-}
-
-model AspNetUserClaims {
-  Id         Int     @id @default(autoincrement())
-  UserId     String  @db.VarChar(255)
-  ClaimType  String? @db.LongText
-  ClaimValue String? @db.LongText
-
-  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
-
-  @@index([UserId])
-}
-
-model AspNetRoleClaims {
-  Id         Int     @id @default(autoincrement())
-  RoleId     String  @db.VarChar(255)
-  ClaimType  String? @db.LongText
-  ClaimValue String? @db.LongText
-
-  role AspNetRoles @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
-
-  @@index([RoleId])
-}
-
-model AspNetUserLogins {
-  LoginProvider       String  @db.VarChar(255)
-  ProviderKey         String  @db.VarChar(255)
-  ProviderDisplayName String? @db.LongText
-  UserId              String  @db.VarChar(255)
-
-  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
-
-  @@id([LoginProvider, ProviderKey])
-  @@index([UserId])
-}
-
-model AspNetUserTokens {
-  UserId        String  @db.VarChar(255)
-  LoginProvider String  @db.VarChar(255)
-  Name          String  @db.VarChar(255)
-  Value         String? @db.LongText
-
-  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
-
-  @@id([UserId, LoginProvider, Name])
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
 }
 
 // ---------------------------------------------------------------------------
-// Organisation
+// Organisation (school-level container; tenancy arrives in Release 3, ADR-019)
 // ---------------------------------------------------------------------------
 
-model Organizations {
-  Id          String    @id @default(uuid()) @db.Char(36)
-  Name        String    @db.VarChar(200)
-  Description String?   @db.VarChar(500)
-  Email       String?   @db.VarChar(100)
-  Phone       String?   @db.VarChar(20)
-  Address     String?   @db.VarChar(500)
-  IsActive    Boolean   @default(true)
-  CreatedAt   DateTime  @default(now()) @db.DateTime(6)
-  UpdatedAt   DateTime? @db.DateTime(6)
-  DeletedAt   DateTime? @db.DateTime(6) // soft delete
+model Organization {
+  id          String    @id @map("Id") @db.Char(36)
+  name        String    @map("Name") @db.VarChar(200)
+  description String?   @map("Description") @db.VarChar(500)
+  email       String?   @map("Email") @db.VarChar(100)
+  phone       String?   @map("Phone") @db.VarChar(20)
+  address     String?   @map("Address") @db.VarChar(500)
+  timezone    String    @default("UTC") @map("Timezone") @db.VarChar(64)
+  isActive    Boolean   @default(true) @map("IsActive")
+  createdAt   DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt   DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt   DateTime? @map("DeletedAt") @db.DateTime(6)
 
-  admins     Admins[]
-  users      AppUsers[]
-  whitelists IPWhitelists[]
+  users User[]
 
-  @@index([Name])
-  @@index([IsActive])
+  @@index([name])
+  @@index([isActive, deletedAt])
+  @@map("Organizations")
 }
 
-model Admins {
-  Id             String    @id @default(uuid()) @db.Char(36)
-  OrganizationId String    @db.Char(36)
-  IdentityUserId String    @db.VarChar(255)
-  IsActive       Boolean   @default(true)
-  CreatedAt      DateTime  @default(now()) @db.DateTime(6)
-  UpdatedAt      DateTime? @db.DateTime(6)
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
 
-  organization Organizations @relation(fields: [OrganizationId], references: [Id], onDelete: Restrict)
-  user         AspNetUsers   @relation(fields: [IdentityUserId], references: [Id], onDelete: Cascade)
+model User {
+  id                String     @id @map("Id") @db.Char(36)
+  email             String     @unique @map("Email") @db.VarChar(256)
+  emailVerifiedAt   DateTime?  @map("EmailVerifiedAt") @db.DateTime(6)
+  passwordHash      String     @map("PasswordHash") @db.VarChar(512)
+  passwordChangedAt DateTime?  @map("PasswordChangedAt") @db.DateTime(6)
+  firstName         String     @map("FirstName") @db.VarChar(100)
+  lastName          String     @map("LastName") @db.VarChar(100)
+  role              Role       @map("Role")
+  status            UserStatus @default(ACTIVE) @map("Status")
+  organizationId    String?    @map("OrganizationId") @db.Char(36)
+  phone             String?    @map("Phone") @db.VarChar(32)
+  locale            String     @default("en") @map("Locale") @db.VarChar(16)
+  timezone          String?    @map("Timezone") @db.VarChar(64)
+  avatarFileId      String?    @map("AvatarFileId") @db.Char(36)
 
-  @@index([OrganizationId])
-  @@index([IdentityUserId])
+  twoFactorEnabled Boolean @default(false) @map("TwoFactorEnabled")
+  twoFactorSecret  String? @map("TwoFactorSecret") @db.VarChar(512) // AES-256-GCM encrypted
+  backupCodes      String? @map("BackupCodes") @db.Text // JSON array of argon2 hashes (TEXT: MariaDB 10.4 has no native JSON, ADR-002)
+
+  failedLoginCount Int       @default(0) @map("FailedLoginCount")
+  lockedUntil      DateTime? @map("LockedUntil") @db.DateTime(6)
+  lastLoginAt      DateTime? @map("LastLoginAt") @db.DateTime(6)
+
+  createdAt DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt DateTime? @map("DeletedAt") @db.DateTime(6)
+
+  organization        Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  sessions            AuthSession[]
+  passwordResetTokens PasswordResetToken[]
+  featureOverrides    UserFeatureOverride[]
+  auditLogs           AuditLog[]
+
+  @@index([organizationId, role])
+  @@index([status, deletedAt])
+  @@index([lastName, firstName])
+  @@map("Users")
 }
 
-model AppUsers {
-  Id             String    @id @default(uuid()) @db.Char(36)
-  OrganizationId String    @db.Char(36)
-  IdentityUserId String    @unique @db.VarChar(255)
-  IsActive       Boolean   @default(true)
-  CreatedAt      DateTime  @default(now()) @db.DateTime(6)
-  UpdatedAt      DateTime? @db.DateTime(6)
+/// One row per refresh token. Rotation replaces the row; reuse of a replaced token revokes the family.
+model AuthSession {
+  id               String    @id @map("Id") @db.Char(36)
+  userId           String    @map("UserId") @db.Char(36)
+  familyId         String    @map("FamilyId") @db.Char(36)
+  refreshTokenHash String    @unique @map("RefreshTokenHash") @db.Char(64)
+  userAgent        String?   @map("UserAgent") @db.VarChar(500)
+  ipAddress        String?   @map("IpAddress") @db.VarChar(45)
+  rememberMe       Boolean   @default(false) @map("RememberMe")
+  createdAt        DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  lastUsedAt       DateTime  @default(now()) @map("LastUsedAt") @db.DateTime(6)
+  expiresAt        DateTime  @map("ExpiresAt") @db.DateTime(6)
+  revokedAt        DateTime? @map("RevokedAt") @db.DateTime(6)
+  replacedById     String?   @map("ReplacedById") @db.Char(36)
 
-  organization Organizations @relation(fields: [OrganizationId], references: [Id], onDelete: Restrict)
-  user         AspNetUsers   @relation(fields: [IdentityUserId], references: [Id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([OrganizationId])
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("AuthSessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @map("Id") @db.Char(36)
+  userId    String    @map("UserId") @db.Char(36)
+  tokenHash String    @unique @map("TokenHash") @db.Char(64)
+  expiresAt DateTime  @map("ExpiresAt") @db.DateTime(6)
+  usedAt    DateTime? @map("UsedAt") @db.DateTime(6)
+  createdAt DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("PasswordResetTokens")
 }
 
 // ---------------------------------------------------------------------------
 // Feature permissions and flags (docs/02 section 2)
 // ---------------------------------------------------------------------------
 
-model Features {
-  Id          String    @id @default(uuid()) @db.Char(36)
-  Code        String    @unique @db.VarChar(100)
-  Name        String    @db.VarChar(200)
-  Description String?   @db.Text
-  Category    String    @db.VarChar(100)
-  IsActive    Boolean   @default(true)
-  CreatedAt   DateTime  @default(now()) @db.DateTime(6)
-  UpdatedAt   DateTime? @db.DateTime(6)
+model Feature {
+  id          String   @id @map("Id") @db.Char(36)
+  code        String   @unique @map("Code") @db.VarChar(100)
+  name        String   @map("Name") @db.VarChar(200)
+  description String?  @map("Description") @db.Text
+  category    String   @map("Category") @db.VarChar(100)
+  isActive    Boolean  @default(true) @map("IsActive")
+  createdAt   DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt   DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
-  roleFeatures RoleFeatures[]
-  overrides    UserFeatureOverrides[]
+  roleFeatures RoleFeature[]
+  overrides    UserFeatureOverride[]
 
-  @@index([Category])
+  @@index([category])
+  @@map("Features")
 }
 
-model RoleFeatures {
-  Id         String   @id @default(uuid()) @db.Char(36)
-  RoleId     String   @db.VarChar(255)
-  FeatureId  String   @db.Char(36)
-  AssignedBy String?  @db.VarChar(255)
-  AssignedAt DateTime @default(now()) @db.DateTime(6)
+model RoleFeature {
+  id         String   @id @map("Id") @db.Char(36)
+  role       Role     @map("Role")
+  featureId  String   @map("FeatureId") @db.Char(36)
+  assignedBy String?  @map("AssignedBy") @db.Char(36)
+  assignedAt DateTime @default(now()) @map("AssignedAt") @db.DateTime(6)
 
-  role    AspNetRoles @relation(fields: [RoleId], references: [Id], onDelete: Cascade)
-  feature Features    @relation(fields: [FeatureId], references: [Id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
 
-  @@unique([RoleId, FeatureId])
-  @@index([FeatureId])
+  @@unique([role, featureId])
+  @@index([featureId])
+  @@map("RoleFeatures")
 }
 
-model UserFeatureOverrides {
-  Id         String    @id @default(uuid()) @db.Char(36)
-  UserId     String    @db.VarChar(255)
-  FeatureId  String    @db.Char(36)
-  IsGranted  Boolean
-  Reason     String?   @db.Text
-  AssignedBy String?   @db.VarChar(255)
-  ExpiresAt  DateTime? @db.DateTime(6)
-  CreatedAt  DateTime  @default(now()) @db.DateTime(6)
+model UserFeatureOverride {
+  id         String    @id @map("Id") @db.Char(36)
+  userId     String    @map("UserId") @db.Char(36)
+  featureId  String    @map("FeatureId") @db.Char(36)
+  isGranted  Boolean   @map("IsGranted")
+  reason     String?   @map("Reason") @db.Text
+  assignedBy String?   @map("AssignedBy") @db.Char(36)
+  expiresAt  DateTime? @map("ExpiresAt") @db.DateTime(6)
+  createdAt  DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
 
-  user    AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
-  feature Features    @relation(fields: [FeatureId], references: [Id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
 
-  @@unique([UserId, FeatureId])
-  @@index([FeatureId])
+  @@unique([userId, featureId])
+  @@index([featureId])
+  @@map("UserFeatureOverrides")
 }
 
-model FeatureFlags {
-  Id          String    @id @default(uuid()) @db.Char(36)
-  Name        String    @unique @db.VarChar(100)
-  IsEnabled   Boolean   @default(false)
-  Description String?   @db.VarChar(500)
-  CreatedAt   DateTime  @default(now()) @db.DateTime(6)
-  UpdatedAt   DateTime? @db.DateTime(6)
-}
+model FeatureFlag {
+  id          String   @id @map("Id") @db.Char(36)
+  name        String   @unique @map("Name") @db.VarChar(100)
+  isEnabled   Boolean  @default(false) @map("IsEnabled")
+  description String?  @map("Description") @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt   DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
-// ---------------------------------------------------------------------------
-// Security
-// ---------------------------------------------------------------------------
-
-model AuditLogs {
-  Id          String   @id @default(uuid()) @db.Char(36)
-  UserId      String   @db.VarChar(255)
-  Action      String   @db.VarChar(100)
-  EntityType  String?  @db.VarChar(100)
-  EntityId    String?  @db.VarChar(100)
-  IPAddress   String?  @db.VarChar(45)
-  UserAgent   String?  @db.VarChar(500)
-  RequestPath String?  @db.VarChar(500)
-  HttpMethod  String?  @db.VarChar(10)
-  StatusCode  Int?
-  Details     String?  @db.LongText
-  Timestamp   DateTime @default(now()) @db.DateTime(6)
-
-  user AspNetUsers @relation(fields: [UserId], references: [Id], onDelete: Cascade)
-
-  @@index([UserId, Timestamp])
-  @@index([Action])
-  @@index([EntityType, EntityId])
-}
-
-model IPWhitelists {
-  Id             String   @id @default(uuid()) @db.Char(36)
-  OrganizationId String   @db.Char(36)
-  IPAddress      String   @db.VarChar(45)
-  Description    String?  @db.VarChar(200)
-  IsActive       Boolean  @default(true)
-  CreatedAt      DateTime @default(now()) @db.DateTime(6)
-
-  organization Organizations @relation(fields: [OrganizationId], references: [Id], onDelete: Cascade)
-
-  @@index([OrganizationId, IsActive])
-  @@index([IPAddress])
+  @@map("FeatureFlags")
 }
 
 // ---------------------------------------------------------------------------
-// Platform (new in the Node build, ADR-007)
+// Audit
 // ---------------------------------------------------------------------------
 
-model JobRuns {
-  JobName    String    @id @db.VarChar(100)
-  LockedAt   DateTime? @db.DateTime(6)
-  LockedBy   String?   @db.VarChar(100)
-  LastRunAt  DateTime? @db.DateTime(6)
-  LastStatus String?   @db.VarChar(20) // success | failed | running
-  LastError  String?   @db.Text
-  RunCount   Int       @default(0)
+model AuditLog {
+  id             String   @id @map("Id") @db.Char(36)
+  userId         String?  @map("UserId") @db.Char(36)
+  organizationId String?  @map("OrganizationId") @db.Char(36)
+  action         String   @map("Action") @db.VarChar(100)
+  entityType     String?  @map("EntityType") @db.VarChar(100)
+  entityId       String?  @map("EntityId") @db.VarChar(100)
+  ipAddress      String?  @map("IpAddress") @db.VarChar(45)
+  userAgent      String?  @map("UserAgent") @db.VarChar(500)
+  requestPath    String?  @map("RequestPath") @db.VarChar(500)
+  httpMethod     String?  @map("HttpMethod") @db.VarChar(10)
+  statusCode     Int?     @map("StatusCode")
+  details        String?  @map("Details") @db.Text // JSON document
+  traceId        String?  @map("TraceId") @db.VarChar(64)
+  timestamp      DateTime @default(now()) @map("Timestamp") @db.DateTime(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, timestamp])
+  @@index([organizationId, timestamp])
+  @@index([action, timestamp])
+  @@index([entityType, entityId])
+  @@map("AuditLogs")
+}
+
+// ---------------------------------------------------------------------------
+// Platform (ADR-007)
+// ---------------------------------------------------------------------------
+
+model JobRun {
+  jobName    String    @id @map("JobName") @db.VarChar(100)
+  lockedAt   DateTime? @map("LockedAt") @db.DateTime(6)
+  lockedBy   String?   @map("LockedBy") @db.VarChar(100)
+  lastRunAt  DateTime? @map("LastRunAt") @db.DateTime(6)
+  lastStatus String?   @map("LastStatus") @db.VarChar(20)
+  lastError  String?   @map("LastError") @db.Text
+  runCount   Int       @default(0) @map("RunCount")
+
+  @@map("JobRuns")
 }

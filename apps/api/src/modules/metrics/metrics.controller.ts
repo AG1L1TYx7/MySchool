@@ -1,9 +1,11 @@
 import { Controller, Get, Header, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { collectDefaultMetrics, Registry } from 'prom-client';
+import { Public } from '../auth/decorators/public.decorator';
 
 /** Prometheus metrics at GET /metrics (outside the /api prefix), mirroring the AI service. */
 @ApiExcludeController()
+@Public()
 @Controller({ path: 'metrics', version: VERSION_NEUTRAL })
 export class MetricsController {
   static readonly registry = new Registry();
