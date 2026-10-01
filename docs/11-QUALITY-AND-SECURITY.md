@@ -12,7 +12,7 @@ A slice is done only when all of the following are true and visible in CI:
 4. **Static gates**: ESLint with type-aware rules, `tsc --noEmit`, Prettier, `pnpm audit` at high severity reviewed (the job reports; a high advisory with no fix is documented in `docs/05-ADR.md` with the mitigation).
 5. **Performance review** (section 4): list endpoints paginate, every filter has an index, no N+1 in the request path, large bodies are capped.
 6. **Docs updated**: `09-API-DESIGN.md` for routes, `03-DATA-MODEL.md` for tables, `07-BUILD-PLAN.md` status, README quick start if commands changed.
-7. **Walk-through**: the feature is used through the web client with the demo accounts for each role that can see it.
+7. **Walk-through**: the feature is used through the web client with the demo accounts for each role that can see it, and each new screen passes the docs/12 acceptance checklist (motion tokens, reduced motion, skeletons, animated progress, feedback, game mechanics rules).
 
 ## 2. Test pyramid and tooling
 

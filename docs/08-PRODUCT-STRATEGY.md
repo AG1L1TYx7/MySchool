@@ -79,3 +79,7 @@ Inside each release, work is delivered as **vertical slices**: a user-visible ou
 | Weekly active students in the pilot class | 90 percent |
 | Setup on a fresh Windows laptop with XAMPP and Ollama | under 30 minutes following the guide |
 | Full backup and restore | under 5 minutes |
+
+## Addendum (1 October 2026): experience bar
+
+Every screen follows the motion system and the gamified experience in [12-UX-MOTION-AND-GAMIFICATION.md](12-UX-MOTION-AND-GAMIFICATION.md): purposeful motion with reduced-motion support, skeleton loading, animated progress, earned rewards (XP, streaks, badges, quests, progress maps, opt-in class leaderboards), age-aware and never shaming. This is part of the quality bar, not a later polish pass.

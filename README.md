@@ -32,6 +32,7 @@ smartschool/
 | [docs/09-API-DESIGN.md](docs/09-API-DESIGN.md) | API conventions and the Release 1 resource map |
 | [docs/10-AI-SYSTEM-DESIGN.md](docs/10-AI-SYSTEM-DESIGN.md) | Agentic AI design, prompts, safety, evaluation |
 | [docs/11-QUALITY-AND-SECURITY.md](docs/11-QUALITY-AND-SECURITY.md) | Definition of done, security checklist, performance rules |
+| [docs/12-UX-MOTION-AND-GAMIFICATION.md](docs/12-UX-MOTION-AND-GAMIFICATION.md) | Motion system and gamified experience required on every screen |
 
 ## Quick start (development, Windows)
 

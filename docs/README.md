@@ -21,11 +21,12 @@ An AI-native K-12 learning management system that runs entirely on local infrast
 | 09 | [API Design](09-API-DESIGN.md) | Conventions for the `/api/v1` API and the Release 1 resource map. |
 | 10 | [AI System Design](10-AI-SYSTEM-DESIGN.md) | Build or change anything AI: agents, tools, envelopes, prompt architecture and library, safety for minors, evaluation thresholds, model routing, the AI service interface. |
 | 11 | [Quality and Security](11-QUALITY-AND-SECURITY.md) | Know what "done" means: the test pyramid, the security checklist reviewed per slice, performance rules, release review. |
+| 12 | [UX: Motion and Gamification](12-UX-MOTION-AND-GAMIFICATION.md) | Build any screen: the motion system (tokens, patterns, reduced motion), the gamified experience (XP, streaks, badges, quests, progress maps, leaderboards) and the per-screen acceptance checklist. |
 
 ## Reading order
 
 New to the project: 08, then 01, then 07.
-Building a slice: 07 for the slice, 09 for the routes, 02 for the behaviour, 03 for the tables, 04 if it crosses a service boundary, 10 for anything AI, and 11 before calling it done.
+Building a slice: 07 for the slice, 09 for the routes, 02 for the behaviour, 03 for the tables, 04 if it crosses a service boundary, 10 for anything AI, 12 for every screen, and 11 before calling it done.
 Reviewing a design change: 05 first, then the affected section of 01.
 
 ## Conventions
