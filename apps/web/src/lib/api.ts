@@ -113,6 +113,23 @@ export async function api<T = unknown>(path: string, options: RequestOptions = {
   return data as T;
 }
 
+/** Uploads one file as multipart form data to an authenticated endpoint. */
+export async function upload<T = unknown>(path: string, file: File): Promise<T> {
+  if (!tokenStore.access) await tryRefresh();
+  const form = new FormData();
+  form.append('file', file);
+  let res = await fetch(`${BASE}${path}`, { method: 'POST', headers: { authorization: `Bearer ${tokenStore.access ?? ''}`, ...CSRF_HEADERS }, body: form, credentials: 'same-origin' });
+  if (res.status === 401 && (await tryRefresh())) {
+    res = await fetch(`${BASE}${path}`, { method: 'POST', headers: { authorization: `Bearer ${tokenStore.access ?? ''}`, ...CSRF_HEADERS }, body: form, credentials: 'same-origin' });
+  }
+  const data: unknown = await res.json().catch(() => undefined);
+  if (!res.ok) {
+    const problem = (data ?? {}) as Partial<ProblemDetails>;
+    throw new ApiError({ type: problem.type ?? 'about:blank', title: problem.title ?? res.statusText, status: problem.status ?? res.status, detail: problem.detail ?? 'The upload failed.', code: problem.code ?? `http.${res.status}`, errors: problem.errors, traceId: problem.traceId });
+  }
+  return data as T;
+}
+
 /** Downloads a file from an authenticated endpoint (CSV exports, templates). */
 export async function download(path: string, filename: string): Promise<void> {
   if (!tokenStore.access) await tryRefresh();

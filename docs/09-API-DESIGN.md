@@ -174,32 +174,35 @@ GET    /students/{id}/classes
 
 ### Assignments, submissions, grades
 ```
-GET    /assignments                   classId, type, status, dueBefore, dueAfter
-POST   /assignments                   supports h5pContentId, rubricId
-GET    /assignments/{id}
+GET    /assignments                   classId, type, status, dueBefore, dueAfter, search; students and parents see
+                                      published work in their classes with mySubmission and myGrade
+POST   /assignments                   classId, title, type, submissionType, category, maxPoints, weight, availableFrom,
+                                      dueAt, allowLateUntil, latePenaltyPercent, maxAttempts, rubricId, h5pContentId -> draft
+GET    /assignments/{id}              students: with mySubmissions
 PATCH  /assignments/{id}
-DELETE /assignments/{id}
+DELETE /assignments/{id}              only while ungraded
 POST   /assignments/{id}/publish
-GET    /assignments/{id}/submissions
-POST   /assignments/{id}/submissions  student submits text and file ids; attempt number assigned
-GET    /submissions/{id}
-POST   /submissions/{id}/grade        score, feedback, rubric scores
-GET    /grades                        studentId, classId, assignmentId
-GET    /classes/{id}/gradebook        matrix with weights and averages
-GET    /classes/{id}/gradebook/export CSV or XLSX
-GET    /rubrics, POST /rubrics, GET/PATCH/DELETE /rubrics/{id}
+POST   /assignments/{id}/close
+GET    /assignments/{id}/submissions  every enrolled student with latest submission and grade (class teachers)
+POST   /assignments/{id}/submissions  textContent, fileIds[] (own uploads) -> attempt number; late flag; window and attempt limits enforced
+GET    /submissions/{id}              the student, their guardians, or staff managing the class
+POST   /submissions/{id}/grade        score (raw), feedback, rubricScores[], waiveLatePenalty -> grade with percentage and letter;
+                                      late penalty applied from the assignment; ClassEnrollments.currentGrade refreshed
+GET    /grades                        studentId, classId, assignmentId; grades.view.all | grades.view.own | grades.view.child
+GET    /classes/{id}/gradebook        weighted points matrix, per-student totals and letters, class and per-assignment averages
+GET    /classes/{id}/gradebook/export CSV
+GET    /rubrics, POST /rubrics, GET/PATCH/DELETE /rubrics/{id}   criteria[] { id, title, maxPoints, levels[] }
 ```
 
 ### Attendance
 ```
-GET    /attendance                    classId, studentId, date, from, to
-POST   /attendance                    one record
-POST   /attendance/bulk               a class on a date
-PATCH  /attendance/{id}
-GET    /classes/{id}/attendance/summary
-GET    /students/{id}/attendance/summary
+GET    /attendance                    classId, studentId, date, from, to; attendance.view | attendance.view.own | attendance.view.child
+POST   /attendance                    classId, studentId, date, status, notes (upsert)
+POST   /attendance/bulk               classId, date, records[] { studentId, status, notes }
+PATCH  /attendance/{id}               status, notes
+GET    /classes/{id}/attendance/summary        from, to -> per-student counts and rates, class rate, days recorded
+GET    /students/{id}/attendance/summary       from, to -> overall and per-class counts
 ```
-
 ### Announcements, notifications, files
 ```
 GET    /announcements                 classId, organizationId, type, priority
@@ -214,10 +217,11 @@ POST   /notifications/{id}/read
 POST   /notifications/read-all
 GET    /notifications/preferences
 PUT    /notifications/preferences
-POST   /files                         multipart upload -> file resource
-GET    /files/{id}                    metadata
-GET    /files/{id}/download
-DELETE /files/{id}
+POST   /files?category=               multipart field "file"; extension allowlist (ALLOWED_EXTENSIONS or the default list, never executables),
+                                      MAX_FILE_SIZE_MB; stored under UPLOAD_DIR/<org>/<yyyy>/<mm>/<id>.<ext>; sha256 recorded
+GET    /files/{id}                    metadata (uploader, staff of the organisation, file managers, guardians via submissions)
+GET    /files/{id}/download           bytes with a safe Content-Disposition
+DELETE /files/{id}                    uploader or files.manage; refused while attached to a submission
 ```
 
 ### Messaging

@@ -14,9 +14,12 @@ import { PrismaModule } from './infra/prisma/prisma.module';
 import { AccessModule } from './modules/access/access.module';
 import { AccessGuard } from './modules/access/guards/access.guard';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
+import { AssignmentsModule } from './modules/assignments/assignments.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ClassesModule } from './modules/classes/classes.module';
 import { CoursesModule } from './modules/courses/courses.module';
+import { FilesModule } from './modules/files/files.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
@@ -76,6 +79,9 @@ import { UsersModule } from './modules/users/users.module';
     StudentsModule,
     CoursesModule,
     ClassesModule,
+    FilesModule,
+    AssignmentsModule,
+    AttendanceModule,
     HealthModule,
     MetricsModule,
   ],

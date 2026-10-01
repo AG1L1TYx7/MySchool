@@ -94,6 +94,48 @@ enum AuthTokenPurpose {
   INVITE
 }
 
+enum AssignmentType {
+  HOMEWORK
+  QUIZ
+  TEST
+  PROJECT
+  ESSAY
+  PRESENTATION
+  LAB
+  DISCUSSION
+  PRACTICE
+}
+
+enum SubmissionType {
+  ONLINE
+  PAPER
+  IN_PERSON
+  EXTERNAL
+  NO_SUBMISSION
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  LATE
+  GRADED
+  RETURNED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+  TARDY
+  LEFT_EARLY
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -119,10 +161,13 @@ model Organization {
   updatedAt         DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt         DateTime? @map("DeletedAt") @db.DateTime(6)
 
-  users    User[]
-  students Student[]
-  courses  Course[]
-  classes  Class[]
+  users       User[]
+  students    Student[]
+  courses     Course[]
+  classes     Class[]
+  files       FileUpload[]
+  rubrics     Rubric[]
+  assignments Assignment[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -162,16 +207,21 @@ model User {
   updatedAt DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt DateTime? @map("DeletedAt") @db.DateTime(6)
 
-  organization      Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  sessions          AuthSession[]
-  authTokens        AuthToken[]
-  featureOverrides  UserFeatureOverride[]
-  auditLogs         AuditLog[]
-  student           Student?
-  guardianLinks     StudentGuardian[]
-  coursesInstructed Course[]              @relation("CourseInstructor")
-  coursesCreated    Course[]              @relation("CourseCreator")
-  classesTaught     ClassTeacher[]
+  organization       Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  sessions           AuthSession[]
+  authTokens         AuthToken[]
+  featureOverrides   UserFeatureOverride[]
+  auditLogs          AuditLog[]
+  student            Student?
+  guardianLinks      StudentGuardian[]
+  coursesInstructed  Course[]              @relation("CourseInstructor")
+  coursesCreated     Course[]              @relation("CourseCreator")
+  classesTaught      ClassTeacher[]
+  uploads            FileUpload[]
+  rubricsCreated     Rubric[]
+  assignmentsCreated Assignment[]
+  gradesGiven        Grade[]
+  attendanceMarked   Attendance[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -248,10 +298,13 @@ model Student {
   updatedAt              DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt              DateTime?        @map("DeletedAt") @db.DateTime(6)
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
   guardians    StudentGuardian[]
   enrollments  ClassEnrollment[]
+  submissions  AssignmentSubmission[]
+  grades       Grade[]
+  attendance   Attendance[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -391,6 +444,8 @@ model Class {
   course       Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
   teachers     ClassTeacher[]
   enrollments  ClassEnrollment[]
+  assignments  Assignment[]
+  attendance   Attendance[]
 
   @@index([organizationId, term, status, deletedAt])
   @@index([courseId])
@@ -428,6 +483,173 @@ model ClassEnrollment {
   @@unique([classId, studentId])
   @@index([studentId, status])
   @@map("ClassEnrollments")
+}
+
+// ---------------------------------------------------------------------------
+// Files, assignments, submissions, grades, attendance (docs/02 sections 6, 7, 8, 10). Release 1 slice 4.
+// ---------------------------------------------------------------------------
+
+model FileUpload {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String?   @map("OrganizationId") @db.Char(36)
+  uploaderId     String    @map("UploaderId") @db.Char(36)
+  originalName   String    @map("OriginalName") @db.VarChar(255)
+  storedPath     String    @map("StoredPath") @db.VarChar(500)
+  mimeType       String    @map("MimeType") @db.VarChar(127)
+  sizeBytes      Int       @map("SizeBytes")
+  sha256         String    @map("Sha256") @db.Char(64)
+  category       String    @default("general") @map("Category") @db.VarChar(50)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  deletedAt      DateTime? @map("DeletedAt") @db.DateTime(6)
+
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  uploader        User             @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  submissionFiles SubmissionFile[]
+
+  @@index([organizationId, category, deletedAt])
+  @@index([uploaderId])
+  @@map("FileUploads")
+}
+
+model Rubric {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  createdById    String?   @map("CreatedById") @db.Char(36)
+  title          String    @map("Title") @db.VarChar(200)
+  description    String?   @map("Description") @db.Text
+  criteria       String    @map("Criteria") @db.Text
+  isTemplate     Boolean   @default(false) @map("IsTemplate")
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt      DateTime? @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  assignments  Assignment[]
+
+  @@index([organizationId, deletedAt])
+  @@map("Rubrics")
+}
+
+model Assignment {
+  id                 String           @id @map("Id") @db.Char(36)
+  organizationId     String           @map("OrganizationId") @db.Char(36)
+  classId            String           @map("ClassId") @db.Char(36)
+  createdById        String?          @map("CreatedById") @db.Char(36)
+  title              String           @map("Title") @db.VarChar(200)
+  description        String?          @map("Description") @db.Text
+  instructions       String?          @map("Instructions") @db.Text
+  type               AssignmentType   @default(HOMEWORK) @map("Type")
+  submissionType     SubmissionType   @default(ONLINE) @map("SubmissionType")
+  category           String?          @map("Category") @db.VarChar(50)
+  maxPoints          Decimal          @default(100) @map("MaxPoints") @db.Decimal(7, 2)
+  weight             Decimal          @default(1) @map("Weight") @db.Decimal(5, 2)
+  availableFrom      DateTime?        @map("AvailableFrom") @db.DateTime(6)
+  dueAt              DateTime?        @map("DueAt") @db.DateTime(6)
+  allowLateUntil     DateTime?        @map("AllowLateUntil") @db.DateTime(6)
+  latePenaltyPercent Int?             @map("LatePenaltyPercent")
+  maxAttempts        Int?             @map("MaxAttempts")
+  rubricId           String?          @map("RubricId") @db.Char(36)
+  h5pContentId       String?          @map("H5PContentId") @db.Char(36)
+  status             AssignmentStatus @default(DRAFT) @map("Status")
+  publishedAt        DateTime?        @map("PublishedAt") @db.DateTime(6)
+  createdAt          DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt          DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt          DateTime?        @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class        Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy    User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  rubric       Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  submissions  AssignmentSubmission[]
+  grades       Grade[]
+
+  @@index([classId, status, dueAt])
+  @@index([organizationId, deletedAt])
+  @@map("Assignments")
+}
+
+model AssignmentSubmission {
+  id            String           @id @map("Id") @db.Char(36)
+  assignmentId  String           @map("AssignmentId") @db.Char(36)
+  studentId     String           @map("StudentId") @db.Char(36)
+  attemptNumber Int              @default(1) @map("AttemptNumber")
+  status        SubmissionStatus @default(SUBMITTED) @map("Status")
+  textContent   String?          @map("TextContent") @db.LongText
+  isLate        Boolean          @default(false) @map("IsLate")
+  submittedAt   DateTime         @default(now()) @map("SubmittedAt") @db.DateTime(6)
+  createdAt     DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt     DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  assignment Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  files      SubmissionFile[]
+  grade      Grade?
+
+  @@unique([assignmentId, studentId, attemptNumber])
+  @@index([studentId, submittedAt])
+  @@map("AssignmentSubmissions")
+}
+
+model SubmissionFile {
+  id           String @id @map("Id") @db.Char(36)
+  submissionId String @map("SubmissionId") @db.Char(36)
+  fileId       String @map("FileId") @db.Char(36)
+
+  submission AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  file       FileUpload           @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, fileId])
+  @@index([fileId])
+  @@map("SubmissionFiles")
+}
+
+model Grade {
+  id                 String   @id @map("Id") @db.Char(36)
+  assignmentId       String   @map("AssignmentId") @db.Char(36)
+  studentId          String   @map("StudentId") @db.Char(36)
+  submissionId       String?  @unique @map("SubmissionId") @db.Char(36)
+  gradedById         String?  @map("GradedById") @db.Char(36)
+  score              Decimal  @map("Score") @db.Decimal(7, 2)
+  maxPoints          Decimal  @map("MaxPoints") @db.Decimal(7, 2)
+  percentage         Decimal  @map("Percentage") @db.Decimal(5, 2)
+  letterGrade        String?  @map("LetterGrade") @db.VarChar(4)
+  feedback           String?  @map("Feedback") @db.Text
+  rubricScores       String?  @map("RubricScores") @db.Text
+  latePenaltyApplied Int?     @map("LatePenaltyApplied")
+  gradedAt           DateTime @default(now()) @map("GradedAt") @db.DateTime(6)
+  createdAt          DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt          DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  assignment Assignment            @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  submission AssignmentSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  gradedBy   User?                 @relation(fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId, gradedAt])
+  @@map("Grades")
+}
+
+model Attendance {
+  id         String           @id @map("Id") @db.Char(36)
+  classId    String           @map("ClassId") @db.Char(36)
+  studentId  String           @map("StudentId") @db.Char(36)
+  date       DateTime         @map("Date") @db.Date
+  status     AttendanceStatus @map("Status")
+  notes      String?          @map("Notes") @db.VarChar(500)
+  markedById String?          @map("MarkedById") @db.Char(36)
+  createdAt  DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt  DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  class    Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  markedBy User?   @relation(fields: [markedById], references: [id], onDelete: SetNull)
+
+  @@unique([classId, studentId, date])
+  @@index([studentId, date])
+  @@index([classId, date])
+  @@map("Attendances")
 }
 
 // ---------------------------------------------------------------------------

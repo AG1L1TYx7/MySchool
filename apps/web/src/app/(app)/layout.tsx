@@ -11,6 +11,9 @@ const NAV: Array<{ href: string; label: string; feature: string }> = [
   { href: '/dashboard', label: 'Dashboard', feature: 'dashboard.view' },
   { href: '/courses', label: 'Courses', feature: 'courses.view' },
   { href: '/classes', label: 'Classes', feature: 'classes.view' },
+  { href: '/assignments', label: 'Assignments', feature: 'assignments.view' },
+  { href: '/grades', label: 'Grades', feature: 'grades.view.own' },
+  { href: '/grades', label: 'Grades', feature: 'grades.view.child' },
   { href: '/students', label: 'Students', feature: 'students.view' },
   { href: '/users', label: 'Users', feature: 'users.view' },
   { href: '/organizations', label: 'Organisations', feature: 'organizations.view' },
@@ -38,7 +41,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
         <Logo />
         <nav className="mt-6 flex gap-1 overflow-x-auto md:flex-col">
-          {NAV.filter((n) => can(n.feature)).map((n) => {
+          {NAV.filter((n) => can(n.feature))
+            .filter((n, i, all) => all.findIndex((x) => x.href === n.href) === i)
+            .map((n) => {
             const active = pathname === n.href || pathname.startsWith(`${n.href}/`);
             return (
               <Link

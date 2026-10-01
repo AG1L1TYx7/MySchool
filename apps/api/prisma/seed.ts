@@ -540,6 +540,188 @@ async function seedCurriculum(organizationId: string): Promise<void> {
   );
 }
 
+/** A rubric, one published assignment per class, Emma's submission and grade, and a week of attendance. */
+async function seedAcademics(organizationId: string): Promise<void> {
+  const teacher = await prisma.user.findUnique({
+    where: { email: 'teacher@smartschool.local' },
+    select: { id: true },
+  });
+  const classes = await prisma.class.findMany({
+    where: { organizationId, deletedAt: null },
+    include: {
+      enrollments: {
+        where: { status: 'ENROLLED' },
+        select: { studentId: true },
+      },
+    },
+  });
+  if (classes.length === 0) return;
+
+  let rubric = await prisma.rubric.findFirst({
+    where: {
+      organizationId,
+      title: 'Written response rubric',
+      deletedAt: null,
+    },
+  });
+  if (!rubric) {
+    rubric = await prisma.rubric.create({
+      data: {
+        id: uuidv7(),
+        organizationId,
+        createdById: teacher?.id ?? null,
+        title: 'Written response rubric',
+        description: 'General-purpose rubric for short written answers.',
+        criteria: JSON.stringify([
+          {
+            id: 'accuracy',
+            title: 'Accuracy',
+            maxPoints: 4,
+            levels: [
+              { label: 'Correct and complete', points: 4 },
+              { label: 'Minor errors', points: 3 },
+              { label: 'Partly correct', points: 2 },
+              { label: 'Attempted', points: 1 },
+            ],
+          },
+          { id: 'reasoning', title: 'Reasoning shown', maxPoints: 4 },
+          { id: 'clarity', title: 'Clarity', maxPoints: 2 },
+        ]),
+        isTemplate: true,
+      },
+    });
+  }
+
+  const emma = await prisma.student.findUnique({
+    where: {
+      organizationId_studentNumber: {
+        organizationId,
+        studentNumber: 'S2026-000001',
+      },
+    },
+    select: { id: true },
+  });
+  for (const klass of classes) {
+    const title = klass.name.startsWith('Algebra')
+      ? 'Solving two-step equations'
+      : 'Story structure paragraph';
+    let assignment = await prisma.assignment.findFirst({
+      where: { classId: klass.id, title, deletedAt: null },
+    });
+    if (!assignment) {
+      assignment = await prisma.assignment.create({
+        data: {
+          id: uuidv7(),
+          organizationId,
+          classId: klass.id,
+          createdById: teacher?.id ?? null,
+          title,
+          description: klass.name.startsWith('Algebra')
+            ? 'Solve the ten equations on the worksheet and show every step.'
+            : 'Write one paragraph that names the five parts of a story using the book we read.',
+          type: 'HOMEWORK',
+          submissionType: 'ONLINE',
+          category: 'Homework',
+          maxPoints: 10,
+          weight: 1,
+          dueAt: new Date('2026-10-08T23:59:00Z'),
+          allowLateUntil: new Date('2026-10-12T23:59:00Z'),
+          latePenaltyPercent: 10,
+          maxAttempts: 3,
+          rubricId: rubric.id,
+          status: 'PUBLISHED',
+          publishedAt: new Date('2026-09-28T12:00:00Z'),
+        },
+      });
+    }
+    const enrolledEmma =
+      emma && klass.enrollments.some((e) => e.studentId === emma.id);
+    if (enrolledEmma && emma) {
+      const existing = await prisma.assignmentSubmission.findFirst({
+        where: { assignmentId: assignment.id, studentId: emma.id },
+      });
+      if (!existing) {
+        const submission = await prisma.assignmentSubmission.create({
+          data: {
+            id: uuidv7(),
+            assignmentId: assignment.id,
+            studentId: emma.id,
+            attemptNumber: 1,
+            status: 'GRADED',
+            textContent:
+              'Exposition introduces the characters, rising action builds the problem, the climax is the turning point, falling action shows the results and the resolution ends the story.',
+            submittedAt: new Date('2026-10-05T18:30:00Z'),
+          },
+        });
+        await prisma.grade.create({
+          data: {
+            id: uuidv7(),
+            assignmentId: assignment.id,
+            studentId: emma.id,
+            submissionId: submission.id,
+            gradedById: teacher?.id ?? null,
+            score: 9,
+            maxPoints: 10,
+            percentage: 90,
+            letterGrade: 'A',
+            feedback:
+              'Clear and complete. Next time give an example from the book for each part.',
+            rubricScores: JSON.stringify([
+              { criterionId: 'accuracy', points: 4 },
+              { criterionId: 'reasoning', points: 3 },
+              { criterionId: 'clarity', points: 2 },
+            ]),
+            gradedAt: new Date('2026-10-06T09:00:00Z'),
+          },
+        });
+        await prisma.classEnrollment.updateMany({
+          where: { classId: klass.id, studentId: emma.id },
+          data: { currentGrade: 90 },
+        });
+      }
+    }
+    // five school days of attendance for everyone enrolled
+    const days = [
+      '2026-09-28',
+      '2026-09-29',
+      '2026-09-30',
+      '2026-10-01',
+      '2026-10-02',
+    ];
+    for (const [di, day] of days.entries()) {
+      for (const [si, e] of klass.enrollments.entries()) {
+        const status =
+          (di + si) % 7 === 3
+            ? 'LATE'
+            : (di + si) % 11 === 5
+              ? 'ABSENT'
+              : 'PRESENT';
+        await prisma.attendance.upsert({
+          where: {
+            classId_studentId_date: {
+              classId: klass.id,
+              studentId: e.studentId,
+              date: new Date(day + 'T00:00:00Z'),
+            },
+          },
+          update: {},
+          create: {
+            id: uuidv7(),
+            classId: klass.id,
+            studentId: e.studentId,
+            date: new Date(day + 'T00:00:00Z'),
+            status,
+            markedById: teacher?.id ?? null,
+          },
+        });
+      }
+    }
+  }
+  console.log(
+    'academics: rubric, one assignment per class, demo submission and grade, five days of attendance',
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedFlags();
@@ -547,6 +729,7 @@ async function main(): Promise<void> {
   await seedUsers(orgId);
   await seedStudents(orgId);
   await seedCurriculum(orgId);
+  await seedAcademics(orgId);
 }
 
 main()

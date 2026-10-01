@@ -18,7 +18,7 @@ interface Teacher {
 export default function ClassPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [klass, setKlass] = useState<ClassItem | null>(null);
   const [state, setState] = useState<{ error?: string; ok?: string }>({});
 
@@ -71,6 +71,22 @@ export default function ClassPage() {
       </div>
       {state.error && <Alert>{state.error}</Alert>}
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
+
+      <nav className="flex flex-wrap gap-2 text-sm">
+        <Link href={`/classes/${id}/assignments`} className="rounded-md bg-white px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">
+          Assignments
+        </Link>
+        {can('grades.view.all') && (klass.canManage || user?.role === 'principal') && (
+          <Link href={`/classes/${id}/gradebook`} className="rounded-md bg-white px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">
+            Gradebook
+          </Link>
+        )}
+        {can('attendance.view') && (
+          <Link href={`/classes/${id}/attendance`} className="rounded-md bg-white px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">
+            Attendance
+          </Link>
+        )}
+      </nav>
 
       {klass.canManage && can('classes.edit') && <DetailsForm klass={klass} onSaved={load} />}
       {can('classes.teachers.manage') && <Teachers klass={klass} onChange={load} />}

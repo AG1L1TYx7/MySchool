@@ -15,6 +15,7 @@ import { hasMinimumLevel } from '../roles';
 import {
   FEATURE_GATE_KEY,
   MIN_ROLE_LEVEL_KEY,
+  REQUIRE_ANY_FEATURE_KEY,
   REQUIRE_FEATURE_KEY,
   ROLES_KEY,
 } from '../decorators/access.decorators';
@@ -79,7 +80,12 @@ export class AccessGuard implements CanActivate {
       REQUIRE_FEATURE_KEY,
       targets,
     );
-    if (!roles && minLevel === undefined && !features) return true;
+    const anyFeatures = this.reflector.getAllAndOverride<string[] | undefined>(
+      REQUIRE_ANY_FEATURE_KEY,
+      targets,
+    );
+    if (!roles && minLevel === undefined && !features && !anyFeatures)
+      return true;
 
     if (!user)
       throw new ForbiddenException({
@@ -98,6 +104,18 @@ export class AccessGuard implements CanActivate {
         code: 'authz.forbidden',
         detail: 'Your role does not have enough authority for this action.',
       });
+    }
+    if (anyFeatures?.length) {
+      const effective = await this.permissions.effectiveFeatures(
+        user.id,
+        user.role,
+      );
+      if (!anyFeatures.some((code) => effective.has(code))) {
+        throw new ForbiddenException({
+          code: 'authz.forbidden',
+          detail: `This action requires one of the features: ${anyFeatures.join(', ')}.`,
+        });
+      }
     }
     if (features?.length) {
       const effective = await this.permissions.effectiveFeatures(
