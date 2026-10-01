@@ -37,6 +37,8 @@ jobs:
     env:
       DATABASE_URL: mysql://root:root@127.0.0.1:3306/smartschooldb_test
       JWT_SECRET: ci-only-secret-value-that-is-long-enough-0123456789
+      AI_CALLBACK_TOKEN: ci-only-callback-token-0123456789
+      WEB_APP_URL: http://localhost:3000
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
