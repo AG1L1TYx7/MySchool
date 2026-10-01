@@ -2,11 +2,80 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { MotionItem, MotionList, ProgressRing, SkeletonRows } from '@/components/motion';
 import { Alert, Card } from '@/components/ui';
 import { api } from '@/lib/api';
 import { ROLE_LABELS, useAuth } from '@/lib/auth';
 import type { ClassItem } from '@/lib/curriculum';
 import { label } from '@/lib/students';
+
+interface WeekAssignment {
+  id: string;
+  title: string;
+  className: string;
+  dueAt: string | null;
+  mySubmission?: { status: string } | null;
+  myGrade?: { score: number; maxPoints: number; percentage: number } | null;
+}
+
+/** Real progress, animated: assignments handled this week and attendance for students and parents. */
+function ThisWeek() {
+  const { user } = useAuth();
+  const [assignments, setAssignments] = useState<WeekAssignment[] | null>(null);
+  const [attendance, setAttendance] = useState<{ attendanceRate: number | null; total: number } | null>(null);
+  const learner = user?.role === 'student' || user?.role === 'parent';
+
+  useEffect(() => {
+    if (!learner) return;
+    const now = new Date();
+    const inWeek = new Date(now.getTime() + 7 * 86_400_000);
+    api<{ data: WeekAssignment[] }>(`/assignments?pageSize=100&dueAfter=${new Date(now.getTime() - 14 * 86_400_000).toISOString()}&dueBefore=${inWeek.toISOString()}`)
+      .then((r) => setAssignments(r.data))
+      .catch(() => setAssignments([]));
+    api<{ data: Array<{ id: string }> }>('/students/mine')
+      .then((r) => (r.data[0] ? api<{ counts: { attendanceRate: number | null; total: number } }>(`/students/${r.data[0].id}/attendance/summary`) : null))
+      .then((s) => setAttendance(s ? s.counts : null))
+      .catch(() => setAttendance(null));
+  }, [learner]);
+
+  if (!learner) return null;
+  if (assignments === null) {
+    return (
+      <Card title="This week">
+        <SkeletonRows rows={2} />
+      </Card>
+    );
+  }
+  const handled = assignments.filter((a) => a.mySubmission || a.myGrade).length;
+  const total = assignments.length;
+  const next = assignments.filter((a) => !a.mySubmission && !a.myGrade && a.dueAt).sort((a, b) => (a.dueAt ?? '').localeCompare(b.dueAt ?? ''))[0];
+
+  return (
+    <Card title="This week" description={total === 0 ? 'Nothing due in the next seven days. Nice.' : `${handled} of ${total} assignments handled.`}>
+      <div className="flex flex-wrap items-center gap-8">
+        <ProgressRing value={total === 0 ? 100 : handled} max={total === 0 ? 100 : total} label="Assignments" tone={total > 0 && handled === total ? 'green' : 'brand'} />
+        {attendance && attendance.total > 0 && attendance.attendanceRate !== null && (
+          <ProgressRing value={attendance.attendanceRate} label="Attendance" tone={attendance.attendanceRate >= 90 ? 'green' : attendance.attendanceRate >= 80 ? 'brand' : 'amber'} />
+        )}
+        <div className="min-w-[200px] flex-1 text-sm">
+          {next ? (
+            <>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Next up</p>
+              <Link href={`/assignments/${next.id}`} className="font-medium text-slate-900 hover:underline">
+                {next.title}
+              </Link>
+              <p className="text-slate-500">
+                {next.className} · due {new Date(next.dueAt as string).toLocaleDateString()}
+              </p>
+            </>
+          ) : (
+            <p className="text-slate-600">Everything due soon is in. Keep the streak going tomorrow.</p>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function MyClasses() {
   const [classes, setClasses] = useState<ClassItem[] | null>(null);
@@ -18,10 +87,10 @@ function MyClasses() {
   if (!classes || classes.length === 0) return null;
   return (
     <Card title="My classes" description="Classes you teach or attend this term.">
-      <ul className="grid gap-3 md:grid-cols-2">
+      <MotionList className="grid gap-3 md:grid-cols-2">
         {classes.map((c) => (
-          <li key={c.id}>
-            <Link href={`/classes/${c.id}`} className="block rounded-lg bg-slate-50 px-4 py-3 hover:bg-brand-50">
+          <MotionItem key={c.id}>
+            <Link href={`/classes/${c.id}`} className="block rounded-lg bg-slate-50 px-4 py-3 transition-colors duration-150 hover:bg-brand-50">
               <p className="font-medium text-slate-900">{c.name}</p>
               <p className="text-xs text-slate-500">
                 {c.course.courseCode} · {c.course.title} · {c.term}
@@ -29,9 +98,9 @@ function MyClasses() {
                 {c.teachers[0] ? ` · ${c.teachers[0].firstName} ${c.teachers[0].lastName}` : ''}
               </p>
             </Link>
-          </li>
+          </MotionItem>
         ))}
-      </ul>
+      </MotionList>
     </Card>
   );
 }
@@ -65,6 +134,7 @@ export default function DashboardPage() {
         </Alert>
       )}
 
+      <ThisWeek />
       <MyClasses />
 
       <div className="grid gap-6 md:grid-cols-2">

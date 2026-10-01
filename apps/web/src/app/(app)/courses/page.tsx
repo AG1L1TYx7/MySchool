@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { MotionItem, MotionList, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -68,9 +69,11 @@ export default function CoursesPage() {
           )}
         </div>
         {error && <Alert>{error}</Alert>}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {!result && !error && <SkeletonRows rows={3} />}
+        <MotionList as="div" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {result?.data.map((c) => (
-            <Link key={c.id} href={`/courses/${c.id}`} className="block rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 hover:ring-brand-300">
+            <MotionItem key={c.id} as="div">
+            <Link href={`/courses/${c.id}`} className="block rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition duration-150 hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-300 motion-reduce:hover:translate-y-0">
               <p className="font-mono text-xs text-slate-500">{c.courseCode}</p>
               <p className="mt-1 font-semibold text-slate-900">{c.title}</p>
               <p className="mt-1 text-sm text-slate-500">
@@ -84,9 +87,10 @@ export default function CoursesPage() {
                 {c.instructor && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">{c.instructor.firstName} {c.instructor.lastName}</span>}
               </p>
             </Link>
+            </MotionItem>
           ))}
           {result && result.data.length === 0 && <p className="text-sm text-slate-500">No courses match.</p>}
-        </div>
+        </MotionList>
         {result && result.meta.totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
             <span>{result.meta.totalItems} courses</span>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { CountUp, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card } from '@/components/ui';
 import { api, download, errorMessage } from '@/lib/api';
 import type { Gradebook } from '@/lib/academics';
@@ -21,7 +22,7 @@ export default function GradebookPage() {
   }, [id]);
 
   if (error) return <Alert>{error}</Alert>;
-  if (!book) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (!book) return <SkeletonRows rows={5} />;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -33,7 +34,9 @@ export default function GradebookPage() {
             </Link>
           </p>
           <h1 className="text-2xl font-semibold">Gradebook</h1>
-          <p className="text-sm text-slate-500">Class average: {book.classAverage === null ? '—' : `${book.classAverage}%`}</p>
+          <p className="text-sm text-slate-500">
+            Class average: {book.classAverage === null ? '—' : <CountUp value={book.classAverage} decimals={2} suffix="%" className="font-medium text-slate-800" />}
+          </p>
         </div>
         {can('grades.export') && (
           <Button variant="secondary" onClick={() => void download(`/classes/${id}/gradebook/export`, `gradebook-${book.className}.csv`)}>

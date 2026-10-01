@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { ProgressRing, SkeletonRows } from '@/components/motion';
 import { Alert, Card } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { fmtDate, type AttendanceCounts, type Grade } from '@/lib/academics';
@@ -14,6 +15,7 @@ export default function GradesPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceCounts>>({});
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const learner = user?.role === 'student' || user?.role === 'parent';
 
   useEffect(() => {
@@ -21,6 +23,7 @@ export default function GradesPage() {
       try {
         const g = await api<Paged<Grade>>('/grades?pageSize=200');
         setGrades(g.data);
+        setLoaded(true);
         if (learner) {
           const mine = await api<{ data: Student[] }>('/students/mine');
           setStudents(mine.data);
@@ -47,8 +50,18 @@ export default function GradesPage() {
         students.map((s) => {
           const c = attendance[s.id];
           return (
-            <Card key={s.id} title={`${s.firstName} ${s.lastName}`} description={c && c.total > 0 ? `Attendance ${c.attendanceRate}% over ${c.total} recorded day${c.total === 1 ? '' : 's'} (${c.absent} absent, ${c.late + c.tardy} late)` : 'No attendance recorded yet.'}>
-              <GradeTable rows={grades.filter((g) => g.studentId === s.id)} />
+            <Card key={s.id} title={`${s.firstName} ${s.lastName}`} description={c && c.total > 0 ? `${c.total} recorded day${c.total === 1 ? '' : 's'}: ${c.absent} absent, ${c.late + c.tardy} late` : 'No attendance recorded yet.'}>
+              <div className="flex flex-wrap items-start gap-6">
+                {c && c.total > 0 && c.attendanceRate !== null && <ProgressRing value={c.attendanceRate} size={88} stroke={9} label="Attendance" tone={c.attendanceRate >= 90 ? 'green' : c.attendanceRate >= 80 ? 'brand' : 'amber'} />}
+                {(() => {
+                  const mine = grades.filter((g) => g.studentId === s.id);
+                  const avg = mine.length ? mine.reduce((sum, g) => sum + g.percentage, 0) / mine.length : null;
+                  return avg === null ? null : <ProgressRing value={avg} size={88} stroke={9} label="Average" tone={avg >= 90 ? 'green' : avg >= 60 ? 'brand' : 'amber'} />;
+                })()}
+                <div className="min-w-[280px] flex-1">
+                  <GradeTable rows={grades.filter((g) => g.studentId === s.id)} />
+                </div>
+              </div>
             </Card>
           );
         })}
@@ -58,7 +71,7 @@ export default function GradesPage() {
             <GradeTable rows={rows} />
           </Card>
         ))}
-      {grades.length === 0 && !error && <p className="text-sm text-slate-500">No grades posted yet.</p>}
+      {grades.length === 0 && !error && (loaded ? <p className="text-sm text-slate-500">No grades posted yet.</p> : <SkeletonRows rows={3} />)}
     </div>
   );
 }

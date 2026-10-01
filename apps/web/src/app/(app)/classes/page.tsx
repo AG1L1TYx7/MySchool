@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -59,6 +60,7 @@ export default function ClassesPage() {
           </Select>
         </div>
         {error && <Alert>{error}</Alert>}
+        {!result && !error && <SkeletonRows rows={4} />}
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-slate-500">

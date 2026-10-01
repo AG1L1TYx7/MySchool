@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { MotionItem, MotionList, SkeletonRows } from '@/components/motion';
 import { Alert, Card, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { fmtDate, type Assignment } from '@/lib/academics';
@@ -63,9 +64,10 @@ export default function AssignmentsPage() {
           )}
         </div>
         {error && <Alert>{error}</Alert>}
-        <ul className="divide-y divide-slate-100">
+        {!result && !error && <SkeletonRows rows={4} />}
+        <MotionList className="divide-y divide-slate-100">
           {result?.data.map((a) => (
-            <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <MotionItem key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div>
                 <Link href={`/assignments/${a.id}`} className="font-medium text-slate-900 hover:underline">
                   {a.title}
@@ -91,10 +93,10 @@ export default function AssignmentsPage() {
                   </span>
                 )}
               </div>
-            </li>
+            </MotionItem>
           ))}
           {result && result.data.length === 0 && <li className="py-6 text-center text-sm text-slate-500">No assignments yet.</li>}
-        </ul>
+        </MotionList>
       </Card>
     </div>
   );

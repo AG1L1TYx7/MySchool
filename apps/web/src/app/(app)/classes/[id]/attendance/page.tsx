@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { PillGroup, ProgressBar, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card, Input } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { ATTENDANCE_STATUSES, type AttendanceCounts, type AttendanceRecord } from '@/lib/academics';
@@ -62,7 +63,7 @@ export default function AttendancePage() {
     }
   }
 
-  if (!klass) return state.error ? <Alert>{state.error}</Alert> : <p className="text-sm text-slate-500">Loading…</p>;
+  if (!klass) return state.error ? <Alert>{state.error}</Alert> : <SkeletonRows rows={5} />;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -88,18 +89,13 @@ export default function AttendancePage() {
                 <span className="w-56 font-medium text-slate-800">
                   {e.student.lastName}, {e.student.firstName}
                 </span>
-                <span className="flex flex-wrap gap-1">
-                  {ATTENDANCE_STATUSES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`rounded-full px-2.5 py-0.5 text-xs ring-1 ring-inset ${marks[e.studentId]?.status === s ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'}`}
-                      onClick={() => setMarks((m) => ({ ...m, [e.studentId]: { status: s, notes: m[e.studentId]?.notes ?? '' } }))}
-                    >
-                      {label(s)}
-                    </button>
-                  ))}
-                </span>
+                <PillGroup
+                  name={`attendance-${e.studentId}`}
+                  options={ATTENDANCE_STATUSES}
+                  value={(marks[e.studentId]?.status ?? 'present') as (typeof ATTENDANCE_STATUSES)[number]}
+                  labels={label}
+                  onChange={(s) => setMarks((m) => ({ ...m, [e.studentId]: { status: s, notes: m[e.studentId]?.notes ?? '' } }))}
+                />
                 <input className="min-w-[160px] flex-1 rounded-md border-0 px-2 py-1 text-xs ring-1 ring-inset ring-slate-300" placeholder="Note" value={marks[e.studentId]?.notes ?? ''} onChange={(ev) => setMarks((m) => ({ ...m, [e.studentId]: { status: m[e.studentId]?.status ?? 'present', notes: ev.target.value } }))} />
               </li>
             ))}
@@ -133,7 +129,18 @@ export default function AttendancePage() {
                   <td className="py-2 pr-4">{r.counts.late + r.counts.tardy + r.counts.leftEarly}</td>
                   <td className="py-2 pr-4">{r.counts.absent}</td>
                   <td className="py-2 pr-4">{r.counts.excused}</td>
-                  <td className={`py-2 font-medium ${r.counts.attendanceRate !== null && r.counts.attendanceRate < 80 ? 'text-red-700' : ''}`}>{r.counts.attendanceRate === null ? '—' : `${r.counts.attendanceRate}%`}</td>
+                  <td className={`py-2 font-medium ${r.counts.attendanceRate !== null && r.counts.attendanceRate < 80 ? 'text-red-700' : ''}`}>
+                    {r.counts.attendanceRate === null ? (
+                      '—'
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <span className="w-24">
+                          <ProgressBar value={r.counts.attendanceRate} label={`${r.student.firstName} attendance`} tone={r.counts.attendanceRate >= 90 ? 'green' : r.counts.attendanceRate >= 80 ? 'brand' : 'amber'} />
+                        </span>
+                        {r.counts.attendanceRate}%
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

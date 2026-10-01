@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Celebration, ProgressBar, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card, Input } from '@/components/ui';
 import { api, download, errorMessage, upload } from '@/lib/api';
 import { fmtDate, type Assignment, type FileMeta, type Grade, type Submission, type SubmissionRow } from '@/lib/academics';
@@ -37,7 +38,7 @@ export default function AssignmentPage() {
     }
   }
 
-  if (!a) return state.error ? <Alert>{state.error}</Alert> : <p className="text-sm text-slate-500">Loading…</p>;
+  if (!a) return state.error ? <Alert>{state.error}</Alert> : <SkeletonRows rows={3} />;
   const isStudent = user?.role === 'student';
 
   return (
@@ -107,6 +108,7 @@ export default function AssignmentPage() {
 function LearnerView({ assignment, canSubmit, onChange }: { assignment: Assignment; canSubmit: boolean; onChange: () => Promise<void> }) {
   const [text, setText] = useState('');
   const [files, setFiles] = useState<FileMeta[]>([]);
+  const [celebrate, setCelebrate] = useState<string | null>(null);
   const [state, setState] = useState<{ error?: string; busy?: boolean }>({});
   const subs = assignment.mySubmissions ?? [];
   const attemptsLeft = assignment.maxAttempts ? assignment.maxAttempts - subs.length : null;
@@ -127,10 +129,11 @@ function LearnerView({ assignment, canSubmit, onChange }: { assignment: Assignme
     e.preventDefault();
     setState({ busy: true });
     try {
-      await api(`/assignments/${assignment.id}/submissions`, { method: 'POST', body: { textContent: text || undefined, fileIds: files.map((f) => f.id) } });
+      const created = await api<Submission>(`/assignments/${assignment.id}/submissions`, { method: 'POST', body: { textContent: text || undefined, fileIds: files.map((f) => f.id) } });
       setText('');
       setFiles([]);
       setState({});
+      setCelebrate(created.isLate ? 'Submitted (late). Better late than never.' : 'Submitted. Nice work!');
       await onChange();
     } catch (err) {
       setState({ error: errorMessage(err) });
@@ -139,6 +142,7 @@ function LearnerView({ assignment, canSubmit, onChange }: { assignment: Assignme
 
   return (
     <>
+      <Celebration show={celebrate !== null} title={celebrate ?? ''} message={`Attempt ${subs.length + 1} is in for ${assignment.title}.`} onDone={() => setCelebrate(null)} />
       <Card title="Your work">
         {subs.length === 0 && <p className="text-sm text-slate-500">Nothing submitted yet.</p>}
         <ul className="divide-y divide-slate-100">
@@ -210,6 +214,9 @@ function GradeBadge({ g }: { g: Grade }) {
         {g.score} / {g.maxPoints} ({g.percentage}%{g.letterGrade ? `, ${g.letterGrade}` : ''})
         {g.latePenaltyApplied ? <span className="ml-2 text-xs font-normal">late penalty {g.latePenaltyApplied}% applied</span> : null}
       </p>
+      <div className="mt-2">
+        <ProgressBar value={g.percentage} label="Score" tone={g.percentage >= 90 ? 'green' : g.percentage >= 60 ? 'brand' : 'amber'} />
+      </div>
       {g.feedback && <p className="mt-1 whitespace-pre-wrap">{g.feedback}</p>}
     </div>
   );
@@ -218,6 +225,7 @@ function GradeBadge({ g }: { g: Grade }) {
 function TeacherSubmissions({ assignment }: { assignment: Assignment }) {
   const [rows, setRows] = useState<SubmissionRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
       setRows((await api<{ data: SubmissionRow[] }>(`/assignments/${assignment.id}/submissions`)).data);
@@ -230,6 +238,12 @@ function TeacherSubmissions({ assignment }: { assignment: Assignment }) {
   }, [load]);
   return (
     <Card title="Submissions" description={`${rows.filter((r) => r.submission).length} of ${rows.length} students have submitted; ${rows.filter((r) => r.grade).length} graded.`}>
+      <Celebration show={celebrate !== null} title="Grade posted" message={celebrate ?? undefined} onDone={() => setCelebrate(null)} />
+      {rows.length > 0 && (
+        <div className="mb-4">
+          <ProgressBar value={rows.filter((r) => r.grade).length} max={rows.length} label="Graded" tone={rows.every((r) => r.grade) ? 'green' : 'brand'} />
+        </div>
+      )}
       {error && <Alert>{error}</Alert>}
       <ul className="divide-y divide-slate-100">
         {rows.map((r) => (
@@ -246,7 +260,17 @@ function TeacherSubmissions({ assignment }: { assignment: Assignment }) {
                 {r.grade ? ` · ${r.grade.score}/${r.grade.maxPoints}` : ''}
               </span>
             </div>
-            {r.submission && <GradeForm assignment={assignment} submission={r.submission} grade={r.grade} onGraded={load} />}
+            {r.submission && (
+              <GradeForm
+                assignment={assignment}
+                submission={r.submission}
+                grade={r.grade}
+                onGraded={async () => {
+                  setCelebrate(`${r.student.firstName} ${r.student.lastName} will see it right away.`);
+                  await load();
+                }}
+              />
+            )}
           </li>
         ))}
         {rows.length === 0 && <li className="py-6 text-center text-sm text-slate-500">No students enrolled.</li>}
