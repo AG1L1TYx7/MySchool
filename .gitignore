@@ -39,3 +39,7 @@ image_cache/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Python build metadata
+*.egg-info/
+apps/ai/data/

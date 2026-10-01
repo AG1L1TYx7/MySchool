@@ -242,21 +242,36 @@ POST   /conversations/{id}/read
 Socket namespace `/hubs/messaging` carries the same events as before (docs/04 section 3).
 
 ### AI tutor and AI content
+
+The tutor is a conversation the LMS owns; the AI service (docs/10) only answers one turn at a time from a Context Envelope. Every assistant message is stored with its status (`ok`, `refused`, `degraded`, `unavailable`), prompt version, model, citations and safety labels, so a parent or teacher can later see exactly what the tutor said and why. All routes sit behind the `ai.tutor` feature flag and the `ai.tutor.chat` feature; a per-user daily message quota (`AI_TUTOR_DAILY_LIMIT`, default 150) answers `403 ai.quota_exceeded`; when the AI service is down the API answers `503 ai.unavailable` and stores an `unavailable` turn rather than inventing an answer.
+
 ```
-POST   /ai/tutor/conversations                  start a tutoring conversation (subject, gradeLevel, courseId?)
-GET    /ai/tutor/conversations                  history for the current student
-GET    /ai/tutor/conversations/{id}
-POST   /ai/tutor/conversations/{id}/messages    message -> answer (streamed when Accept: text/event-stream)
-POST   /ai/tutor/homework-help
-POST   /ai/tutor/explain
-POST   /ai/content/quizzes                      topic, gradeLevel, count, difficulty -> 202 job; result includes h5pContentId
-POST   /ai/content/flashcards
-POST   /ai/content/fill-in-blanks
-POST   /ai/content/lesson-plans
-POST   /ai/content/{id}/regenerate               feedback
-GET    /ai/jobs/{jobId}
+GET    /ai/tutor/status                         { available, status, models, promptVersions } from the AI service health
+GET    /ai/tutor/conversations                  my conversations (newest first)
+POST   /ai/tutor/conversations                  { mode: explain|socratic|homework, courseId?, lessonId?, classId?, title? } -> 201
+GET    /ai/tutor/conversations/{id}             conversation with messages (own only; others 404)
+DELETE /ai/tutor/conversations/{id}
+POST   /ai/tutor/conversations/{id}/messages    { content, stream? } -> { userMessage, assistantMessage }
+                                                stream=true -> text/event-stream: user, token*, assistant events
+POST   /ai/tutor/messages/{id}/feedback         { rating: 1|-1, comment? } -> 204 (audited with the trace id)
+POST   /ai/rag/reindex                          { organizationId? } push published lesson text to the AI index (system.health.view; nightly cron too)
+
+POST   /ai/content/quizzes                      topic, gradeLevel, count, difficulty -> 202 job   (Release 2)
+POST   /ai/content/flashcards                                                                     (Release 2)
+POST   /ai/content/lesson-plans                                                                   (Release 2)
+GET    /ai/jobs/{jobId}                                                                           (Release 2)
 ```
 
+Internal tool API for the AI service (not for browsers; header `X-Service-Token` = `AI_CALLBACK_TOKEN`, never a user token; excluded from Swagger):
+
+```
+GET    /internal/ai/lessons/{id}                published lesson text (max 6000 chars), module and course titles
+GET    /internal/ai/courses/{id}/outline        published modules and lesson titles
+GET    /internal/ai/students/{id}/context       first name, grade, age band, learning style, accessibility needs, enrolled classes (never contact details)
+GET    /internal/ai/organizations/{id}/lessons  every published text lesson as { docId, lessonId, courseId, title, text } for indexing
+```
+
+What the API puts in the Context Envelope: the actor (role, age band from date of birth or grade), the lesson text as block `C1` when the conversation is on a lesson, a short "about the student" block, the last 10 turns, and the capability for the mode (`tutor.chat`, `tutor.socratic`, `tutor.homework_help`). Emails, guardians and other students are never sent.
 ### H5P
 ```
 GET    /h5p/libraries

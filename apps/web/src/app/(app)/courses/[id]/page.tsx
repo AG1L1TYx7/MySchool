@@ -1,10 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { LESSON_TYPES, type CourseDetail, type CourseModule, type Lesson } from '@/lib/curriculum';
+import { useAuth } from '@/lib/auth';
 import { label } from '@/lib/students';
 
 export default function CoursePage() {
@@ -152,6 +154,8 @@ function DetailsForm({ course, onSaved }: { course: CourseDetail; onSaved: () =>
 }
 
 function ModuleBlock({ module, index, total, courseId, canEdit, allModuleIds, onChange }: { module: CourseModule; index: number; total: number; courseId: string; canEdit: boolean; allModuleIds: string[]; onChange: () => Promise<void> }) {
+  const { can } = useAuth();
+  const canTutor = can('ai.tutor.chat');
   const [open, setOpen] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -216,6 +220,11 @@ function ModuleBlock({ module, index, total, courseId, canEdit, allModuleIds, on
                   {!l.isPublished ? ' · hidden' : ''}
                 </span>
               </button>
+              {!canEdit && canTutor && l.isPublished && (
+                <Link href={`/tutor?lessonId=${l.id}`} className="shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100">
+                  Ask the tutor
+                </Link>
+              )}
               {canEdit && (
                 <span className="flex gap-1 text-xs">
                   <button className="rounded px-2 py-1 hover:bg-slate-100 disabled:opacity-30" disabled={li === 0} onClick={() => void moveLesson(li, -1)} aria-label="Move lesson up">

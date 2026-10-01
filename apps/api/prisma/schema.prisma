@@ -136,6 +136,18 @@ enum AttendanceStatus {
   LEFT_EARLY
 }
 
+enum AiMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum AiMessageStatus {
+  OK
+  REFUSED
+  DEGRADED
+  UNAVAILABLE
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -168,6 +180,7 @@ model Organization {
   files       FileUpload[]
   rubrics     Rubric[]
   assignments Assignment[]
+  aiConversations AiConversation[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -222,6 +235,7 @@ model User {
   assignmentsCreated Assignment[]
   gradesGiven        Grade[]
   attendanceMarked   Attendance[]
+  aiConversations     AiConversation[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -650,6 +664,56 @@ model Attendance {
   @@index([studentId, date])
   @@index([classId, date])
   @@map("Attendances")
+}
+
+// ---------------------------------------------------------------------------
+// AI tutor conversations (docs/10). Release 1 slice 5. The AI service keeps traces; the LMS keeps the record.
+// ---------------------------------------------------------------------------
+
+model AiConversation {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String?   @map("OrganizationId") @db.Char(36)
+  userId         String    @map("UserId") @db.Char(36)
+  capability     String    @map("Capability") @db.VarChar(50)
+  courseId       String?   @map("CourseId") @db.Char(36)
+  lessonId       String?   @map("LessonId") @db.Char(36)
+  classId        String?   @map("ClassId") @db.Char(36)
+  title          String    @map("Title") @db.VarChar(200)
+  summary        String?   @map("Summary") @db.Text
+  messageCount   Int       @default(0) @map("MessageCount")
+  lastMessageAt  DateTime? @map("LastMessageAt") @db.DateTime(6)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt      DateTime? @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     AiMessage[]
+
+  @@index([userId, lastMessageAt])
+  @@index([organizationId, createdAt])
+  @@map("AiConversations")
+}
+
+model AiMessage {
+  id             String          @id @map("Id") @db.Char(36)
+  conversationId String          @map("ConversationId") @db.Char(36)
+  role           AiMessageRole   @map("Role")
+  content        String          @map("Content") @db.LongText
+  status         AiMessageStatus @default(OK) @map("Status")
+  promptVersion  String?         @map("PromptVersion") @db.VarChar(60)
+  model          String?         @map("Model") @db.VarChar(100)
+  citations      String?         @map("Citations") @db.Text
+  safety         String?         @map("Safety") @db.Text
+  usage          String?         @map("Usage") @db.Text
+  traceId        String?         @map("TraceId") @db.Char(36)
+  feedback       Int?            @map("Feedback")
+  createdAt      DateTime        @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("AiMessages")
 }
 
 // ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@ Respond to the student's latest message with:
 
 Never give the final answer. If the student asks for it directly, say warmly that you will help them get there, and ask the next question.
 
-Keep the reply under 80 words.
+Keep the reply under 80 words. Never mention tools, functions or block ids such as "math.evaluate" or "CONTEXT" to the student; show any checked result in plain words.
 
 # Context
 

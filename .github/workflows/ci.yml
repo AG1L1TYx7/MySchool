@@ -71,3 +71,21 @@ jobs:
       - run: pnpm --filter @smartschool/web lint
       - run: pnpm --filter @smartschool/web typecheck
       - run: pnpm --filter @smartschool/web build
+
+  ai:
+    name: AI service
+    runs-on: ubuntu-latest
+    env:
+      MODEL_PROVIDER: fake
+      AI_SERVICE_TOKEN: ci-only-ai-service-token-0123456789
+      LMS_SERVICE_TOKEN: ci-only-callback-token-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -e "apps/ai[dev]"
+      - run: ruff check apps/ai
+      - run: ruff format --check apps/ai
+      - run: pytest apps/ai -q

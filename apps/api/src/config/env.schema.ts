@@ -61,7 +61,8 @@ export const envSchema = z
 
     AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
     AI_SERVICE_API_KEY: z.string().optional().default(''),
-    AI_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+    AI_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+    AI_TUTOR_DAILY_LIMIT: z.coerce.number().int().positive().default(150),
     AI_SERVICE_GENERATION_TIMEOUT_MS: z.coerce
       .number()
       .int()

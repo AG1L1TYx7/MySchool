@@ -14,6 +14,7 @@ const NAV: Array<{ href: string; label: string; feature: string }> = [
   { href: '/courses', label: 'Courses', feature: 'courses.view' },
   { href: '/classes', label: 'Classes', feature: 'classes.view' },
   { href: '/assignments', label: 'Assignments', feature: 'assignments.view' },
+  { href: '/tutor', label: 'AI tutor', feature: 'ai.tutor.chat' },
   { href: '/grades', label: 'Grades', feature: 'grades.view.own' },
   { href: '/grades', label: 'Grades', feature: 'grades.view.child' },
   { href: '/students', label: 'Students', feature: 'students.view' },

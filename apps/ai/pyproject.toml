@@ -1,0 +1,41 @@
+[project]
+name = "smartschool-ai"
+version = "0.1.0"
+description = "SmartSchool AI service: agents, prompts, safety, RAG (docs/10-AI-SYSTEM-DESIGN.md)"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "httpx>=0.27",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "numpy>=2.0",
+  "sse-starlette>=2.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6", "mypy>=1.11"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "S", "A"]
+# N815: the JSON contract with the LMS is camelCase (docs/09). B008: FastAPI Depends() in defaults. N818: ModelUnavailable is a documented name.
+ignore = ["S101", "E501", "N815", "B008", "N818"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
