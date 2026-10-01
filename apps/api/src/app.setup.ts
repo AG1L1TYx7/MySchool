@@ -1,11 +1,12 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
 /**
  * Everything the HTTP layer needs beyond the module graph, shared by main.ts and the e2e
- * tests so the tests exercise exactly what production runs (body parsers, versioning, pipes).
- * Create the app with `bodyParser: false` before calling this.
+ * tests so the tests exercise exactly what production runs (body parsers, cookies,
+ * versioning, pipes). Create the app with `bodyParser: false` before calling this.
  */
 export function configureApp(
   app: NestExpressApplication,
@@ -15,12 +16,19 @@ export function configureApp(
   app.useBodyParser('json', { limit: '5mb' });
   app.useBodyParser('urlencoded', { extended: true, limit: '5mb' });
   app.useBodyParser('text', { type: 'text/csv', limit: '10mb' });
+  app.use(cookieParser());
 
   app.use(helmet({ contentSecurityPolicy: false }));
   app.enableCors({
     origin: options.corsOrigins?.length ? options.corsOrigins : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'X-SmartSchool-Client',
+    ],
     exposedHeaders: [
       'ETag',
       'Location',

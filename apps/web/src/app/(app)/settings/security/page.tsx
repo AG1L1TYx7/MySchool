@@ -22,6 +22,7 @@ export default function SecurityPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold">Security</h1>
+      {user?.mfaSetupRequired && <Alert kind="info">Your role requires two-factor authentication. Set it up below to continue using SmartSchool.</Alert>}
       <ChangePassword />
       {user?.twoFactorEnabled ? <DisableTwoFactor onDone={reload} /> : <EnableTwoFactor onDone={reload} />}
       <Sessions />

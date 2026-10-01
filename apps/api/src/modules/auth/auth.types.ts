@@ -7,6 +7,8 @@ export interface AuthenticatedUser {
   role: Role;
   organizationId: string | null;
   sessionId: string;
+  /** Privileged role without 2FA: only the auth routes are allowed until setup completes. */
+  mfaSetupRequired: boolean;
 }
 
 export interface AccessTokenClaims {

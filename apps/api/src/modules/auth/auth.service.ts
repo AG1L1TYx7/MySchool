@@ -7,17 +7,18 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { Prisma, User } from '../../generated/prisma/client';
+import type {
+  AuthTokenPurpose,
+  Prisma,
+  User,
+} from '../../generated/prisma/client';
 import { newId } from '../../common/utils/ids';
-import {
-  addDays,
-  addMinutes,
-  randomToken,
-  sha256,
-} from '../../common/utils/tokens';
+import { addMinutes, randomToken, sha256 } from '../../common/utils/tokens';
 import { AppConfigService } from '../../config/app-config.service';
+import { CaptchaService } from '../../infra/captcha/captcha.service';
 import { MailService } from '../../infra/mail/mail.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { FeatureFlagService } from '../access/feature-flag.service';
 import { PermissionService } from '../access/permission.service';
 import {
   canAssignRole,
@@ -36,6 +37,7 @@ import {
   UpdateMeDto,
 } from './dto/auth.dto';
 import { PasswordService } from './password.service';
+import { sessionExpiry } from './session-rules';
 import { TokenService } from './token.service';
 import { TwoFactorService } from './two-factor.service';
 
@@ -46,7 +48,18 @@ export interface RequestContext {
 
 export type LoginResult =
   | { mfaRequired: true; mfaToken: string }
-  | ({ mfaRequired: false; user: PublicUser } & TokenPair);
+  | ({
+      mfaRequired: false;
+      user: PublicUser;
+      mfaSetupRequired: boolean;
+    } & TokenPair);
+
+export interface RegisterResult {
+  message: string;
+  verificationRequired: boolean;
+  /** Development only (no mail server): the verification code, so the flow can be completed locally. */
+  devToken?: string;
+}
 
 export interface PublicUser {
   id: string;
@@ -60,6 +73,7 @@ export interface PublicUser {
   timezone: string | null;
   twoFactorEnabled: boolean;
   emailVerified: boolean;
+  mfaSetupRequired: boolean;
   createdAt: Date;
   lastLoginAt: Date | null;
 }
@@ -67,10 +81,13 @@ export interface PublicUser {
 const LOGIN_MAX_FAILURES = 5;
 const LOGIN_LOCK_MINUTES = 15;
 const RESET_TTL_MINUTES = 60;
+const VERIFY_TTL_MINUTES = 24 * 60;
 const INVALID_CREDENTIALS = {
   code: 'auth.invalid_credentials',
   detail: 'Email or password is incorrect.',
 };
+const REGISTER_MESSAGE =
+  'Check your email to verify your address, then sign in.';
 
 @Injectable()
 export class AuthService {
@@ -82,46 +99,89 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly twoFactor: TwoFactorService,
     private readonly permissions: PermissionService,
+    private readonly flags: FeatureFlagService,
+    private readonly captcha: CaptchaService,
     private readonly mail: MailService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
   ) {}
 
   // ---------------------------------------------------------------------------
-  // Registration and login
+  // Registration and email verification
   // ---------------------------------------------------------------------------
 
+  /**
+   * Self-registration for students and parents only (docs/11 section 3). Never issues tokens
+   * and never reveals whether the email already exists: an existing account gets a
+   * "you already have an account" email instead.
+   */
   async register(
     dto: RegisterDto,
     ctx: RequestContext,
-  ): Promise<{ user: PublicUser } & TokenPair> {
+  ): Promise<RegisterResult> {
+    if (!(await this.flags.isEnabled('self-registration'))) {
+      throw new ForbiddenException({
+        code: 'auth.registration_disabled',
+        detail:
+          'Self-registration is disabled. Ask your school for an invitation.',
+      });
+    }
     const role = roleFromApi(dto.role ?? 'student');
     if (!role || !SELF_REGISTER_ROLES.includes(role)) {
       throw new BadRequestException({
         code: 'auth.role_not_allowed',
-        detail: 'That role cannot self-register.',
+        detail:
+          'Only students and parents can self-register. Staff accounts are created by an administrator.',
       });
     }
-    if (dto.organizationId) {
+    await this.captcha.assertHuman(dto.captchaToken, ctx.ip, 'register');
+    const weakness = this.passwords.validateNewPassword(dto.password, {
+      email: dto.email,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+    });
+    if (weakness)
+      throw new BadRequestException({
+        code: 'auth.password_weak',
+        detail: weakness,
+      });
+
+    let organizationId: string | null = null;
+    if (dto.joinCode) {
       const org = await this.prisma.organization.findFirst({
-        where: { id: dto.organizationId, deletedAt: null, isActive: true },
+        where: { joinCode: dto.joinCode, deletedAt: null, isActive: true },
         select: { id: true },
       });
       if (!org)
         throw new BadRequestException({
-          code: 'auth.organization_invalid',
-          detail: 'Organisation not found or inactive.',
+          code: 'auth.join_code_invalid',
+          detail: 'That school join code is not valid.',
         });
+      organizationId = org.id;
     }
+
+    const verificationRequired = this.config.auth.requireEmailVerification;
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
-      select: { id: true },
+      select: { id: true, firstName: true, organizationId: true },
     });
-    if (existing)
-      throw new ConflictException({
-        code: 'auth.email_exists',
-        detail: 'An account with this email already exists.',
+    if (existing) {
+      await this.notify(
+        dto.email,
+        'You already have a SmartSchool account',
+        `Hello ${existing.firstName},\n\nSomeone tried to register with this email address, but you already have an account. If this was you, sign in instead or use "Forgot password". If it was not you, no action is needed.`,
+      );
+      await this.audit.record({
+        userId: existing.id,
+        organizationId: existing.organizationId,
+        action: 'auth.register_duplicate',
+        entityType: 'User',
+        entityId: existing.id,
+        ipAddress: ctx.ip,
+        userAgent: ctx.userAgent,
       });
+      return { message: REGISTER_MESSAGE, verificationRequired };
+    }
 
     const user = await this.prisma.user.create({
       data: {
@@ -132,22 +192,89 @@ export class AuthService {
         firstName: dto.firstName.trim(),
         lastName: dto.lastName.trim(),
         role,
-        organizationId: dto.organizationId ?? null,
-        emailVerifiedAt: this.config.isDevelopment ? new Date() : null,
+        organizationId,
       },
     });
+    const token = await this.createToken(
+      user.id,
+      'EMAIL_VERIFY',
+      VERIFY_TTL_MINUTES,
+    );
+    await this.notify(
+      user.email,
+      'Verify your SmartSchool email address',
+      `Hello ${user.firstName},\n\nConfirm your email address to finish creating your account:\n\n${this.config.auth.webAppUrl}/verify-email?token=${token}\n\nThe link is valid for 24 hours.`,
+    );
     await this.audit.record({
       userId: user.id,
-      organizationId: user.organizationId,
+      organizationId,
       action: 'auth.register',
       entityType: 'User',
       entityId: user.id,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
-    const pair = await this.issueSession(user, false, ctx);
-    return { user: this.toPublic(user), ...pair };
+    return {
+      message: REGISTER_MESSAGE,
+      verificationRequired,
+      ...(this.config.isDevelopment ? { devToken: token } : {}),
+    };
   }
+
+  async verifyEmail(token: string, ctx: RequestContext): Promise<void> {
+    const record = await this.consumeToken(token, ['EMAIL_VERIFY']);
+    if (!record)
+      throw new BadRequestException({
+        code: 'auth.verify_token_invalid',
+        detail:
+          'The verification link is invalid or has expired. Request a new one.',
+      });
+    await this.prisma.user.update({
+      where: { id: record.userId },
+      data: { emailVerifiedAt: new Date() },
+    });
+    await this.audit.record({
+      userId: record.userId,
+      organizationId: record.user.organizationId,
+      action: 'auth.email_verified',
+      entityType: 'User',
+      entityId: record.userId,
+      ipAddress: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+  }
+
+  /** Always resolves the same way; a new link is sent only to an unverified, active account. */
+  async resendVerification(
+    email: string,
+    captchaToken: string | undefined,
+    ctx: RequestContext,
+  ): Promise<{ devToken?: string }> {
+    await this.captcha.assertHuman(captchaToken, ctx.ip, 'resend_verification');
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (
+      !user ||
+      user.deletedAt ||
+      user.status !== 'ACTIVE' ||
+      user.emailVerifiedAt
+    )
+      return {};
+    const token = await this.createToken(
+      user.id,
+      'EMAIL_VERIFY',
+      VERIFY_TTL_MINUTES,
+    );
+    await this.notify(
+      user.email,
+      'Verify your SmartSchool email address',
+      `Hello ${user.firstName},\n\nConfirm your email address:\n\n${this.config.auth.webAppUrl}/verify-email?token=${token}\n\nThe link is valid for 24 hours.`,
+    );
+    return this.config.isDevelopment ? { devToken: token } : {};
+  }
+
+  // ---------------------------------------------------------------------------
+  // Login
+  // ---------------------------------------------------------------------------
 
   async login(dto: LoginDto, ctx: RequestContext): Promise<LoginResult> {
     const user = await this.prisma.user.findUnique({
@@ -168,13 +295,20 @@ export class AuthService {
       dto.password,
     );
     if (!verified.valid) {
-      await this.recordFailure(user);
+      await this.recordFailure(user, ctx);
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
     if (user.status !== 'ACTIVE') {
       throw new UnauthorizedException({
         code: 'auth.account_inactive',
         detail: 'This account is inactive. Contact your administrator.',
+      });
+    }
+    if (this.config.auth.requireEmailVerification && !user.emailVerifiedAt) {
+      throw new ForbiddenException({
+        code: 'auth.email_unverified',
+        detail:
+          'Verify your email address before signing in. You can request a new verification email.',
       });
     }
     if (verified.needsRehash) {
@@ -205,17 +339,33 @@ export class AuthService {
         code: 'auth.mfa_not_enabled',
         detail: 'Two-factor is not enabled.',
       });
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new UnauthorizedException({
+        code: 'auth.locked',
+        detail: `Too many failed attempts. Try again after ${user.lockedUntil.toISOString()}.`,
+      });
+    }
 
-    if (!this.twoFactor.verifyCode(user.twoFactorSecret, dto.code)) {
+    const step = this.twoFactor.verifyCode(
+      user.twoFactorSecret,
+      dto.code,
+      user.lastTotpStep,
+    );
+    if (step !== null) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastTotpStep: step },
+      });
+    } else {
       const remaining = await this.twoFactor.consumeBackupCode(
         codesOf(user),
         dto.code,
       );
       if (!remaining) {
-        await this.recordFailure(user);
+        await this.recordFailure(user, ctx);
         throw new UnauthorizedException({
           code: 'auth.mfa_code_invalid',
-          detail: 'The code is not valid.',
+          detail: 'The code is not valid or was already used.',
         });
       }
       await this.prisma.user.update({
@@ -245,10 +395,15 @@ export class AuthService {
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
-    return { mfaRequired: false, user: this.toPublic(updated), ...pair };
+    return {
+      mfaRequired: false,
+      user: this.toPublic(updated),
+      mfaSetupRequired: this.mfaSetupRequired(updated),
+      ...pair,
+    };
   }
 
-  private async recordFailure(user: User): Promise<void> {
+  private async recordFailure(user: User, ctx: RequestContext): Promise<void> {
     const failures = user.failedLoginCount + 1;
     const lock = failures >= LOGIN_MAX_FAILURES;
     await this.prisma.user.update({
@@ -265,36 +420,51 @@ export class AuthService {
         action: 'auth.locked',
         entityType: 'User',
         entityId: user.id,
+        ipAddress: ctx.ip,
+        userAgent: ctx.userAgent,
       });
+      await this.notify(
+        user.email,
+        'Your SmartSchool account was temporarily locked',
+        `Hello ${user.firstName},\n\nThere were ${LOGIN_MAX_FAILURES} failed sign-in attempts on your account, so it is locked for ${LOGIN_LOCK_MINUTES} minutes. If this was not you, reset your password once the lock expires.`,
+      );
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Sessions and refresh tokens (rotation with reuse detection)
+  // Sessions and refresh tokens (rotation with reuse detection, absolute lifetime)
   // ---------------------------------------------------------------------------
 
   private async issueSession(
     user: User,
     rememberMe: boolean,
     ctx: RequestContext,
-    familyId?: string,
+    family?: { id: string; absoluteExpiresAt: Date | null },
   ): Promise<TokenPair> {
     const refreshToken = randomToken(32);
     const sessionId = newId();
-    const refreshExpiresAt = addDays(
-      new Date(),
-      this.config.get('JWT_REFRESH_TTL_DAYS'),
-    );
+    const { auth } = this.config;
+    const expiry = sessionExpiry({
+      now: new Date(),
+      slidingDays: rememberMe
+        ? auth.rememberMeAbsoluteDays
+        : auth.refreshSlidingDays,
+      absoluteDays: rememberMe
+        ? auth.rememberMeAbsoluteDays
+        : auth.sessionAbsoluteDays,
+      familyAbsoluteExpiresAt: family?.absoluteExpiresAt,
+    });
     await this.prisma.authSession.create({
       data: {
         id: sessionId,
         userId: user.id,
-        familyId: familyId ?? sessionId,
+        familyId: family?.id ?? sessionId,
         refreshTokenHash: sha256(refreshToken),
         userAgent: ctx.userAgent?.slice(0, 500) ?? null,
         ipAddress: ctx.ip,
         rememberMe,
-        expiresAt: refreshExpiresAt,
+        expiresAt: expiry.expiresAt,
+        absoluteExpiresAt: expiry.absoluteExpiresAt,
       },
     });
     const access = this.tokens.signAccessToken({
@@ -309,7 +479,7 @@ export class AuthService {
       accessToken: access.token,
       refreshToken,
       expiresAt: access.expiresAt.toISOString(),
-      refreshExpiresAt: refreshExpiresAt.toISOString(),
+      refreshExpiresAt: expiry.expiresAt.toISOString(),
     };
   }
 
@@ -343,11 +513,16 @@ export class AuthService {
         detail: 'This session was revoked. Sign in again.',
       });
     }
-    if (session.expiresAt <= new Date())
+    const now = new Date();
+    if (
+      session.expiresAt <= now ||
+      (session.absoluteExpiresAt && session.absoluteExpiresAt <= now)
+    ) {
       throw new UnauthorizedException({
         code: 'auth.refresh_expired',
         detail: 'Session expired. Sign in again.',
       });
+    }
     if (session.user.status !== 'ACTIVE' || session.user.deletedAt)
       throw new UnauthorizedException({
         code: 'auth.account_inactive',
@@ -358,14 +533,14 @@ export class AuthService {
       session.user,
       session.rememberMe,
       ctx,
-      session.familyId,
+      { id: session.familyId, absoluteExpiresAt: session.absoluteExpiresAt },
     );
     await this.prisma.authSession.update({
       where: { id: session.id },
       data: {
-        revokedAt: new Date(),
+        revokedAt: now,
         replacedById: sha256(next.refreshToken).slice(0, 36),
-        lastUsedAt: new Date(),
+        lastUsedAt: now,
       },
     });
     return next;
@@ -399,6 +574,7 @@ export class AuthService {
         createdAt: true,
         lastUsedAt: true,
         expiresAt: true,
+        absoluteExpiresAt: true,
         rememberMe: true,
       },
     });
@@ -487,6 +663,12 @@ export class AuthService {
         code: 'auth.password_reused',
         detail: 'Choose a different password.',
       });
+    const weakness = this.passwords.validateNewPassword(dto.newPassword, user);
+    if (weakness)
+      throw new BadRequestException({
+        code: 'auth.password_weak',
+        detail: weakness,
+      });
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -502,30 +684,33 @@ export class AuthService {
       entityType: 'User',
       entityId: user.id,
     });
+    await this.notify(
+      user.email,
+      'Your SmartSchool password was changed',
+      `Hello ${user.firstName},\n\nYour password was just changed and your other devices were signed out. If this was not you, reset your password now and contact your school.`,
+    );
   }
 
   /** Always resolves the same way so account existence is never revealed. */
   async forgotPassword(
     email: string,
+    captchaToken: string | undefined,
     ctx: RequestContext,
   ): Promise<{ delivered: boolean; devToken?: string }> {
+    await this.captcha.assertHuman(captchaToken, ctx.ip, 'forgot_password');
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt || user.status !== 'ACTIVE')
       return { delivered: false };
 
-    const token = randomToken(32);
-    await this.prisma.passwordResetToken.create({
-      data: {
-        id: newId(),
-        userId: user.id,
-        tokenHash: sha256(token),
-        expiresAt: addMinutes(new Date(), RESET_TTL_MINUTES),
-      },
-    });
+    const token = await this.createToken(
+      user.id,
+      'PASSWORD_RESET',
+      RESET_TTL_MINUTES,
+    );
     const delivered = await this.mail.send({
       to: user.email,
       subject: 'Reset your SmartSchool password',
-      text: `Hello ${user.firstName},\n\nUse this code within ${RESET_TTL_MINUTES} minutes to reset your password:\n\n${token}\n\nIf you did not request this, ignore this email.`,
+      text: `Hello ${user.firstName},\n\nUse this code within ${RESET_TTL_MINUTES} minutes to reset your password:\n\n${token}\n\nOr open ${this.config.auth.webAppUrl}/reset-password?token=${token}\n\nIf you did not request this, ignore this email.`,
     });
     await this.audit.record({
       userId: user.id,
@@ -542,35 +727,39 @@ export class AuthService {
       : { delivered };
   }
 
+  /** Accepts password-reset codes and invitation codes (both prove control of the mailbox). */
   async resetPassword(
     dto: ResetPasswordDto,
     ctx: RequestContext,
   ): Promise<void> {
-    const record = await this.prisma.passwordResetToken.findUnique({
-      where: { tokenHash: sha256(dto.token) },
-      include: { user: true },
-    });
-    if (!record || record.usedAt || record.expiresAt <= new Date()) {
+    const record = await this.consumeToken(dto.token, [
+      'PASSWORD_RESET',
+      'INVITE',
+    ]);
+    if (!record)
       throw new BadRequestException({
         code: 'auth.reset_token_invalid',
         detail: 'The reset code is invalid or has expired.',
       });
-    }
-    await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id: record.userId },
-        data: {
-          passwordHash: await this.passwords.hash(dto.newPassword),
-          passwordChangedAt: new Date(),
-          failedLoginCount: 0,
-          lockedUntil: null,
-        },
-      }),
-      this.prisma.passwordResetToken.update({
-        where: { id: record.id },
-        data: { usedAt: new Date() },
-      }),
-    ]);
+    const weakness = this.passwords.validateNewPassword(
+      dto.newPassword,
+      record.user,
+    );
+    if (weakness)
+      throw new BadRequestException({
+        code: 'auth.password_weak',
+        detail: weakness,
+      });
+    await this.prisma.user.update({
+      where: { id: record.userId },
+      data: {
+        passwordHash: await this.passwords.hash(dto.newPassword),
+        passwordChangedAt: new Date(),
+        failedLoginCount: 0,
+        lockedUntil: null,
+        emailVerifiedAt: record.user.emailVerifiedAt ?? new Date(),
+      },
+    });
     await this.revokeAllSessions(record.userId);
     await this.audit.record({
       userId: record.userId,
@@ -581,6 +770,11 @@ export class AuthService {
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
+    await this.notify(
+      record.user.email,
+      'Your SmartSchool password was reset',
+      `Hello ${record.user.firstName},\n\nYour password was reset and all devices were signed out. If this was not you, contact your school immediately.`,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -599,7 +793,7 @@ export class AuthService {
     const setup = await this.twoFactor.createSetup(user.email);
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { twoFactorSecret: setup.encryptedSecret },
+      data: { twoFactorSecret: setup.encryptedSecret, lastTotpStep: null },
     });
     return {
       otpauthUrl: setup.otpauthUrl,
@@ -620,7 +814,12 @@ export class AuthService {
         code: 'auth.mfa_setup_missing',
         detail: 'Start two-factor setup first.',
       });
-    if (!this.twoFactor.verifyCode(user.twoFactorSecret, code))
+    const step = this.twoFactor.verifyCode(
+      user.twoFactorSecret,
+      code,
+      user.lastTotpStep,
+    );
+    if (step === null)
       throw new BadRequestException({
         code: 'auth.mfa_code_invalid',
         detail: 'The code is not valid.',
@@ -631,6 +830,7 @@ export class AuthService {
       data: {
         twoFactorEnabled: true,
         backupCodes: JSON.stringify(backup.hashes),
+        lastTotpStep: step,
       },
     });
     await this.audit.record({
@@ -640,6 +840,11 @@ export class AuthService {
       entityType: 'User',
       entityId: user.id,
     });
+    await this.notify(
+      user.email,
+      'Two-factor authentication enabled',
+      `Hello ${user.firstName},\n\nTwo-factor authentication is now on for your SmartSchool account. Keep your backup codes somewhere safe.`,
+    );
     return { backupCodes: backup.plain };
   }
 
@@ -656,6 +861,13 @@ export class AuthService {
         code: 'auth.mfa_not_enabled',
         detail: 'Two-factor is not enabled.',
       });
+    if (this.mfaSetupRequired({ ...user, twoFactorEnabled: false })) {
+      throw new ForbiddenException({
+        code: 'auth.mfa_required_for_role',
+        detail:
+          'Two-factor authentication is required for your role and cannot be turned off.',
+      });
+    }
     const verified = await this.passwords.verify(user.passwordHash, password);
     if (!verified.valid)
       throw new ForbiddenException({
@@ -663,7 +875,11 @@ export class AuthService {
         detail: 'Password is incorrect.',
       });
     const codeOk =
-      this.twoFactor.verifyCode(user.twoFactorSecret, code) ||
+      this.twoFactor.verifyCode(
+        user.twoFactorSecret,
+        code,
+        user.lastTotpStep,
+      ) !== null ||
       (await this.twoFactor.consumeBackupCode(codesOf(user), code)) !== null;
     if (!codeOk)
       throw new BadRequestException({
@@ -676,6 +892,7 @@ export class AuthService {
         twoFactorEnabled: false,
         twoFactorSecret: null,
         backupCodes: null,
+        lastTotpStep: null,
       },
     });
     await this.audit.record({
@@ -685,6 +902,11 @@ export class AuthService {
       entityType: 'User',
       entityId: user.id,
     });
+    await this.notify(
+      user.email,
+      'Two-factor authentication disabled',
+      `Hello ${user.firstName},\n\nTwo-factor authentication was turned off for your SmartSchool account. If this was not you, change your password now.`,
+    );
   }
 
   async twoFactorRegenerateBackupCodes(
@@ -699,7 +921,12 @@ export class AuthService {
         code: 'auth.mfa_not_enabled',
         detail: 'Two-factor is not enabled.',
       });
-    if (!this.twoFactor.verifyCode(user.twoFactorSecret, code))
+    const step = this.twoFactor.verifyCode(
+      user.twoFactorSecret,
+      code,
+      user.lastTotpStep,
+    );
+    if (step === null)
       throw new BadRequestException({
         code: 'auth.mfa_code_invalid',
         detail: 'The code is not valid.',
@@ -707,12 +934,22 @@ export class AuthService {
     const backup = await this.twoFactor.generateBackupCodes();
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { backupCodes: JSON.stringify(backup.hashes) },
+      data: { backupCodes: JSON.stringify(backup.hashes), lastTotpStep: step },
     });
     return { backupCodes: backup.plain };
   }
 
   // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /** Administrators in the configured roles must finish 2FA setup before using the rest of the API. */
+  mfaSetupRequired(user: Pick<User, 'role' | 'twoFactorEnabled'>): boolean {
+    return (
+      this.config.auth.mfaRequiredRoles.includes(ROLE_API_NAME[user.role]) &&
+      !user.twoFactorEnabled
+    );
+  }
 
   toPublic(user: User): PublicUser {
     return {
@@ -727,6 +964,7 @@ export class AuthService {
       timezone: user.timezone,
       twoFactorEnabled: user.twoFactorEnabled,
       emailVerified: user.emailVerifiedAt !== null,
+      mfaSetupRequired: this.mfaSetupRequired(user),
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt,
     };
@@ -739,6 +977,59 @@ export class AuthService {
         code: 'authz.forbidden',
         detail: `Your role cannot assign the role '${ROLE_API_NAME[target]}'.`,
       });
+    }
+  }
+
+  private async createToken(
+    userId: string,
+    purpose: AuthTokenPurpose,
+    ttlMinutes: number,
+  ): Promise<string> {
+    const token = randomToken(32);
+    await this.prisma.authToken.create({
+      data: {
+        id: newId(),
+        userId,
+        purpose,
+        tokenHash: sha256(token),
+        expiresAt: addMinutes(new Date(), ttlMinutes),
+      },
+    });
+    return token;
+  }
+
+  /** Marks a single-use token as used and returns it with its user, or null when invalid, used or expired. */
+  private async consumeToken(token: string, purposes: AuthTokenPurpose[]) {
+    const record = await this.prisma.authToken.findUnique({
+      where: { tokenHash: sha256(token) },
+      include: { user: true },
+    });
+    if (
+      !record ||
+      !purposes.includes(record.purpose) ||
+      record.usedAt ||
+      record.expiresAt <= new Date()
+    )
+      return null;
+    const claimed = await this.prisma.authToken.updateMany({
+      where: { id: record.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    return claimed.count === 1 ? record : null;
+  }
+
+  /** Security notification; delivery failures are logged, never surfaced to the caller. */
+  private async notify(
+    to: string,
+    subject: string,
+    text: string,
+  ): Promise<void> {
+    try {
+      await this.mail.send({ to, subject, text });
+    } catch (err) {
+      this.logger.warn(
+        `Notification "${subject}" to ${to} failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }

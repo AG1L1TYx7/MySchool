@@ -1,13 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import argon2 from 'argon2';
 import { pbkdf2Sync, timingSafeEqual } from 'node:crypto';
+import { COMMON_PASSWORD_BASES } from './common-passwords';
 
 export type VerifyResult =
   { valid: false } | { valid: true; needsRehash: boolean };
 
+export interface PasswordContext {
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
 /**
- * Password hashing (ADR-011). New hashes: argon2id. Imported ASP.NET Identity v3 hashes
- * (base64, first byte 0x01) are verified and upgraded on the next successful login.
+ * Password hashing and policy (ADR-011, docs/11 section 3). New hashes: argon2id.
+ * Imported ASP.NET Identity v3 hashes (base64, first byte 0x01) are verified and
+ * upgraded on the next successful login.
  */
 @Injectable()
 export class PasswordService {
@@ -36,6 +44,69 @@ export class PasswordService {
   meetsPolicy(password: string): boolean {
     return PasswordService.POLICY.test(password);
   }
+
+  /**
+   * Returns null when the password is acceptable, otherwise a message for the user.
+   * Checks: character-class policy, common-password denylist, personal information.
+   */
+  validateNewPassword(
+    password: string,
+    context: PasswordContext = {},
+  ): string | null {
+    if (!this.meetsPolicy(password)) {
+      return 'Password must be 12 to 128 characters with upper and lower case letters, a digit and a symbol.';
+    }
+    if (isCommonPassword(password))
+      return 'That password is too common. Choose something harder to guess.';
+    const personal = personalTokens(context).find((t) =>
+      password.toLowerCase().includes(t),
+    );
+    if (personal)
+      return 'Password must not contain your name or email address.';
+    if (/(.)\1{3,}/.test(password))
+      return 'Password must not repeat the same character four or more times in a row.';
+    return null;
+  }
+}
+
+/** "Password2026!" -> "password"; "P@ssw0rd!!2026" -> "password"; "Welcome-123456" -> "welcome". */
+export function isCommonPassword(password: string): boolean {
+  const symbolLeet = password
+    .toLowerCase()
+    .replace(/@/g, 'a')
+    .replace(/\$/g, 's');
+  const alnum = symbolLeet.replace(/[^a-z0-9]/g, '');
+  const bases = new Set<string>([
+    alnum,
+    alnum.replace(/\d+$/, ''),
+    alnum.replace(/^\d+/, ''),
+    alnum.replace(/^\d+|\d+$/g, ''),
+  ]);
+  for (const base of bases) {
+    if (!base) continue;
+    if (COMMON_PASSWORD_BASES.has(base)) return true;
+    const leet = base
+      .replace(/0/g, 'o')
+      .replace(/1/g, 'l')
+      .replace(/3/g, 'e')
+      .replace(/4/g, 'a')
+      .replace(/5/g, 's')
+      .replace(/7/g, 't');
+    if (COMMON_PASSWORD_BASES.has(leet)) return true;
+  }
+  return false;
+}
+function personalTokens(context: PasswordContext): string[] {
+  const tokens: string[] = [];
+  const local = context.email?.split('@')[0]?.toLowerCase() ?? '';
+  if (local.length >= 4) tokens.push(local);
+  for (const part of local.split(/[._\-+]/))
+    if (part.length >= 4) tokens.push(part);
+  for (const name of [context.firstName, context.lastName]) {
+    const n = name?.trim().toLowerCase() ?? '';
+    if (n.length >= 3) tokens.push(n);
+  }
+  return tokens;
 }
 
 /**

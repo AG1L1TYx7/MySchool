@@ -135,7 +135,14 @@ async function seedOrganization(): Promise<string> {
   const existing = await prisma.organization.findFirst({
     where: { name: 'Demo School', deletedAt: null },
   });
-  if (existing) return existing.id;
+  if (existing) {
+    if (!existing.joinCode)
+      await prisma.organization.update({
+        where: { id: existing.id },
+        data: { joinCode: 'DEMO-2026' },
+      });
+    return existing.id;
+  }
   const org = await prisma.organization.create({
     data: {
       id: uuidv7(),
@@ -145,6 +152,7 @@ async function seedOrganization(): Promise<string> {
       phone: '+1 555 0100',
       address: '123 Demo Street, Demo City',
       timezone: 'America/New_York',
+      joinCode: 'DEMO-2026',
     },
   });
   console.log('organization: Demo School created');

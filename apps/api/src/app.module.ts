@@ -7,6 +7,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AppConfigModule } from './config/config.module';
 import { AppConfigService } from './config/app-config.service';
+import { CaptchaModule } from './infra/captcha/captcha.module';
 import { CryptoModule } from './infra/crypto/crypto.module';
 import { MailModule } from './infra/mail/mail.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
@@ -65,6 +66,7 @@ import { UsersModule } from './modules/users/users.module';
     ScheduleModule.forRoot(),
     PrismaModule,
     CryptoModule,
+    CaptchaModule,
     MailModule,
     AuditModule,
     AccessModule,

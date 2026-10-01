@@ -88,6 +88,12 @@ enum ClassEnrollmentStatus {
   COMPLETED
 }
 
+enum AuthTokenPurpose {
+  PASSWORD_RESET
+  EMAIL_VERIFY
+  INVITE
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -99,17 +105,19 @@ enum UserStatus {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id          String    @id @map("Id") @db.Char(36)
-  name        String    @map("Name") @db.VarChar(200)
-  description String?   @map("Description") @db.VarChar(500)
-  email       String?   @map("Email") @db.VarChar(100)
-  phone       String?   @map("Phone") @db.VarChar(20)
-  address     String?   @map("Address") @db.VarChar(500)
-  timezone    String    @default("UTC") @map("Timezone") @db.VarChar(64)
-  isActive    Boolean   @default(true) @map("IsActive")
-  createdAt   DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
-  updatedAt   DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
-  deletedAt   DateTime? @map("DeletedAt") @db.DateTime(6)
+  id                String    @id @map("Id") @db.Char(36)
+  name              String    @map("Name") @db.VarChar(200)
+  description       String?   @map("Description") @db.VarChar(500)
+  email             String?   @map("Email") @db.VarChar(100)
+  phone             String?   @map("Phone") @db.VarChar(20)
+  address           String?   @map("Address") @db.VarChar(500)
+  timezone          String    @default("UTC") @map("Timezone") @db.VarChar(64)
+  isActive          Boolean   @default(true) @map("IsActive")
+  joinCode          String?   @unique @map("JoinCode") @db.VarChar(16)
+  joinCodeRotatedAt DateTime? @map("JoinCodeRotatedAt") @db.DateTime(6)
+  createdAt         DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt         DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt         DateTime? @map("DeletedAt") @db.DateTime(6)
 
   users    User[]
   students Student[]
@@ -145,6 +153,7 @@ model User {
   twoFactorSecret  String? @map("TwoFactorSecret") @db.VarChar(512) // AES-256-GCM encrypted
   backupCodes      String? @map("BackupCodes") @db.Text // JSON array of argon2 hashes (TEXT: MariaDB 10.4 has no native JSON, ADR-002)
 
+  lastTotpStep     Int?      @map("LastTotpStep")
   failedLoginCount Int       @default(0) @map("FailedLoginCount")
   lockedUntil      DateTime? @map("LockedUntil") @db.DateTime(6)
   lastLoginAt      DateTime? @map("LastLoginAt") @db.DateTime(6)
@@ -153,16 +162,16 @@ model User {
   updatedAt DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt DateTime? @map("DeletedAt") @db.DateTime(6)
 
-  organization        Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  sessions            AuthSession[]
-  passwordResetTokens PasswordResetToken[]
-  featureOverrides    UserFeatureOverride[]
-  auditLogs           AuditLog[]
-  student             Student?
-  guardianLinks       StudentGuardian[]
-  coursesInstructed   Course[]              @relation("CourseInstructor")
-  coursesCreated      Course[]              @relation("CourseCreator")
-  classesTaught       ClassTeacher[]
+  organization      Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  sessions          AuthSession[]
+  authTokens        AuthToken[]
+  featureOverrides  UserFeatureOverride[]
+  auditLogs         AuditLog[]
+  student           Student?
+  guardianLinks     StudentGuardian[]
+  coursesInstructed Course[]              @relation("CourseInstructor")
+  coursesCreated    Course[]              @relation("CourseCreator")
+  classesTaught     ClassTeacher[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -172,18 +181,19 @@ model User {
 
 /// One row per refresh token. Rotation replaces the row; reuse of a replaced token revokes the family.
 model AuthSession {
-  id               String    @id @map("Id") @db.Char(36)
-  userId           String    @map("UserId") @db.Char(36)
-  familyId         String    @map("FamilyId") @db.Char(36)
-  refreshTokenHash String    @unique @map("RefreshTokenHash") @db.Char(64)
-  userAgent        String?   @map("UserAgent") @db.VarChar(500)
-  ipAddress        String?   @map("IpAddress") @db.VarChar(45)
-  rememberMe       Boolean   @default(false) @map("RememberMe")
-  createdAt        DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
-  lastUsedAt       DateTime  @default(now()) @map("LastUsedAt") @db.DateTime(6)
-  expiresAt        DateTime  @map("ExpiresAt") @db.DateTime(6)
-  revokedAt        DateTime? @map("RevokedAt") @db.DateTime(6)
-  replacedById     String?   @map("ReplacedById") @db.Char(36)
+  id                String    @id @map("Id") @db.Char(36)
+  userId            String    @map("UserId") @db.Char(36)
+  familyId          String    @map("FamilyId") @db.Char(36)
+  refreshTokenHash  String    @unique @map("RefreshTokenHash") @db.Char(64)
+  userAgent         String?   @map("UserAgent") @db.VarChar(500)
+  ipAddress         String?   @map("IpAddress") @db.VarChar(45)
+  rememberMe        Boolean   @default(false) @map("RememberMe")
+  createdAt         DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  lastUsedAt        DateTime  @default(now()) @map("LastUsedAt") @db.DateTime(6)
+  expiresAt         DateTime  @map("ExpiresAt") @db.DateTime(6)
+  revokedAt         DateTime? @map("RevokedAt") @db.DateTime(6)
+  replacedById      String?   @map("ReplacedById") @db.Char(36)
+  absoluteExpiresAt DateTime? @map("AbsoluteExpiresAt") @db.DateTime(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -193,18 +203,20 @@ model AuthSession {
   @@map("AuthSessions")
 }
 
-model PasswordResetToken {
-  id        String    @id @map("Id") @db.Char(36)
-  userId    String    @map("UserId") @db.Char(36)
-  tokenHash String    @unique @map("TokenHash") @db.Char(64)
-  expiresAt DateTime  @map("ExpiresAt") @db.DateTime(6)
-  usedAt    DateTime? @map("UsedAt") @db.DateTime(6)
-  createdAt DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+/// Single-use emailed tokens: password reset, email verification, invitations. Only the SHA-256 hash is stored.
+model AuthToken {
+  id        String           @id @map("Id") @db.Char(36)
+  userId    String           @map("UserId") @db.Char(36)
+  purpose   AuthTokenPurpose @map("Purpose")
+  tokenHash String           @unique @map("TokenHash") @db.Char(64)
+  expiresAt DateTime         @map("ExpiresAt") @db.DateTime(6)
+  usedAt    DateTime?        @map("UsedAt") @db.DateTime(6)
+  createdAt DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@map("PasswordResetTokens")
+  @@index([userId, purpose])
+  @@map("AuthTokens")
 }
 
 // ---------------------------------------------------------------------------

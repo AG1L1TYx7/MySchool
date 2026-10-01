@@ -42,6 +42,23 @@ export const envSchema = z
     /** Optional base64 32-byte key for field encryption (TOTP secrets); derived from JWT_SECRET when unset. */
     ENCRYPTION_KEY: z.string().optional(),
 
+    // Authentication policy (docs/11 section 3). Unset values default to the secure choice in production.
+    /** Absolute lifetime of a sign-in before the user must authenticate again, regardless of activity. */
+    AUTH_SESSION_ABSOLUTE_DAYS: z.coerce.number().int().positive().default(30),
+    AUTH_REMEMBER_ME_ABSOLUTE_DAYS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(90),
+    /** Block sign-in until the email address is verified. Default: true in production, false otherwise. */
+    AUTH_REQUIRE_EMAIL_VERIFICATION: boolFromString.optional(),
+    /** Roles that must enable two-factor before using the app. Default in production: super_admin,superintendent,principal. */
+    AUTH_MFA_REQUIRED_ROLES: z.string().optional(),
+    /** Send the refresh cookie only over HTTPS. Default: true in production. */
+    AUTH_COOKIE_SECURE: boolFromString.optional(),
+    /** Public URL of the web client, used in emailed links. */
+    WEB_APP_URL: z.string().url().default('http://localhost:3000'),
+
     AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
     AI_SERVICE_API_KEY: z.string().optional().default(''),
     AI_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
@@ -102,6 +119,13 @@ export const envSchema = z
           code: z.ZodIssueCode.custom,
           path: ['DATABASE_URL'],
           message: 'DATABASE_URL still has its placeholder password',
+        });
+      }
+      if (!env.WEB_APP_URL.startsWith('https://')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['WEB_APP_URL'],
+          message: 'WEB_APP_URL must use https in production',
         });
       }
     }

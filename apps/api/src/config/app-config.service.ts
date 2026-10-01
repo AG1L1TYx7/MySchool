@@ -19,6 +19,29 @@ export class AppConfigService {
     return this.get('NODE_ENV') === 'development';
   }
 
+  /** Authentication policy with secure defaults in production (docs/11 section 3). */
+  get auth() {
+    const mfaRoles = this.get('AUTH_MFA_REQUIRED_ROLES');
+    return {
+      requireEmailVerification:
+        this.get('AUTH_REQUIRE_EMAIL_VERIFICATION') ?? this.isProduction,
+      mfaRequiredRoles: (mfaRoles === undefined
+        ? this.isProduction
+          ? 'super_admin,superintendent,principal'
+          : ''
+        : mfaRoles
+      )
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      cookieSecure: this.get('AUTH_COOKIE_SECURE') ?? this.isProduction,
+      sessionAbsoluteDays: this.get('AUTH_SESSION_ABSOLUTE_DAYS'),
+      rememberMeAbsoluteDays: this.get('AUTH_REMEMBER_ME_ABSOLUTE_DAYS'),
+      refreshSlidingDays: this.get('JWT_REFRESH_TTL_DAYS'),
+      webAppUrl: this.get('WEB_APP_URL'),
+    };
+  }
+
   /** A provider is enabled when its credentials are present (see docs/04 section 8). */
   get providers() {
     return {

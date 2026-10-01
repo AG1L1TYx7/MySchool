@@ -30,6 +30,8 @@ smartschool/
 | [docs/07-BUILD-PLAN.md](docs/07-BUILD-PLAN.md) | Three releases as vertical slices, on XAMPP MySQL |
 | [docs/08-PRODUCT-STRATEGY.md](docs/08-PRODUCT-STRATEGY.md) | Why it is outstanding: competitors, differentiators, quality bar |
 | [docs/09-API-DESIGN.md](docs/09-API-DESIGN.md) | API conventions and the Release 1 resource map |
+| [docs/10-AI-SYSTEM-DESIGN.md](docs/10-AI-SYSTEM-DESIGN.md) | Agentic AI design, prompts, safety, evaluation |
+| [docs/11-QUALITY-AND-SECURITY.md](docs/11-QUALITY-AND-SECURITY.md) | Definition of done, security checklist, performance rules |
 
 ## Quick start (development, Windows)
 
@@ -45,10 +47,10 @@ copy appsweb.env.example appsweb.env
 pnpm dev:web                                   # Web: http://localhost:3000
 ```
 
-Sign in with `teacher@smartschool.local` / `SmartSchool!Demo2026` (development seed; every role has a matching account).
+Sign in with `teacher@smartschool.local` / `SmartSchool!Demo2026` (development seed; every role has a matching account). Students and parents can also self-register with the demo join code `DEMO-2026`.
 
 ## Status
 
-Release 1 slices 1 and 2 are implemented. Slice 1 (identity and access): registration, sign-in with lockout, rotating refresh tokens with reuse detection, password reset, TOTP two-factor with backup codes, sessions, users, roles, a feature catalogue with per-role and per-user permissions, feature flags, and an audit log. Slice 2 (school and people): organisations with members, student records, guardians with invitations, CSV import with dry run and per-line errors, CSV export. Slice 3 (courses and classes): course builder with modules, lessons, reordering, publishing, cloning and prerequisites; classes with teachers, capacity, waitlist and enrolment; "my classes" for students, parents and teachers. All have web pages. Next: slice 4, assignments, grades and attendance.
+Release 1 slices 1 and 2 are implemented. Slice 1 (identity and access): registration, sign-in with lockout, rotating refresh tokens with reuse detection, password reset, TOTP two-factor with backup codes, sessions, users, roles, a feature catalogue with per-role and per-user permissions, feature flags, and an audit log. Slice 2 (school and people): organisations with members, student records, guardians with invitations, CSV import with dry run and per-line errors, CSV export. Slice 3 (courses and classes): course builder with modules, lessons, reordering, publishing, cloning and prerequisites; classes with teachers, capacity, waitlist and enrolment; "my classes" for students, parents and teachers. All have web pages. The sign-in system follows the hardening in docs/11 (HttpOnly refresh cookie, email verification, school join codes, common-password checks, replay-safe 2FA, mandatory 2FA for administrators in production). The AI service is designed in docs/10 with its prompt library in `apps/ai/prompts`. Next: slice 4, assignments, grades and attendance.
 
 The full week-1 checklist, including freeing port 3306 from an existing MySQL 8 service, is in [docs/07-BUILD-PLAN.md](docs/07-BUILD-PLAN.md).

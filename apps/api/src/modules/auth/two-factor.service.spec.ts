@@ -24,8 +24,8 @@ describe('TwoFactorService', () => {
     expect(setup.qrDataUrl.startsWith('data:image/png;base64,')).toBe(true);
     expect(setup.encryptedSecret).not.toContain(setup.manualKey);
     const code = totp(setup.manualKey);
-    expect(svc.verifyCode(setup.encryptedSecret, code)).toBe(true);
-    expect(svc.verifyCode(setup.encryptedSecret, 'abc')).toBe(false);
+    expect(svc.verifyCode(setup.encryptedSecret, code, null)).not.toBeNull();
+    expect(svc.verifyCode(setup.encryptedSecret, 'abc', null)).toBeNull();
   });
 
   it('issues ten backup codes and consumes each once', async () => {

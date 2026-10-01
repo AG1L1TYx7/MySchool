@@ -34,11 +34,7 @@ export function hasMinimumLevel(role: Role, level: number): boolean {
 }
 
 /** Roles a user may self-register as. Staff and admin roles are created by administrators. */
-export const SELF_REGISTER_ROLES: readonly Role[] = [
-  'STUDENT',
-  'PARENT',
-  'TEACHER',
-];
+export const SELF_REGISTER_ROLES: readonly Role[] = ['STUDENT', 'PARENT'];
 
 /** Which roles an actor may assign to others. */
 export function canAssignRole(actor: Role, target: Role): boolean {

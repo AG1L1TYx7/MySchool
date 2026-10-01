@@ -1,18 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { Alert, Button, Input, Select } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
+import { useAuth, type RegisterResponse } from '@/lib/auth';
 
-const PASSWORD_HINT = 'At least 12 characters with upper and lower case letters, a digit and a symbol.';
+const PASSWORD_HINT = 'At least 12 characters with upper and lower case letters, a digit and a symbol. Not a common password, and not your name or email.';
 
 export default function RegisterPage() {
   const { register } = useAuth();
-  const router = useRouter();
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'student' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'student', joinCode: '' });
+  const [done, setDone] = useState<RegisterResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -23,8 +22,7 @@ export default function RegisterPage() {
     setBusy(true);
     setError(null);
     try {
-      await register(form);
-      router.replace('/dashboard');
+      setDone(await register({ ...form, joinCode: form.joinCode.trim() || undefined }));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -32,10 +30,34 @@ export default function RegisterPage() {
     }
   }
 
+  if (done) {
+    return (
+      <>
+        <h1 className="text-xl font-semibold">Check your email</h1>
+        <p className="mt-2 text-sm text-slate-600">{done.message}</p>
+        {done.devToken && (
+          <div className="mt-4">
+            <Alert kind="info">
+              Development mode (no mail server). Use this link to verify:{' '}
+              <Link href={`/verify-email?token=${encodeURIComponent(done.devToken)}`} className="font-medium underline">
+                verify now
+              </Link>
+            </Alert>
+          </div>
+        )}
+        <p className="mt-6 text-center text-sm text-slate-600">
+          <Link href="/login" className="font-medium text-brand-700 hover:underline">
+            Go to sign in
+          </Link>
+        </p>
+      </>
+    );
+  }
+
   return (
     <>
       <h1 className="text-xl font-semibold">Create your account</h1>
-      <p className="mt-1 text-sm text-slate-500">Students, parents and teachers can register here. School administrators are invited by their district.</p>
+      <p className="mt-1 text-sm text-slate-500">Students and parents can register here. Teachers and administrators are invited by their school.</p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
         {error && <Alert>{error}</Alert>}
         <div className="grid grid-cols-2 gap-4">
@@ -47,8 +69,8 @@ export default function RegisterPage() {
         <Select label="I am a" name="role" value={form.role} onChange={update('role')}>
           <option value="student">Student</option>
           <option value="parent">Parent or guardian</option>
-          <option value="teacher">Teacher</option>
         </Select>
+        <Input label="School join code" name="joinCode" placeholder="e.g. DEMO-2026" hint="Your school gives you this code. Leave it blank to join a school later." value={form.joinCode} onChange={update('joinCode')} />
         <Button type="submit" className="w-full" loading={busy}>
           Create account
         </Button>

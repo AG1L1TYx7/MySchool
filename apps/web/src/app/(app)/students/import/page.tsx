@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Alert, Button, Card } from '@/components/ui';
-import { api, errorMessage } from '@/lib/api';
+import { api, download, errorMessage } from '@/lib/api';
 import type { ImportResult } from '@/lib/students';
 
 export default function ImportStudentsPage() {
@@ -97,13 +97,5 @@ export default function ImportStudentsPage() {
 }
 
 async function downloadTemplate() {
-  const { tokenStore } = await import('@/lib/api');
-  const res = await fetch('/api/v1/students/import/template', { headers: { authorization: `Bearer ${tokenStore.access ?? ''}` } });
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'students-template.csv';
-  a.click();
-  URL.revokeObjectURL(url);
+  await download('/students/import/template', 'students-template.csv');
 }

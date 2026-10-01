@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfigService } from '../../../config/app-config.service';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
+import { ROLE_API_NAME } from '../../access/roles';
 import type { AccessTokenClaims, AuthenticatedUser } from '../auth.types';
 
 /**
@@ -12,7 +13,7 @@ import type { AccessTokenClaims, AuthenticatedUser } from '../auth.types';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
-    config: AppConfigService,
+    private readonly config: AppConfigService,
     private readonly prisma: PrismaService,
   ) {
     super({
@@ -29,15 +30,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(claims: AccessTokenClaims): Promise<AuthenticatedUser> {
+    const now = new Date();
     const session = await this.prisma.authSession.findFirst({
       where: {
         id: claims.sid,
         userId: claims.sub,
         revokedAt: null,
-        expiresAt: { gt: new Date() },
+        expiresAt: { gt: now },
       },
       select: {
         id: true,
+        absoluteExpiresAt: true,
         user: {
           select: {
             id: true,
@@ -46,6 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             organizationId: true,
             status: true,
             deletedAt: true,
+            twoFactorEnabled: true,
           },
         },
       },
@@ -53,7 +57,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (
       !session ||
       session.user.deletedAt ||
-      session.user.status !== 'ACTIVE'
+      session.user.status !== 'ACTIVE' ||
+      (session.absoluteExpiresAt && session.absoluteExpiresAt <= now)
     ) {
       throw new UnauthorizedException({
         code: 'auth.session_invalid',
@@ -66,6 +71,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       role: session.user.role,
       organizationId: session.user.organizationId,
       sessionId: session.id,
+      mfaSetupRequired:
+        this.config.auth.mfaRequiredRoles.includes(
+          ROLE_API_NAME[session.user.role],
+        ) && !session.user.twoFactorEnabled,
     };
   }
 }

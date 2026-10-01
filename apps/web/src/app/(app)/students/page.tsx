@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
-import { api, errorMessage, tokenStore } from '@/lib/api';
+import { api, download, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { ENROLLMENT_STATUSES, GRADE_LEVELS, label, type Paged, type Student } from '@/lib/students';
 
@@ -39,15 +39,11 @@ export default function StudentsPage() {
     if (search) q.set('search', search);
     if (grade) q.set('gradeLevel', grade);
     if (status) q.set('status', status);
-    const res = await fetch(`/api/v1/students/export?${q.toString()}`, { headers: { authorization: `Bearer ${tokenStore.access ?? ''}` } });
-    if (!res.ok) return setError('Export failed.');
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `students-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      await download(`/students/export?${q.toString()}`, `students-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
   return (

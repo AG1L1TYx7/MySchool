@@ -6,8 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Role } from '../../../generated/prisma/client';
 import type { Request } from 'express';
+import type { Role } from '../../../generated/prisma/client';
 import type { AuthenticatedUser } from '../../auth/auth.types';
 import { IS_PUBLIC_KEY } from '../../auth/decorators/public.decorator';
 import { FeatureFlagService } from '../feature-flag.service';
@@ -22,6 +22,7 @@ import { PermissionService } from '../permission.service';
 
 /**
  * Runs after JWT authentication. Applies, in order: feature flag gate (404 when off),
+ * mandatory two-factor setup for privileged roles (403 everywhere except the auth routes),
  * role allowlist, minimum role level, required feature codes (403 with the missing code).
  * Ownership checks stay in services (docs/01 section 4.1).
  */
@@ -50,6 +51,22 @@ export class AccessGuard implements CanActivate {
       IS_PUBLIC_KEY,
       targets,
     );
+    if (isPublic) return true;
+
+    const user = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthenticatedUser }>().user;
+    if (
+      user?.mfaSetupRequired &&
+      context.getClass().name !== 'AuthController'
+    ) {
+      throw new ForbiddenException({
+        code: 'auth.mfa_setup_required',
+        detail:
+          'Your role requires two-factor authentication. Set it up under Security before continuing.',
+      });
+    }
+
     const roles = this.reflector.getAllAndOverride<Role[] | undefined>(
       ROLES_KEY,
       targets,
@@ -62,12 +79,8 @@ export class AccessGuard implements CanActivate {
       REQUIRE_FEATURE_KEY,
       targets,
     );
-    if (isPublic || (!roles && minLevel === undefined && !features))
-      return true;
+    if (!roles && minLevel === undefined && !features) return true;
 
-    const user = context
-      .switchToHttp()
-      .getRequest<Request & { user?: AuthenticatedUser }>().user;
     if (!user)
       throw new ForbiddenException({
         code: 'authz.forbidden',

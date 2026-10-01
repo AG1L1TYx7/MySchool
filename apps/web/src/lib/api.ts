@@ -1,6 +1,8 @@
 /**
  * Thin client for the SmartSchool API (docs/09-API-DESIGN.md).
  * Requests go to the same origin (/api/v1/...) and Next.js proxies them to the API.
+ * The access token lives in memory only; the refresh token is an HttpOnly cookie set by the
+ * API, so no credential is ever readable by page scripts (docs/11 section 3).
  * Errors are RFC 9457 problem details; ApiError carries the machine-readable code.
  */
 
@@ -28,68 +30,41 @@ export class ApiError extends Error {
   }
 }
 
-export interface TokenPair {
+export interface TokenResponse {
   accessToken: string;
-  refreshToken: string;
   expiresAt: string;
   refreshExpiresAt: string;
 }
 
-const ACCESS_KEY = 'smartschool.access';
-const REFRESH_KEY = 'smartschool.refresh';
 const BASE = '/api/v1';
+const CSRF_HEADERS = { 'x-requested-with': 'SmartSchool' };
+
+let accessToken: string | null = null;
 
 export const tokenStore = {
   get access(): string | null {
-    try {
-      return typeof window === 'undefined' ? null : window.localStorage.getItem(ACCESS_KEY);
-    } catch {
-      return null;
-    }
+    return accessToken;
   },
-  get refresh(): string | null {
-    try {
-      return typeof window === 'undefined' ? null : window.localStorage.getItem(REFRESH_KEY);
-    } catch {
-      return null;
-    }
-  },
-  set(pair: Pick<TokenPair, 'accessToken' | 'refreshToken'>): void {
-    try {
-      window.localStorage.setItem(ACCESS_KEY, pair.accessToken);
-      window.localStorage.setItem(REFRESH_KEY, pair.refreshToken);
-    } catch {
-      /* private mode or blocked storage: the session lasts for this page only */
-    }
+  set(token: string): void {
+    accessToken = token;
   },
   clear(): void {
-    try {
-      window.localStorage.removeItem(ACCESS_KEY);
-      window.localStorage.removeItem(REFRESH_KEY);
-    } catch {
-      /* ignore */
-    }
+    accessToken = null;
   },
 };
 
 let refreshing: Promise<boolean> | null = null;
 
-/** Rotates the refresh token once; concurrent callers share the same attempt. */
-async function tryRefresh(): Promise<boolean> {
+/** Rotates the refresh cookie once; concurrent callers share the same attempt. */
+export async function tryRefresh(): Promise<boolean> {
   if (!refreshing) {
     refreshing = (async () => {
-      const refreshToken = tokenStore.refresh;
-      if (!refreshToken) return false;
-      const res = await fetch(`${BASE}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
+      const res = await fetch(`${BASE}/auth/refresh`, { method: 'POST', headers: { 'content-type': 'application/json', ...CSRF_HEADERS }, body: '{}', credentials: 'same-origin' });
       if (!res.ok) {
         tokenStore.clear();
         return false;
       }
-      tokenStore.set((await res.json()) as TokenPair);
+      tokenStore.set(((await res.json()) as TokenResponse).accessToken);
       return true;
     })().finally(() => {
       refreshing = null;
@@ -108,15 +83,15 @@ export interface RequestOptions {
 export async function api<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = true, signal } = options;
   const send = async (): Promise<Response> => {
-    const headers: Record<string, string> = { accept: 'application/json' };
+    const headers: Record<string, string> = { accept: 'application/json', ...CSRF_HEADERS };
     if (body !== undefined) headers['content-type'] = 'application/json';
-    const token = auth ? tokenStore.access : null;
-    if (token) headers.authorization = `Bearer ${token}`;
-    return fetch(`${BASE}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal });
+    if (auth && tokenStore.access) headers.authorization = `Bearer ${tokenStore.access}`;
+    return fetch(`${BASE}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal, credentials: 'same-origin' });
   };
 
+  if (auth && !tokenStore.access) await tryRefresh();
   let res = await send();
-  if (res.status === 401 && auth && tokenStore.refresh && (await tryRefresh())) {
+  if (res.status === 401 && auth && (await tryRefresh())) {
     res = await send();
   }
   if (res.status === 204) return undefined as T;
@@ -136,6 +111,19 @@ export async function api<T = unknown>(path: string, options: RequestOptions = {
     });
   }
   return data as T;
+}
+
+/** Downloads a file from an authenticated endpoint (CSV exports, templates). */
+export async function download(path: string, filename: string): Promise<void> {
+  if (!tokenStore.access) await tryRefresh();
+  const res = await fetch(`${BASE}${path}`, { headers: { authorization: `Bearer ${tokenStore.access ?? ''}`, ...CSRF_HEADERS }, credentials: 'same-origin' });
+  if (!res.ok) throw new Error('Download failed.');
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function errorMessage(err: unknown): string {

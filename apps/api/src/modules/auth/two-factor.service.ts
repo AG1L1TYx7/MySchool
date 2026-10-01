@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { randomInt } from 'node:crypto';
 import { CryptoService } from '../../infra/crypto/crypto.service';
 import { PasswordService } from './password.service';
-import { generateTotpSecret, otpauthUri, verifyTotp } from './totp';
+import { generateTotpSecret, matchTotpStep, otpauthUri } from './totp';
 
 const ISSUER = 'SmartSchool';
 /** Accept the previous and next 30-second step to absorb clock drift. */
@@ -36,12 +36,23 @@ export class TwoFactorService {
     };
   }
 
-  verifyCode(encryptedSecret: string, code: string): boolean {
-    return verifyTotp(
+  /**
+   * Returns the accepted time step, or null when the code is wrong or was already used.
+   * `lastAcceptedStep` is the step stored after the previous successful code.
+   */
+  verifyCode(
+    encryptedSecret: string,
+    code: string,
+    lastAcceptedStep: number | null,
+  ): number | null {
+    const step = matchTotpStep(
       this.crypto.decrypt(encryptedSecret),
       code,
       DRIFT_WINDOW_STEPS,
     );
+    if (step === null) return null;
+    if (lastAcceptedStep !== null && step <= lastAcceptedStep) return null;
+    return step;
   }
 
   /** Ten single-use codes shown once; only argon2 hashes are stored. */

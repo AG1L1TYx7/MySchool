@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, tokenStore, type TokenPair } from './api';
+import { api, tokenStore, type TokenResponse } from './api';
 
 export interface CurrentUser {
   id: string;
@@ -15,12 +15,28 @@ export interface CurrentUser {
   timezone: string | null;
   twoFactorEnabled: boolean;
   emailVerified: boolean;
+  mfaSetupRequired: boolean;
   createdAt: string;
   lastLoginAt: string | null;
   features: string[];
 }
 
-export type LoginResponse = { mfaRequired: true; mfaToken: string } | ({ mfaRequired: false; user: CurrentUser } & TokenPair);
+export type LoginResponse = { mfaRequired: true; mfaToken: string } | ({ mfaRequired: false; user: CurrentUser; mfaSetupRequired: boolean } & TokenResponse);
+
+export interface RegisterInput {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  joinCode?: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  verificationRequired: boolean;
+  devToken?: string;
+}
 
 interface AuthContextValue {
   user: CurrentUser | null;
@@ -28,7 +44,7 @@ interface AuthContextValue {
   can: (feature: string) => boolean;
   login: (input: { email: string; password: string; rememberMe?: boolean }) => Promise<LoginResponse>;
   completeMfa: (input: { mfaToken: string; code: string; rememberMe?: boolean }) => Promise<void>;
-  register: (input: { email: string; password: string; firstName: string; lastName: string; role: string }) => Promise<void>;
+  register: (input: RegisterInput) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
 }
@@ -39,11 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /** Loads the profile; with no access token in memory the client silently refreshes from the cookie first. */
   const reload = useCallback(async () => {
-    if (!tokenStore.access && !tokenStore.refresh) {
-      setUser(null);
-      return;
-    }
     try {
       setUser(await api<CurrentUser>('/auth/me'));
     } catch {
@@ -59,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback<AuthContextValue['login']>(async (input) => {
     const result = await api<LoginResponse>('/auth/login', { method: 'POST', body: input, auth: false });
     if (!result.mfaRequired) {
-      tokenStore.set(result);
+      tokenStore.set(result.accessToken);
       setUser(await api<CurrentUser>('/auth/me'));
     }
     return result;
@@ -68,19 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completeMfa = useCallback<AuthContextValue['completeMfa']>(async (input) => {
     const result = await api<LoginResponse>('/auth/2fa/challenge', { method: 'POST', body: input, auth: false });
     if (result.mfaRequired) throw new Error('Unexpected response');
-    tokenStore.set(result);
+    tokenStore.set(result.accessToken);
     setUser(await api<CurrentUser>('/auth/me'));
   }, []);
 
-  const register = useCallback<AuthContextValue['register']>(async (input) => {
-    const result = await api<{ user: CurrentUser } & TokenPair>('/auth/register', { method: 'POST', body: input, auth: false });
-    tokenStore.set(result);
-    setUser(await api<CurrentUser>('/auth/me'));
-  }, []);
+  const register = useCallback<AuthContextValue['register']>((input) => api<RegisterResponse>('/auth/register', { method: 'POST', body: input, auth: false }), []);
 
   const logout = useCallback(async () => {
     try {
-      await api('/auth/logout', { method: 'POST', body: { refreshToken: tokenStore.refresh ?? undefined } });
+      await api('/auth/logout', { method: 'POST', body: {} });
     } catch {
       /* the local session is cleared regardless */
     }

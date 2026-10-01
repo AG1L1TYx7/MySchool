@@ -66,13 +66,43 @@ export function hotp(
   return (code % 10 ** digits).toString().padStart(digits, '0');
 }
 
+export function totpStep(nowMs = Date.now()): number {
+  return Math.floor(nowMs / 1000 / TOTP_PERIOD_SECONDS);
+}
+
 export function totp(
   base32Secret: string,
   nowMs = Date.now(),
   digits = TOTP_DIGITS,
 ): string {
-  const counter = Math.floor(nowMs / 1000 / TOTP_PERIOD_SECONDS);
-  return hotp(base32Decode(base32Secret), counter, digits);
+  return hotp(base32Decode(base32Secret), totpStep(nowMs), digits);
+}
+
+/**
+ * Returns the time step the code matches within `window` steps either side of now, or null.
+ * Callers persist the accepted step and refuse anything at or below it (replay protection).
+ */
+export function matchTotpStep(
+  base32Secret: string,
+  code: string,
+  window = 1,
+  nowMs = Date.now(),
+): number | null {
+  const token = code.replace(/\s+/g, '');
+  if (!/^\d{6}$/.test(token)) return null;
+  const secret = base32Decode(base32Secret);
+  const counter = totpStep(nowMs);
+  const expected = Buffer.from(token);
+  let matched: number | null = null;
+  for (let i = -window; i <= window; i++) {
+    const candidate = Buffer.from(hotp(secret, counter + i));
+    if (
+      candidate.length === expected.length &&
+      timingSafeEqual(candidate, expected)
+    )
+      matched = counter + i;
+  }
+  return matched;
 }
 
 /** Verifies a code against the current step and `window` steps either side (drift tolerance). */
@@ -82,21 +112,7 @@ export function verifyTotp(
   window = 1,
   nowMs = Date.now(),
 ): boolean {
-  const token = code.replace(/\s+/g, '');
-  if (!/^\d{6}$/.test(token)) return false;
-  const secret = base32Decode(base32Secret);
-  const counter = Math.floor(nowMs / 1000 / TOTP_PERIOD_SECONDS);
-  const expected = Buffer.from(token);
-  let ok = false;
-  for (let i = -window; i <= window; i++) {
-    const candidate = Buffer.from(hotp(secret, counter + i));
-    if (
-      candidate.length === expected.length &&
-      timingSafeEqual(candidate, expected)
-    )
-      ok = true;
-  }
-  return ok;
+  return matchTotpStep(base32Secret, code, window, nowMs) !== null;
 }
 
 export function otpauthUri(

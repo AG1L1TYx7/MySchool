@@ -47,26 +47,36 @@
 ## 3. Release 1 resource map
 
 ### Auth and identity
+
+Security model (docs/11 section 3): the access token is a 15-minute JWT the browser keeps in memory; the refresh token is an `HttpOnly`, `SameSite=Strict`, `Secure` cookie (`ss_refresh`, path `/api/v1/auth`) rotated on every use with family revocation on reuse and an absolute lifetime (30 days, 90 with remember-me). Native clients send `X-SmartSchool-Client: native` and receive the refresh token in the body instead. Browsers must send `X-Requested-With: SmartSchool` when refreshing with the cookie.
+
 ```
-POST   /auth/register                 email, password, firstName, lastName, role?, organizationId?, captchaToken?
-POST   /auth/login                    email, password, rememberMe        -> accessToken, refreshToken, expiresAt, user
-                                      or { mfaRequired: true, mfaToken } when 2FA is on (5 failures lock for 15 min)
-POST   /auth/2fa/challenge            mfaToken, code (authenticator or backup) -> token pair
-POST   /auth/refresh                  refreshToken                        -> new pair (rotation)
-POST   /auth/logout                   revokes the refresh token
-GET    /auth/me                       current user with roles and effective feature codes
+POST   /auth/register                 email, password, firstName, lastName, role? (student|parent), joinCode?, captchaToken?
+                                      -> 202 { message, verificationRequired, devToken? (development only) }
+                                      never issues tokens; identical response whether or not the email exists;
+                                      password checked against policy, common-password list and the user's name/email
+POST   /auth/verify-email             token -> 204
+POST   /auth/resend-verification      email, captchaToken? -> 202 (always)
+POST   /auth/login                    email, password, rememberMe -> accessToken, expiresAt, refreshExpiresAt, user, mfaSetupRequired
+                                      + Set-Cookie ss_refresh; or { mfaRequired: true, mfaToken } when 2FA is on;
+                                      403 auth.email_unverified when verification is required; 5 failures lock for 15 min
+POST   /auth/2fa/challenge            mfaToken, code (authenticator or backup; TOTP codes cannot be replayed) -> same as login
+POST   /auth/refresh                  cookie (+ X-Requested-With) or { refreshToken } for native -> new access token, rotated cookie
+POST   /auth/logout                   revokes the session and clears the cookie
+GET    /auth/me                       current user with roles, mfaSetupRequired and effective feature codes
 PATCH  /auth/me                       first name, last name, phone, preferences
-POST   /auth/change-password
-POST   /auth/forgot-password          always 202
-POST   /auth/reset-password           token, newPassword
+POST   /auth/change-password          current + new password (same checks as registration); other sessions signed out
+POST   /auth/forgot-password          email, captchaToken? -> always 202
+POST   /auth/reset-password           token (reset or invitation code), newPassword; all sessions signed out; marks the email verified
 POST   /auth/2fa/setup                -> secret, otpauth URL, QR
-POST   /auth/2fa/verify               enables 2FA, returns backup codes
-POST   /auth/2fa/disable
+POST   /auth/2fa/verify               enables 2FA, returns backup codes once
+POST   /auth/2fa/disable              password + code; refused (403 auth.mfa_required_for_role) for roles that must use 2FA
 POST   /auth/2fa/backup-codes         regenerate
-GET    /auth/sessions                 active refresh tokens (device, last seen)
+GET    /auth/sessions                 active refresh sessions (device, last seen, absolute expiry)
 DELETE /auth/sessions/{id}
 ```
 
+While a user in `AUTH_MFA_REQUIRED_ROLES` has no second factor, every route outside `/auth/*` answers 403 `auth.mfa_setup_required`.
 ### Users, roles, permissions
 ```
 GET    /users                         admin list with search, role, status filters
@@ -97,6 +107,8 @@ PATCH  /organizations/{id}
 DELETE /organizations/{id}            soft delete
 GET    /organizations/{id}/members    admins and app users with roles
 POST   /organizations/{id}/members    link an existing user
+GET    /organizations/{id}/join-code  current self-registration join code (organizations.manage)
+POST   /organizations/{id}/join-code  rotate it; the old code stops working
 ```
 
 ### Students and guardians

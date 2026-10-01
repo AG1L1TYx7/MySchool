@@ -25,6 +25,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    // Privileged roles must finish two-factor setup before anything else (docs/11 section 3).
+    if (user?.mfaSetupRequired && pathname !== '/settings/security') router.replace('/settings/security?mfa=required');
   }, [loading, user, router, pathname]);
 
   if (loading || !user) {

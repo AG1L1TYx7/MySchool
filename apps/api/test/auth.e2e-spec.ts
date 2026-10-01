@@ -5,12 +5,19 @@ import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
+import { newId } from '../src/common/utils/ids';
+import { randomToken, sha256 } from '../src/common/utils/tokens';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 
 interface TokenBody {
-  user: { email: string; role: string };
+  user: {
+    email: string;
+    role: string;
+    emailVerified: boolean;
+    mfaSetupRequired: boolean;
+  };
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   mfaRequired?: boolean;
 }
 interface MeBody {
@@ -21,19 +28,32 @@ interface Problem {
   code: string;
   detail: string;
 }
+interface RegisterBody {
+  message: string;
+  verificationRequired: boolean;
+  devToken?: string;
+}
+
+const cookieOf = (res: request.Response): string | undefined => {
+  const raw = res.headers['set-cookie'] as string[] | string | undefined;
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return list.find((c) => c.startsWith('ss_refresh='));
+};
+const cookieValue = (cookie: string): string => cookie.split(';')[0];
 
 /**
- * Full sign-in journey against a real database (XAMPP locally, service container in CI).
- * Runs after `prisma migrate deploy`; creates and removes its own users.
+ * Sign-in journey and abuse cases against a real database (docs/11 section 3).
+ * Creates and removes its own users.
  */
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let server: Server;
   let prisma: PrismaService;
-  const email = `e2e.${Date.now()}@smartschool.local`;
-  const password = 'Strong-Passw0rd!2026';
+  const stamp = Date.now();
+  const email = `e2e.${stamp}@smartschool.local`;
+  const password = 'Orbital-Mechanics-77!';
   let accessToken = '';
-  let refreshToken = '';
+  let refreshCookie = '';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -50,36 +70,146 @@ describe('Auth (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.user.deleteMany({ where: { email } });
+    await prisma.user.deleteMany({
+      where: { email: { startsWith: `e2e.${stamp}` } },
+    });
     await app.close();
   });
 
-  it('rejects a weak password with problem details', async () => {
-    const res = await request(server)
+  it('rejects weak, common and personal passwords with a clear reason', async () => {
+    const base = { email, firstName: 'E2E', lastName: 'User' };
+    const weak = await request(server)
       .post('/api/v1/auth/register')
-      .send({ email, password: 'weak', firstName: 'E2E', lastName: 'User' })
+      .send({ ...base, password: 'weak' })
       .expect(400);
-    expect((res.body as Problem).code).toBe('validation.failed');
+    expect((weak.body as Problem).code).toBe('validation.failed');
+    const common = await request(server)
+      .post('/api/v1/auth/register')
+      .send({ ...base, password: 'Password2026!' })
+      .expect(400);
+    expect((common.body as Problem).code).toBe('auth.password_weak');
+    const personal = await request(server)
+      .post('/api/v1/auth/register')
+      .send({ ...base, password: `E2E-User-${stamp}!` })
+      .expect(400);
+    expect((personal.body as Problem).code).toBe('auth.password_weak');
   });
 
-  it('registers a student and returns tokens', async () => {
+  it('refuses staff self-registration and bad join codes', async () => {
+    const staff = await request(server)
+      .post('/api/v1/auth/register')
+      .send({
+        email,
+        password,
+        firstName: 'E2E',
+        lastName: 'User',
+        role: 'teacher',
+      })
+      .expect(400);
+    expect((staff.body as Problem).code).toBe('validation.failed');
+    const code = await request(server)
+      .post('/api/v1/auth/register')
+      .send({
+        email,
+        password,
+        firstName: 'E2E',
+        lastName: 'User',
+        joinCode: 'NOPE-0000',
+      })
+      .expect(400);
+    expect((code.body as Problem).code).toBe('auth.join_code_invalid');
+  });
+
+  it('registers a student with the school join code without issuing tokens', async () => {
+    const res = await request(server)
+      .post('/api/v1/auth/register')
+      .send({
+        email,
+        password,
+        firstName: 'E2E',
+        lastName: 'User',
+        joinCode: 'demo-2026',
+      })
+      .expect(202);
+    const body = res.body as RegisterBody;
+    expect(body.message).toContain('verify');
+    expect((res.body as { accessToken?: string }).accessToken).toBeUndefined();
+    expect(cookieOf(res)).toBeUndefined();
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { email },
+      include: { organization: true },
+    });
+    expect(user.organization?.name).toBe('Demo School');
+    expect(user.emailVerifiedAt).toBeNull();
+  });
+
+  it('answers a duplicate registration exactly like a new one', async () => {
     const res = await request(server)
       .post('/api/v1/auth/register')
       .send({ email, password, firstName: 'E2E', lastName: 'User' })
-      .expect(201);
+      .expect(202);
+    expect((res.body as RegisterBody).message).toContain('verify');
+  });
+
+  it('verifies the email with a single-use token', async () => {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const token = randomToken(32);
+    await prisma.authToken.create({
+      data: {
+        id: newId(),
+        userId: user.id,
+        purpose: 'EMAIL_VERIFY',
+        tokenHash: sha256(token),
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    await request(server)
+      .post('/api/v1/auth/verify-email')
+      .send({ token })
+      .expect(204);
+    const again = await request(server)
+      .post('/api/v1/auth/verify-email')
+      .send({ token })
+      .expect(400);
+    expect((again.body as Problem).code).toBe('auth.verify_token_invalid');
+    expect(
+      (await prisma.user.findUniqueOrThrow({ where: { email } }))
+        .emailVerifiedAt,
+    ).not.toBeNull();
+  });
+
+  it('signs in with the refresh token in an HttpOnly cookie, not the body', async () => {
+    const res = await request(server)
+      .post('/api/v1/auth/login')
+      .send({ email, password })
+      .expect(200);
     const body = res.body as TokenBody;
-    expect(body.user).toMatchObject({ email, role: 'student' });
+    expect(body.mfaRequired).toBe(false);
+    expect(body.user).toMatchObject({
+      email,
+      role: 'student',
+      emailVerified: true,
+      mfaSetupRequired: false,
+    });
     expect(body.accessToken).toBeTruthy();
+    expect(body.refreshToken).toBeUndefined();
+    const cookie = cookieOf(res);
+    expect(cookie).toBeDefined();
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('SameSite=Strict');
+    expect(cookie).toContain('Path=/api/v1/auth');
     accessToken = body.accessToken;
-    refreshToken = body.refreshToken;
+    refreshCookie = cookieValue(cookie as string);
   });
 
-  it('refuses a duplicate email', async () => {
+  it('gives native clients the refresh token in the body instead', async () => {
     const res = await request(server)
-      .post('/api/v1/auth/register')
-      .send({ email, password, firstName: 'E2E', lastName: 'User' })
-      .expect(409);
-    expect((res.body as Problem).code).toBe('auth.email_exists');
+      .post('/api/v1/auth/login')
+      .set('x-smartschool-client', 'native')
+      .send({ email, password })
+      .expect(200);
+    expect((res.body as TokenBody).refreshToken).toBeTruthy();
+    expect(cookieOf(res)).toBeUndefined();
   });
 
   it('returns the current user with effective features', async () => {
@@ -103,40 +233,80 @@ describe('Auth (e2e)', () => {
     expect(body.detail).toContain('users.view');
   });
 
-  it('rotates the refresh token and detects reuse', async () => {
+  it('refreshes with the cookie only when the anti-CSRF header is present, rotates it, and detects reuse', async () => {
+    const noHeader = await request(server)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', refreshCookie)
+      .send({})
+      .expect(403);
+    expect((noHeader.body as Problem).code).toBe('auth.csrf');
     const first = await request(server)
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken })
+      .set('Cookie', refreshCookie)
+      .set('X-Requested-With', 'SmartSchool')
+      .send({})
       .expect(200);
-    const rotated = (first.body as TokenBody).refreshToken;
-    expect(rotated).not.toBe(refreshToken);
+    const rotated = cookieValue(cookieOf(first) as string);
+    expect(rotated).not.toBe(refreshCookie);
+    expect((first.body as TokenBody).refreshToken).toBeUndefined();
     const reuse = await request(server)
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken })
+      .set('Cookie', refreshCookie)
+      .set('X-Requested-With', 'SmartSchool')
+      .send({})
       .expect(401);
     expect((reuse.body as Problem).code).toBe('auth.refresh_reused');
-    // the whole family is revoked, including the new token
+    // the whole family is revoked, including the rotated token
     await request(server)
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: rotated })
+      .set('Cookie', rotated)
+      .set('X-Requested-With', 'SmartSchool')
+      .send({})
       .expect(401);
   });
 
-  it('signs in again and signs out', async () => {
+  it('refuses sessions past their absolute lifetime', async () => {
     const login = await request(server)
       .post('/api/v1/auth/login')
       .send({ email, password })
       .expect(200);
-    const body = login.body as TokenBody;
-    expect(body.mfaRequired).toBe(false);
-    await request(server)
-      .post('/api/v1/auth/logout')
-      .set('Authorization', `Bearer ${body.accessToken}`)
-      .send({})
-      .expect(204);
+    const token = (login.body as TokenBody).accessToken;
+    const cookie = cookieValue(cookieOf(login) as string);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    await prisma.authSession.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { absoluteExpiresAt: new Date(Date.now() - 1000) },
+    });
     await request(server)
       .get('/api/v1/auth/me')
-      .set('Authorization', `Bearer ${body.accessToken}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+    const refresh = await request(server)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', cookie)
+      .set('X-Requested-With', 'SmartSchool')
+      .send({})
+      .expect(401);
+    expect((refresh.body as Problem).code).toBe('auth.refresh_expired');
+  });
+
+  it('signs out and clears the cookie', async () => {
+    const login = await request(server)
+      .post('/api/v1/auth/login')
+      .send({ email, password })
+      .expect(200);
+    const token = (login.body as TokenBody).accessToken;
+    const cookie = cookieValue(cookieOf(login) as string);
+    const out = await request(server)
+      .post('/api/v1/auth/logout')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
+      .send({})
+      .expect(204);
+    expect(cookieOf(out)).toContain('Expires=Thu, 01 Jan 1970');
+    await request(server)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${token}`)
       .expect(401);
   });
 

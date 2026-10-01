@@ -123,3 +123,33 @@ Format: context, decision, consequences. Status is Accepted unless stated. Dates
 **Date:** 2026-09-30
 **Decision.** Application-generated UUID v7 primary keys (time-ordered, stored as `char(36)`); PascalCase database names with camelCase Prisma fields via `@map`; string enums in the API mapped to integer columns; RFC 9457 problem details with a stable `code` and a `traceId`; ISO-8601 UTC timestamps.
 **Consequences.** Index-friendly inserts on MariaDB; idiomatic TypeScript; the AI service's 12 tables are untouched.
+
+## ADR-021: Rebuild the AI service to the agentic design instead of restoring the old code
+
+Date: 1 October 2026. Status: accepted. Supersedes the "restore apps/ai from the old repository" steps in ADR-009 and docs/07 slices 5 and 6.
+
+**Context.** The previous Python service had 155 routes, several partial or stubbed, prompts embedded in code, no evaluation harness, no written agent design and a contract drift with the LMS. Its repository URL is also unknown. Restoring it would carry those defects into a product whose bar is "outstanding".
+
+**Decision.** Build `apps/ai` fresh in Python (FastAPI) to `docs/10-AI-SYSTEM-DESIGN.md`: a bounded orchestrator, five agents with fixed tool sets, versioned prompt files, a safety classifier for minors, golden-set evaluation with thresholds, tracing of every call, honest unavailability (ADR-008). The old code, if it is ever found, is reference material only.
+
+**Consequences.** Slice 5 builds the orchestrator, the Tutor agent, safety and RAG; slice 6 the ContentAuthor; Release 2 the Grader, Insight and Planner. Capabilities from the old catalogue that were separate services become prompt profiles of these agents. Emotion detection stays out until an ethics and consent review (Release 3 at the earliest).
+
+## ADR-022: Retire the H5P callback routes
+
+Date: 1 October 2026. Status: accepted. Amends ADR-001 and ADR-017.
+
+**Context.** ADR-017 kept `/api/ai/h5p/content|validate|libraries` so the old Python service could call back into the LMS. With ADR-021 there is no old service to be compatible with.
+
+**Decision.** The AI service returns H5P JSON inside its job result; the LMS validates and persists it. No callback routes are exposed. The AI service calls the LMS only through the read-only `/api/v1/internal/ai/*` tool API with a service token.
+
+**Consequences.** One fewer trust boundary in the inbound direction; docs/04 section 2 is updated when slice 5 lands.
+
+## ADR-023: Authentication hardening
+
+Date: 1 October 2026. Status: accepted. Extends ADR-011.
+
+**Context.** The slice 1 design kept both tokens in browser storage, let anyone self-register as a teacher, bound accounts to any organisation id, never verified email addresses, allowed TOTP replay within the drift window, and let sessions slide indefinitely. Each is a known class of weakness for a system holding children's data.
+
+**Decision.** Refresh tokens live in an `HttpOnly`, `SameSite=Strict`, `Secure` cookie scoped to the auth path with a custom-header CSRF check; access tokens stay in memory. Self-registration is limited to students and parents, requires the organisation's rotating join code to attach to a school, verifies the email before first sign-in in production, never reveals whether an address exists, and is protected by reCAPTCHA when configured. Passwords are checked against a common-password list and the user's own name and email. TOTP acceptance records the time step and refuses replays; administrator roles must enable 2FA in production; sessions carry an absolute lifetime; security events (lockout, password change, 2FA changes) notify the user by email. The web client sends a strict Content Security Policy and frame denial.
+
+**Consequences.** Native clients opt into body tokens with a header. Development keeps verification optional and exposes development-only tokens so the flows can be exercised without a mail server. `docs/11-QUALITY-AND-SECURITY.md` is the checklist every later slice is reviewed against.

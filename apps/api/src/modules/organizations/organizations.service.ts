@@ -16,6 +16,7 @@ import {
   organizationScope,
 } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
+import { generateJoinCode } from './join-code.controller';
 import { AuthService, type PublicUser } from '../auth/auth.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
@@ -122,7 +123,12 @@ export class OrganizationsService {
         detail: 'An organisation with this name already exists.',
       });
     const org = await this.prisma.organization.create({
-      data: { id: newId(), ...dto, name: dto.name.trim() },
+      data: {
+        joinCode: generateJoinCode(),
+        id: newId(),
+        ...dto,
+        name: dto.name.trim(),
+      },
     });
     await this.audit.record({
       userId: actor.id,

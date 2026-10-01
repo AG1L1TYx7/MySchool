@@ -6,43 +6,56 @@ import {
   IsIn,
   IsOptional,
   IsString,
-  IsUUID,
   Length,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { PasswordService } from '../password.service';
 
-const PASSWORD_MESSAGE =
-  'Password must be 12 to 128 characters with upper and lower case letters, a digit and a symbol.';
 const lower = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
+const upper = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim().toUpperCase() : value;
 
 export class RegisterDto {
-  @ApiProperty({ example: 'jane.teacher@school.edu' })
+  @ApiProperty({ example: 'emma.student@school.edu' })
   @Transform(lower)
   @IsEmail()
   @MaxLength(256)
   email!: string;
 
-  @ApiProperty({ minLength: 12 })
+  @ApiProperty({
+    minLength: 12,
+    description:
+      'Checked against the policy, a common-password list and your name/email',
+  })
   @IsString()
-  @Matches(PasswordService.POLICY, { message: PASSWORD_MESSAGE })
+  @Length(12, 128)
   password!: string;
 
   @ApiProperty() @IsString() @Length(1, 100) firstName!: string;
   @ApiProperty() @IsString() @Length(1, 100) lastName!: string;
 
-  @ApiProperty({ enum: ['student', 'parent', 'teacher'], default: 'student' })
+  @ApiProperty({
+    enum: ['student', 'parent'],
+    default: 'student',
+    description: 'Staff accounts are created by administrators',
+  })
   @IsOptional()
-  @IsIn(['student', 'parent', 'teacher'])
-  role?: 'student' | 'parent' | 'teacher';
+  @IsIn(['student', 'parent'])
+  role?: 'student' | 'parent';
 
-  @ApiProperty({ required: false, format: 'uuid' })
+  @ApiProperty({
+    required: false,
+    example: 'DEMO-2026',
+    description: 'School join code; without it the account has no organisation',
+  })
   @IsOptional()
-  @IsUUID()
-  organizationId?: string;
+  @Transform(upper)
+  @IsString()
+  @Length(4, 16)
+  @Matches(/^[A-Z0-9-]+$/)
+  joinCode?: string;
 
   @ApiProperty({
     required: false,
@@ -76,7 +89,14 @@ export class MfaChallengeDto {
 }
 
 export class RefreshDto {
-  @ApiProperty() @IsString() @Length(20, 200) refreshToken!: string;
+  @ApiProperty({
+    required: false,
+    description: 'Only for native clients; browsers send the HttpOnly cookie',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(20, 200)
+  refreshToken?: string;
 }
 
 export class LogoutDto {
@@ -85,6 +105,19 @@ export class LogoutDto {
   @IsString()
   @Length(20, 200)
   refreshToken?: string;
+}
+
+export class VerifyEmailDto {
+  @ApiProperty() @IsString() @Length(20, 200) token!: string;
+}
+
+export class ResendVerificationDto {
+  @ApiProperty() @Transform(lower) @IsEmail() @MaxLength(256) email!: string;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
+  captchaToken?: string;
 }
 
 export class UpdateMeDto {
@@ -123,19 +156,24 @@ export class ChangePasswordDto {
   currentPassword!: string;
   @ApiProperty({ minLength: 12 })
   @IsString()
-  @Matches(PasswordService.POLICY, { message: PASSWORD_MESSAGE })
+  @Length(12, 128)
   newPassword!: string;
 }
 
 export class ForgotPasswordDto {
   @ApiProperty() @Transform(lower) @IsEmail() @MaxLength(256) email!: string;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
+  captchaToken?: string;
 }
 
 export class ResetPasswordDto {
   @ApiProperty() @IsString() @Length(20, 200) token!: string;
   @ApiProperty({ minLength: 12 })
   @IsString()
-  @Matches(PasswordService.POLICY, { message: PASSWORD_MESSAGE })
+  @Length(12, 128)
   newPassword!: string;
 }
 

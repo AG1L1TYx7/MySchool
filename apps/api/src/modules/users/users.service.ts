@@ -137,10 +137,11 @@ export class UsersService {
     let devInviteToken: string | undefined;
     if (!dto.password) {
       const token = randomToken(32);
-      await this.prisma.passwordResetToken.create({
+      await this.prisma.authToken.create({
         data: {
           id: newId(),
           userId: user.id,
+          purpose: 'INVITE',
           tokenHash: sha256(token),
           expiresAt: addMinutes(new Date(), 72 * 60),
         },
@@ -242,10 +243,11 @@ export class UsersService {
         detail: 'User not found.',
       });
     const token = randomToken(32);
-    await this.prisma.passwordResetToken.create({
+    await this.prisma.authToken.create({
       data: {
         id: newId(),
         userId: user.id,
+        purpose: 'PASSWORD_RESET',
         tokenHash: sha256(token),
         expiresAt: addMinutes(new Date(), 60),
       },

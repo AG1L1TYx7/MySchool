@@ -14,6 +14,7 @@ const actor = (
   role,
   organizationId,
   sessionId: 's',
+  mfaSetupRequired: false,
 });
 
 describe('organisation scope', () => {
