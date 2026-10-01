@@ -1,5 +1,7 @@
 # SmartSchool Integration Contracts
 
+> **1 October 2026:** the AI boundary is being rebuilt to [10-AI-SYSTEM-DESIGN.md](10-AI-SYSTEM-DESIGN.md) (ADR-021). The LMS-to-AI calls and the AI callbacks described below are the previous contract; they are replaced by the Context and Result Envelopes and the AI service v1 interface in that document when slice 5 lands, and the three H5P callback routes are retired (ADR-022).
+
 **Version:** 1.1, 30 September 2026
 **Purpose:** every boundary the system crosses, with the exact contract on both sides. Changing anything here requires updating the other side and the contract tests. LMS routes named here follow docs/09 (`/api/v1/...`); the three AI callback routes keep their previous paths (ADR-017).
 
