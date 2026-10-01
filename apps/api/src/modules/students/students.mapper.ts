@@ -6,7 +6,7 @@ import type {
   Student,
   StudentGuardian,
   User,
-} from '@prisma/client';
+} from '../../generated/prisma/client';
 import { ROLE_API_NAME } from '../access/roles';
 import {
   ENROLLMENT_STATUSES,

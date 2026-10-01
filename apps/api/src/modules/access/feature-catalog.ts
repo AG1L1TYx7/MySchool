@@ -1,4 +1,4 @@
-import { Role } from '@prisma/client';
+import { Role } from '../../generated/prisma/client';
 
 /**
  * The feature catalogue: every fine-grained permission in the product (docs/02 section 2).

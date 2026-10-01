@@ -5,15 +5,20 @@
  * Creates: the feature catalogue with default role assignments, feature flags, the demo
  * organisation, and demo accounts for every role. Demo passwords are development-only.
  */
-import { PrismaClient, Role } from '@prisma/client';
-import type { EnrollmentStatus } from '@prisma/client';
+import { createAdapter } from '../src/infra/prisma/connection';
+import { PrismaClient, Role } from '../src/generated/prisma/client';
+import type { EnrollmentStatus } from '../src/generated/prisma/client';
 import argon2 from 'argon2';
 import { newId as uuidv7 } from '../src/common/utils/ids';
 import { FEATURE_CATALOG } from '../src/modules/access/feature-catalog';
 
-const prisma = new PrismaClient();
+if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+const prisma = new PrismaClient({
+  adapter: createAdapter(process.env.DATABASE_URL),
+});
 
 export const DEMO_PASSWORD = 'SmartSchool!Demo2026';
+const NL = String.fromCharCode(10);
 
 const DEMO_USERS: Array<{
   email: string;
@@ -299,12 +304,241 @@ async function seedStudents(organizationId: string): Promise<void> {
   );
 }
 
+/** Two published courses with modules and lessons, two classes for the 2026-Fall term with the demo teacher and students. */
+async function seedCurriculum(organizationId: string): Promise<void> {
+  const teacher = await prisma.user.findUnique({
+    where: { email: 'teacher@smartschool.local' },
+    select: { id: true },
+  });
+  const courses: Array<{
+    courseCode: string;
+    title: string;
+    subject: string;
+    gradeLevel: string;
+    description: string;
+    modules: Array<{
+      title: string;
+      lessons: Array<{ title: string; content: string }>;
+    }>;
+    className: string;
+    studentNumbers: string[];
+  }> = [
+    {
+      courseCode: 'MATH-ALG1',
+      title: 'Algebra I',
+      subject: 'Mathematics',
+      gradeLevel: '9',
+      description:
+        'Linear equations, inequalities, functions and an introduction to quadratics.',
+      modules: [
+        {
+          title: 'Linear equations',
+          lessons: [
+            {
+              title: 'Solving one-step equations',
+              content:
+                '# One-step equations' +
+                NL +
+                NL +
+                'Undo the operation applied to the variable. If 3 was added, subtract 3 from both sides.',
+            },
+            {
+              title: 'Two-step equations',
+              content:
+                '# Two-step equations' +
+                NL +
+                NL +
+                'Undo addition or subtraction first, then multiplication or division.',
+            },
+          ],
+        },
+        {
+          title: 'Graphing lines',
+          lessons: [
+            {
+              title: 'Slope and intercept',
+              content:
+                '# Slope-intercept form' +
+                NL +
+                NL +
+                'y = mx + b, where m is the slope and b is where the line crosses the y-axis.',
+            },
+            {
+              title: 'Graphing from a table',
+              content:
+                '# Tables to graphs' +
+                NL +
+                NL +
+                'Plot each (x, y) pair, then connect the points with a straight line.',
+            },
+          ],
+        },
+      ],
+      className: 'Algebra I - Section A',
+      studentNumbers: ['S2026-000005'],
+    },
+    {
+      courseCode: 'ELA-7',
+      title: 'English Language Arts 7',
+      subject: 'English',
+      gradeLevel: '7',
+      description:
+        'Reading comprehension, narrative and persuasive writing, vocabulary.',
+      modules: [
+        {
+          title: 'Narrative writing',
+          lessons: [
+            {
+              title: 'Story structure',
+              content:
+                '# Story structure' +
+                NL +
+                NL +
+                'Exposition, rising action, climax, falling action, resolution.',
+            },
+            {
+              title: 'Show, do not tell',
+              content:
+                '# Show, do not tell' +
+                NL +
+                NL +
+                'Use sensory detail and action instead of naming the emotion.',
+            },
+          ],
+        },
+      ],
+      className: 'English 7 - Section A',
+      studentNumbers: ['S2026-000001', 'S2026-000002'],
+    },
+  ];
+
+  for (const c of courses) {
+    const course = await prisma.course.upsert({
+      where: {
+        organizationId_courseCode: { organizationId, courseCode: c.courseCode },
+      },
+      update: {
+        title: c.title,
+        subject: c.subject,
+        gradeLevel: c.gradeLevel,
+        description: c.description,
+      },
+      create: {
+        id: uuidv7(),
+        organizationId,
+        courseCode: c.courseCode,
+        title: c.title,
+        subject: c.subject,
+        gradeLevel: c.gradeLevel,
+        description: c.description,
+        status: 'ACTIVE',
+        isPublished: true,
+        publishedAt: new Date(),
+        instructorId: teacher?.id ?? null,
+        createdById: teacher?.id ?? null,
+      },
+    });
+    const existingModules = await prisma.module.count({
+      where: { courseId: course.id },
+    });
+    if (existingModules === 0) {
+      for (const [mi, m] of c.modules.entries()) {
+        const mod = await prisma.module.create({
+          data: {
+            id: uuidv7(),
+            courseId: course.id,
+            title: m.title,
+            sortOrder: mi,
+          },
+        });
+        for (const [li, l] of m.lessons.entries()) {
+          await prisma.lesson.create({
+            data: {
+              id: uuidv7(),
+              moduleId: mod.id,
+              title: l.title,
+              content: l.content,
+              lessonType: 'TEXT',
+              sortOrder: li,
+              durationMinutes: 30,
+            },
+          });
+        }
+      }
+    }
+    let klass = await prisma.class.findFirst({
+      where: {
+        organizationId,
+        courseId: course.id,
+        term: '2026-Fall',
+        deletedAt: null,
+      },
+    });
+    if (!klass) {
+      klass = await prisma.class.create({
+        data: {
+          id: uuidv7(),
+          organizationId,
+          courseId: course.id,
+          name: c.className,
+          section: 'A',
+          term: '2026-Fall',
+          startDate: new Date('2026-09-01T00:00:00Z'),
+          endDate: new Date('2026-12-18T00:00:00Z'),
+          room: '101',
+          maxStudents: 25,
+          status: 'IN_PROGRESS',
+        },
+      });
+      if (teacher)
+        await prisma.classTeacher.create({
+          data: {
+            id: uuidv7(),
+            classId: klass.id,
+            teacherId: teacher.id,
+            isPrimary: true,
+          },
+        });
+    }
+    for (const number of c.studentNumbers) {
+      const student = await prisma.student.findUnique({
+        where: {
+          organizationId_studentNumber: {
+            organizationId,
+            studentNumber: number,
+          },
+        },
+        select: { id: true },
+      });
+      if (!student) continue;
+      await prisma.classEnrollment.upsert({
+        where: {
+          classId_studentId: { classId: klass.id, studentId: student.id },
+        },
+        update: {},
+        create: {
+          id: uuidv7(),
+          classId: klass.id,
+          studentId: student.id,
+          status: 'ENROLLED',
+        },
+      });
+    }
+  }
+  console.log(
+    'curriculum: ' +
+      courses.length +
+      ' courses with modules, lessons, one class each and demo enrolments',
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedFlags();
   const orgId = await seedOrganization();
   await seedUsers(orgId);
   await seedStudents(orgId);
+  await seedCurriculum(orgId);
 }
 
 main()

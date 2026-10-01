@@ -7,7 +7,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { Prisma, User } from '@prisma/client';
+import type { Prisma, User } from '../../generated/prisma/client';
 import { newId } from '../../common/utils/ids';
 import {
   addDays,

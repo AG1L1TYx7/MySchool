@@ -14,6 +14,8 @@ import { AccessModule } from './modules/access/access.module';
 import { AccessGuard } from './modules/access/guards/access.guard';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
 import { AuditModule } from './modules/audit/audit.module';
+import { ClassesModule } from './modules/classes/classes.module';
+import { CoursesModule } from './modules/courses/courses.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
@@ -70,6 +72,8 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     OrganizationsModule,
     StudentsModule,
+    CoursesModule,
+    ClassesModule,
     HealthModule,
     MetricsModule,
   ],

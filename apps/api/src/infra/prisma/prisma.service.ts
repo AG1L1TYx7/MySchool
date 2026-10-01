@@ -4,14 +4,16 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { AppConfigService } from '../../config/app-config.service';
+import { PrismaClient } from '../../generated/prisma/client';
+import { createAdapter } from './connection';
 
 /**
- * Single Prisma client for the application.
+ * Single Prisma client for the application (Prisma 7, MariaDB/MySQL driver adapter).
  *
  * Global behaviours that EF Core implemented as query filters and interceptors
- * (soft delete on 25 entities, TenantId injection) are added here as client
- * extensions once those models exist in the schema; see docs/03 section 4.
+ * (soft delete, tenant injection) are added here as client extensions once those
+ * models exist in the schema; see docs/03 section 4.
  */
 @Injectable()
 export class PrismaService
@@ -20,15 +22,15 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor() {
+  constructor(config: AppConfigService) {
     super({
-      log:
-        process.env.NODE_ENV === 'development'
-          ? [
-              { level: 'warn', emit: 'event' },
-              { level: 'error', emit: 'event' },
-            ]
-          : [{ level: 'error', emit: 'event' }],
+      adapter: createAdapter(config.get('DATABASE_URL')),
+      log: config.isDevelopment
+        ? [
+            { level: 'warn', emit: 'event' },
+            { level: 'error', emit: 'event' },
+          ]
+        : [{ level: 'error', emit: 'event' }],
     });
   }
 

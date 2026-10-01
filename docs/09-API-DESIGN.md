@@ -128,13 +128,16 @@ POST   /courses
 GET    /courses/{id}                  with modules and lessons
 PATCH  /courses/{id}
 DELETE /courses/{id}
-POST   /courses/{id}/publish
-POST   /courses/{id}/clone
+POST   /courses/{id}/publish          needs at least one published lesson; status active
+POST   /courses/{id}/unpublish
+POST   /courses/{id}/clone            copies modules, lessons, prerequisites as a draft "<code>-COPY"
 GET    /courses/{id}/modules
 POST   /courses/{id}/modules
+PUT    /courses/{id}/modules/order    ids[] (every current module exactly once)
 PATCH  /modules/{id}
 DELETE /modules/{id}
 POST   /modules/{id}/lessons
+PUT    /modules/{id}/lessons/order
 PATCH  /lessons/{id}
 DELETE /lessons/{id}
 PUT    /courses/{id}/prerequisites    array of course ids
@@ -142,15 +145,16 @@ PUT    /courses/{id}/prerequisites    array of course ids
 
 ### Classes and enrolment
 ```
-GET    /classes                       term, courseId, teacherId, status
-POST   /classes
+GET    /classes                       term, courseId, teacherId, status, search; students and parents see only their own
+GET    /classes/mine                  classes I teach or attend (parents: my children attend)
+POST   /classes                       courseId, name, term, dates, room, maxStudents, teacherId (primary)
 GET    /classes/{id}
 PATCH  /classes/{id}
 DELETE /classes/{id}
 POST   /classes/{id}/teachers         teacherId, isPrimary
 DELETE /classes/{id}/teachers/{teacherId}
 GET    /classes/{id}/enrollments
-POST   /classes/{id}/enrollments      studentIds[]
+POST   /classes/{id}/enrollments      studentIds[] -> { enrolled, waitlisted, skipped, notFound }; beyond maxStudents = waitlisted
 PATCH  /classes/{id}/enrollments/{studentId}   status
 DELETE /classes/{id}/enrollments/{studentId}
 GET    /students/{id}/classes

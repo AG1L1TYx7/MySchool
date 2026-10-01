@@ -1,4 +1,4 @@
-import { Role } from '@prisma/client';
+import { Role } from '../../generated/prisma/client';
 
 /** Coarse authorisation hierarchy (docs/01 section 2). Higher means more authority. */
 export const ROLE_LEVEL: Record<Role, number> = {

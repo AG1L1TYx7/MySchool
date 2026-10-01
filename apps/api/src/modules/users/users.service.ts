@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma, Role, UserStatus } from '@prisma/client';
+import type { Prisma, Role, UserStatus } from '../../generated/prisma/client';
 import { PagedResponse } from '../../common/dto/paged-response.dto';
 import { newId } from '../../common/utils/ids';
 import { addMinutes, randomToken, sha256 } from '../../common/utils/tokens';

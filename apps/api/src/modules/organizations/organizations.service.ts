@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Organization, Prisma, Role } from '@prisma/client';
+import type { Organization, Prisma, Role } from '../../generated/prisma/client';
 import { PagedResponse } from '../../common/dto/paged-response.dto';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';

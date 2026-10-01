@@ -9,12 +9,14 @@
 // Release 1 slice 1: identity and access.
 
 generator client {
-  provider = "prisma-client-js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
 }
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------------------------------
@@ -57,6 +59,35 @@ enum GuardianRelationship {
   OTHER
 }
 
+enum CourseStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  UNDER_REVIEW
+}
+
+enum LessonType {
+  TEXT
+  VIDEO
+  DOCUMENT
+  LINK
+  INTERACTIVE
+}
+
+enum ClassStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ClassEnrollmentStatus {
+  ENROLLED
+  WAITLISTED
+  DROPPED
+  COMPLETED
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -82,6 +113,8 @@ model Organization {
 
   users    User[]
   students Student[]
+  courses  Course[]
+  classes  Class[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -127,6 +160,9 @@ model User {
   auditLogs           AuditLog[]
   student             Student?
   guardianLinks       StudentGuardian[]
+  coursesInstructed   Course[]              @relation("CourseInstructor")
+  coursesCreated      Course[]              @relation("CourseCreator")
+  classesTaught       ClassTeacher[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -203,6 +239,7 @@ model Student {
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   guardians    StudentGuardian[]
+  enrollments  ClassEnrollment[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -228,6 +265,157 @@ model StudentGuardian {
   @@unique([studentId, guardianUserId])
   @@index([guardianUserId])
   @@map("StudentGuardians")
+}
+
+// ---------------------------------------------------------------------------
+// Curriculum and classes (docs/02 sections 4 and 5). Release 1 slice 3.
+// ---------------------------------------------------------------------------
+
+model Course {
+  id             String       @id @map("Id") @db.Char(36)
+  organizationId String       @map("OrganizationId") @db.Char(36)
+  courseCode     String       @map("CourseCode") @db.VarChar(50)
+  title          String       @map("Title") @db.VarChar(200)
+  description    String?      @map("Description") @db.Text
+  subject        String?      @map("Subject") @db.VarChar(100)
+  gradeLevel     String?      @map("GradeLevel") @db.VarChar(16)
+  creditHours    Decimal?     @map("CreditHours") @db.Decimal(4, 2)
+  estimatedHours Int?         @map("EstimatedHours")
+  status         CourseStatus @default(DRAFT) @map("Status")
+  isPublished    Boolean      @default(false) @map("IsPublished")
+  publishedAt    DateTime?    @map("PublishedAt") @db.DateTime(6)
+  instructorId   String?      @map("InstructorId") @db.Char(36)
+  createdById    String?      @map("CreatedById") @db.Char(36)
+  clonedFromId   String?      @map("ClonedFromId") @db.Char(36)
+  createdAt      DateTime     @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime     @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt      DateTime?    @map("DeletedAt") @db.DateTime(6)
+
+  organization  Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instructor    User?                @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  createdBy     User?                @relation("CourseCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  modules       Module[]
+  classes       Class[]
+  prerequisites CoursePrerequisite[] @relation("CoursePrerequisites")
+  requiredBy    CoursePrerequisite[] @relation("CourseRequiredBy")
+
+  @@unique([organizationId, courseCode])
+  @@index([organizationId, status, deletedAt])
+  @@index([organizationId, subject, gradeLevel])
+  @@index([instructorId])
+  @@map("Courses")
+}
+
+model CoursePrerequisite {
+  id                   String @id @map("Id") @db.Char(36)
+  courseId             String @map("CourseId") @db.Char(36)
+  prerequisiteCourseId String @map("PrerequisiteCourseId") @db.Char(36)
+
+  course       Course @relation("CoursePrerequisites", fields: [courseId], references: [id], onDelete: Cascade)
+  prerequisite Course @relation("CourseRequiredBy", fields: [prerequisiteCourseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, prerequisiteCourseId])
+  @@index([prerequisiteCourseId])
+  @@map("CoursePrerequisites")
+}
+
+model Module {
+  id               String   @id @map("Id") @db.Char(36)
+  courseId         String   @map("CourseId") @db.Char(36)
+  title            String   @map("Title") @db.VarChar(200)
+  description      String?  @map("Description") @db.Text
+  sortOrder        Int      @default(0) @map("SortOrder")
+  isPublished      Boolean  @default(true) @map("IsPublished")
+  estimatedMinutes Int?     @map("EstimatedMinutes")
+  createdAt        DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt        DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId, sortOrder])
+  @@map("Modules")
+}
+
+model Lesson {
+  id              String     @id @map("Id") @db.Char(36)
+  moduleId        String     @map("ModuleId") @db.Char(36)
+  title           String     @map("Title") @db.VarChar(200)
+  description     String?    @map("Description") @db.Text
+  lessonType      LessonType @default(TEXT) @map("LessonType")
+  content         String?    @map("Content") @db.LongText
+  contentUrl      String?    @map("ContentUrl") @db.VarChar(2000)
+  h5pContentId    String?    @map("H5PContentId") @db.Char(36)
+  sortOrder       Int        @default(0) @map("SortOrder")
+  durationMinutes Int?       @map("DurationMinutes")
+  isPublished     Boolean    @default(true) @map("IsPublished")
+  createdAt       DateTime   @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt       DateTime   @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([moduleId, sortOrder])
+  @@map("Lessons")
+}
+
+model Class {
+  id              String      @id @map("Id") @db.Char(36)
+  organizationId  String      @map("OrganizationId") @db.Char(36)
+  courseId        String      @map("CourseId") @db.Char(36)
+  name            String      @map("Name") @db.VarChar(200)
+  section         String?     @map("Section") @db.VarChar(50)
+  term            String      @map("Term") @db.VarChar(50)
+  startDate       DateTime?   @map("StartDate") @db.Date
+  endDate         DateTime?   @map("EndDate") @db.Date
+  room            String?     @map("Room") @db.VarChar(100)
+  meetingSchedule String?     @map("MeetingSchedule") @db.Text
+  maxStudents     Int?        @map("MaxStudents")
+  status          ClassStatus @default(SCHEDULED) @map("Status")
+  createdAt       DateTime    @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt       DateTime    @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt       DateTime?   @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course       Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  teachers     ClassTeacher[]
+  enrollments  ClassEnrollment[]
+
+  @@index([organizationId, term, status, deletedAt])
+  @@index([courseId])
+  @@map("Classes")
+}
+
+model ClassTeacher {
+  id         String   @id @map("Id") @db.Char(36)
+  classId    String   @map("ClassId") @db.Char(36)
+  teacherId  String   @map("TeacherId") @db.Char(36)
+  isPrimary  Boolean  @default(false) @map("IsPrimary")
+  assignedAt DateTime @default(now()) @map("AssignedAt") @db.DateTime(6)
+
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher User  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, teacherId])
+  @@index([teacherId])
+  @@map("ClassTeachers")
+}
+
+model ClassEnrollment {
+  id           String                @id @map("Id") @db.Char(36)
+  classId      String                @map("ClassId") @db.Char(36)
+  studentId    String                @map("StudentId") @db.Char(36)
+  status       ClassEnrollmentStatus @default(ENROLLED) @map("Status")
+  enrolledAt   DateTime              @default(now()) @map("EnrolledAt") @db.DateTime(6)
+  droppedAt    DateTime?             @map("DroppedAt") @db.DateTime(6)
+  currentGrade Decimal?              @map("CurrentGrade") @db.Decimal(5, 2)
+  updatedAt    DateTime              @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@index([studentId, status])
+  @@map("ClassEnrollments")
 }
 
 // ---------------------------------------------------------------------------

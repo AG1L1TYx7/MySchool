@@ -9,6 +9,8 @@ import { ROLE_LABELS, useAuth } from '@/lib/auth';
 /** Navigation is driven by the caller's effective feature codes, never by hard-coded roles. */
 const NAV: Array<{ href: string; label: string; feature: string }> = [
   { href: '/dashboard', label: 'Dashboard', feature: 'dashboard.view' },
+  { href: '/courses', label: 'Courses', feature: 'courses.view' },
+  { href: '/classes', label: 'Classes', feature: 'classes.view' },
   { href: '/students', label: 'Students', feature: 'students.view' },
   { href: '/users', label: 'Users', feature: 'users.view' },
   { href: '/organizations', label: 'Organisations', feature: 'organizations.view' },

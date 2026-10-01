@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { Role } from '@prisma/client';
+import type { Role } from '../../generated/prisma/client';
 import { randomUUID } from 'node:crypto';
 import { AppConfigService } from '../../config/app-config.service';
 import type { AccessTokenClaims } from './auth.types';

@@ -1,8 +1,40 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Alert, Card } from '@/components/ui';
+import { api } from '@/lib/api';
 import { ROLE_LABELS, useAuth } from '@/lib/auth';
+import type { ClassItem } from '@/lib/curriculum';
+import { label } from '@/lib/students';
+
+function MyClasses() {
+  const [classes, setClasses] = useState<ClassItem[] | null>(null);
+  useEffect(() => {
+    api<{ data: ClassItem[] }>('/classes/mine')
+      .then((r) => setClasses(r.data))
+      .catch(() => setClasses([]));
+  }, []);
+  if (!classes || classes.length === 0) return null;
+  return (
+    <Card title="My classes" description="Classes you teach or attend this term.">
+      <ul className="grid gap-3 md:grid-cols-2">
+        {classes.map((c) => (
+          <li key={c.id}>
+            <Link href={`/classes/${c.id}`} className="block rounded-lg bg-slate-50 px-4 py-3 hover:bg-brand-50">
+              <p className="font-medium text-slate-900">{c.name}</p>
+              <p className="text-xs text-slate-500">
+                {c.course.courseCode} · {c.course.title} · {c.term}
+                {c.myEnrollmentStatus ? ` · ${label(c.myEnrollmentStatus)}` : ''}
+                {c.teachers[0] ? ` · ${c.teachers[0].firstName} ${c.teachers[0].lastName}` : ''}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -32,6 +64,8 @@ export default function DashboardPage() {
           .
         </Alert>
       )}
+
+      <MyClasses />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card title="Your access" description="What this account can do, from your role and any individual overrides.">

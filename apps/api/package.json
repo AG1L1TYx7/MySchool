@@ -18,7 +18,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:migrate": "prisma migrate dev",
@@ -26,9 +26,6 @@
     "prisma:reset": "prisma migrate reset --force",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed"
-  },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -43,10 +40,12 @@
     "@nestjs/swagger": "^11.0.0",
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/websockets": "^11.0.1",
-    "@prisma/client": "^6.0.0",
+    "@prisma/adapter-mariadb": "7.10.0",
+    "@prisma/client": "^7.10.0",
     "argon2": "^0.44.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "dotenv": "^18.0.5",
     "helmet": "^8.0.0",
     "nestjs-pino": "^4.1.0",
     "nodemailer": "^10.0.13",
@@ -81,7 +80,7 @@
     "jest-mock-extended": "^4.0.0",
     "pino-pretty": "^13.0.0",
     "prettier": "^3.4.2",
-    "prisma": "^6.0.0",
+    "prisma": "^7.10.0",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",

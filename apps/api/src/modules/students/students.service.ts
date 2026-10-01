@@ -12,7 +12,7 @@ import type {
   Prisma,
   Role,
   Student,
-} from '@prisma/client';
+} from '../../generated/prisma/client';
 import { randomInt } from 'node:crypto';
 import { PagedResponse } from '../../common/dto/paged-response.dto';
 import { domainEvent } from '../../common/events/domain-event';

@@ -4,7 +4,11 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+// The generated Prisma client is not ours to lint.
+const generatedIgnore = { ignores: ["src/generated/**"] };
+
 export default tseslint.config(
+  generatedIgnore,
   {
     ignores: ['eslint.config.mjs'],
   },

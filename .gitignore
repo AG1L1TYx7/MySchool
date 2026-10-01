@@ -22,6 +22,7 @@ logs/
 *.log
 
 # prisma
+apps/api/src/generated/
 apps/api/prisma/*.db
 
 # python (apps/ai)
