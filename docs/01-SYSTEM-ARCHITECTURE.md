@@ -96,7 +96,7 @@ flowchart LR
 |---|---|---|---|
 | Web client | Next.js 14 (planned) | All UI, H5P player (`h5p-standalone`), socket client | CDN / static |
 | LMS API | NestJS 11 on Node 22+ | Identity, tenancy, academic domain, communication, gamification, content store, xAPI LRS, analytics, SaaS admin, jobs, real-time | Horizontal, stateless; sticky sessions or Redis adapter for sockets |
-| AI service | Python 3.11+ FastAPI (retained) | Everything model-backed; agents; RAG; multimodal; images; emotion | Horizontal by CPU/GPU; Ollama is the bottleneck |
+| AI service | Python 3.11+ FastAPI (retained) | Everything model-backed; agents; RAG; multimodal; images (no emotion detection, ADR-024) | Horizontal by CPU/GPU; Ollama is the bottleneck |
 | Database | MariaDB 10.4 (XAMPP, dev) / MySQL 8 or MariaDB 10.11 (prod) | System of record; 145 tables | Vertical, read replica |
 | Ollama | Go binary, local | LLM, vision, embeddings | GPU, `OLLAMA_NUM_PARALLEL` |
 | Redis | optional | Cache, rate-limit counters, socket adapter, agent state, job queue | Managed or container |
@@ -405,7 +405,7 @@ Operational rules: migrations run once by a job before new API instances start; 
 |---|---|
 | Availability | 99.5 percent for the LMS API; AI features degrade to 503 with a clear message when Ollama is down, the LMS keeps working |
 | Data privacy | No student data to third parties except configured notification and billing providers; all inference local |
-| Compliance | FERPA access controls and audit; COPPA parental consent for emotion features; GDPR consent, export and deletion |
+| Compliance | FERPA access controls and audit; COPPA consent for AI features for students under 13 (docs/13); GDPR consent, export and deletion |
 | Accessibility | API exposes accommodations, UDL profiles and simplified-content endpoints; the web client targets WCAG 2.1 AA |
 | Maintainability | One language per service, module-per-domain layout, generated endpoint inventory, contract tests |
 | Portability | Runs on Windows with XAMPP for development and on Linux containers for production; database engine differences covered by CI |

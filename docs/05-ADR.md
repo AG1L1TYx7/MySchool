@@ -153,3 +153,23 @@ Date: 1 October 2026. Status: accepted. Extends ADR-011.
 **Decision.** Refresh tokens live in an `HttpOnly`, `SameSite=Strict`, `Secure` cookie scoped to the auth path with a custom-header CSRF check; access tokens stay in memory. Self-registration is limited to students and parents, requires the organisation's rotating join code to attach to a school, verifies the email before first sign-in in production, never reveals whether an address exists, and is protected by reCAPTCHA when configured. Passwords are checked against a common-password list and the user's own name and email. TOTP acceptance records the time step and refuses replays; administrator roles must enable 2FA in production; sessions carry an absolute lifetime; security events (lockout, password change, 2FA changes) notify the user by email. The web client sends a strict Content Security Policy and frame denial.
 
 **Consequences.** Native clients opt into body tokens with a header. Development keeps verification optional and exposes development-only tokens so the flows can be exercised without a mail server. `docs/11-QUALITY-AND-SECURITY.md` is the checklist every later slice is reviewed against.
+
+## ADR-024: Build the complete product for US K-12, with four exclusions
+
+Date: 2 October 2026. Status: accepted. Amends ADR-018.
+
+**Context.** The build had been framed as releases of increasing depth with a minimum core first. The product owner decided the target is the complete product for US K-12 schools and districts, not a minimum viable product. A US buyer also brings legal and procurement requirements (FERPA, COPPA, state student-privacy laws, Section 508) that rule some catalogue features out entirely.
+
+**Decision.** Every catalogue domain that serves a school is built in full across the three releases, in the order of [07-BUILD-PLAN.md](07-BUILD-PLAN.md), with [13-US-SCHOOL-READINESS.md](13-US-SCHOOL-READINESS.md) as a binding requirements document. Four things are excluded from every release: emotion detection and emotion-based analytics on children; leaderboards or any ranking of students visible to other students; betting-style "stakes"; and recruiter or employer access to student data. Rostering and single sign-on become the primary onboarding path (ADR-025).
+
+**Consequences.** Release 2 reorders around US readiness (rostering, terms and periods, gradebook categories and report cards, period attendance, standards, parents and Spanish, counselor and consent) before depth features. Release 3 carries the breadth of the catalogue, including tenancy, integrations, library, learning paths, careers, community and billing. The definition of done in docs/11 and the UX checklist in docs/12 apply to every slice, and each slice closes with a browser sweep across roles.
+
+## ADR-025: Rostering and single sign-on are the primary onboarding path
+
+Date: 2 October 2026. Status: accepted. Extends ADR-023.
+
+**Context.** US districts roster from their student information system through OneRoster, Clever or ClassLink and sign in with Google or Microsoft. Manual account creation and self-registration cannot scale to a school and are rejected in procurement.
+
+**Decision.** Slice 9 adds OneRoster 1.1 import with nightly sync, Clever and ClassLink SSO and roster read, and Google and Microsoft OpenID Connect sign-in. Synced records carry an external id and a source and are read-only in our screens. Invitations, CSV import and join codes remain for pilots, parents and small schools. Paid vendor programmes (Clever Secure Sync, 1EdTech certification, SIS partner plugins) are adopted only when a district requires them.
+
+**Consequences.** Users, students, guardians, classes and enrolments gain `externalId`, `source` and `managedBySis`; the API refuses edits to managed fields with `409 record.managed`; the login page shows provider buttons and passwords become optional for synced accounts; organisations gain a rostering and sign-in configuration screen.

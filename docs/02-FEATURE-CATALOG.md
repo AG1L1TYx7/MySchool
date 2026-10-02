@@ -1,6 +1,6 @@
 # SmartSchool Feature Catalog
 
-**Version:** 1.1, 30 September 2026
+**Version:** 1.2, 2 October 2026 (full-product scope and US exclusions, ADR-024)
 **How to read:** one section per bounded context. Each states the purpose, the roles involved, the capabilities, the main workflows, the entities, the route bases (counts from the endpoint inventory), the AI dependencies, and an honest status of the previous implementation. **Real** means it exercised the database or the model; **Partial** means it worked with a named gap; **Stub** means hard-coded output that must not be ported (ADR-008). The target behaviour is stated wherever it differs.
 
 Endpoint totals: 1,126 LMS routes in 77 controllers (19 in three test controllers are dropped), 155 AI service routes.
@@ -9,10 +9,10 @@ Endpoint totals: 1,126 LMS routes in 77 controllers (19 in three test controller
 
 | Release | Domains |
 |---|---|
-| 1 Core | 1 Identity and access, 2 Organisation and permissions, 3 Students and guardians, 4 Curriculum, 5 Classes and enrolment, 6 Attendance, 7 Assignments and submissions, 8 Grades, 9 Announcements, 10 Files (library moves to Release 3), 11 Notifications, 12 Messaging, 18 AI tutor and AI content, 23 H5P (player, results, AI generation), 35 Platform health |
-| 2 Depth | 13 Calendar, 14 Gamification, 15 Parent portal, 16 Analytics and reports, 17 Mobile API, 19 Teacher AI assistant, 24 xAPI and H5P bridge, 25 Learning science, 26 SEL and emotion, 27 Accessibility (adaptations; audits in Release 3), plus Google and Microsoft SSO and push notifications |
-| 3 Platform | 10 Digital library, 20 Superintendent AI and district, 21 AI agents, 22 Recommendations and learning paths (AI data), 27 Accessibility audits, 28 Career, 29 Integrated learning profile, 30 Content library and collections, 31 Community and forums, 32 Multi-tenant SaaS, 33 Webhooks, IP whitelist and audit export, 34 Portfolio and careers, plus LTI 1.3, OneRoster import, API keys and gateway |
-
+| 1 Core | 1 Identity and access, 2 Organisation and permissions, 3 Students and guardians, 4 Curriculum, 5 Classes and enrolment, 6 Attendance, 7 Assignments and submissions, 8 Grades, 9 Announcements, 10 Files (library in Release 3), 11 Notifications, 12 Messaging, 18 AI tutor and AI content, 23 H5P (player, results, AI generation), 35 Platform health |
+| 2 US school readiness and depth | 36 Rostering and sign-in (new), 5 and 6 with terms, periods and district attendance codes, 7 and 8 with categories, standards and report cards, 13 Calendar, 14 Gamification (private), 15 Parent portal with Spanish, 16 Analytics, 17 Mobile API, 19 Teacher AI assistant, 24 xAPI, 25 Learning science, 27 Accessibility adaptations, 37 Support and safety (new: accommodations, counselor, wellness routing, consent) |
+| 3 Platform and breadth | 10 Digital library, 20 District management (reports, not an AI persona), 22 Recommendations and learning paths, 27 Accessibility audits, 28 Career and college readiness, 29 Integrated learning profile, 30 Content library and collections, 31 Community and forums with moderation, 32 Multi-tenant hosting and billing, 33 Webhooks and audit export, 34 Portfolio and skills (no stakes, no recruiting), plus LTI 1.3, Google Classroom and Canvas export |
+| Not built | 26 Emotion detection and emotion-based SEL analytics; leaderboards from 14; stakes and recruiting from 34; 21 the old agent hub (replaced by docs/10). Reasons in [13-US-SCHOOL-READINESS.md](13-US-SCHOOL-READINESS.md) section 11 and ADR-024. |
 Route paths in this catalog describe the previous implementation; the target routes follow [09-API-DESIGN.md](09-API-DESIGN.md).
 
 ---
@@ -126,7 +126,9 @@ Route paths in this catalog describe the previous implementation; the target rou
 
 ## 14. Gamification
 
-**Capabilities.** Points and XP with levels and streaks; achievements with categories, rarity and unlock criteria; multi-level badges; titles with prestige and display colour; reward transactions ledger; leaderboards; automatic awards from domain events (grade posted, assignment completed, perfect score, path milestones).
+**Scope decision (ADR-024).** No leaderboards or rankings visible to other students; progress is private to the student, their guardians and their teachers. Class quests show the class total, never individual positions.
+
+**Capabilities.** Points and XP with levels and streaks; achievements with categories, rarity and unlock criteria; multi-level badges; titles with prestige and display colour; reward transactions ledger; automatic awards from domain events (grade posted, assignment completed, perfect score, path milestones).
 **Entities.** `StudentPoints`, `RewardTransactions`, `Achievements`, `StudentAchievements`, `Badges`, `StudentBadges`, `Titles`, `StudentTitles`.
 **Routes.** `/api/Gamification` (15).
 **AI.** The Gamification agent in the AI service can propose quests and awards.
@@ -212,6 +214,8 @@ Route paths in this catalog describe the previous implementation; the target rou
 
 ## 26. Social-emotional learning and emotion detection
 
+**Scope decision (ADR-024): not built.** Emotion detection from faces, voice or text, and emotion-based analytics, are excluded from every release. Student wellbeing is served by the tutor's safety escalation routed to the counselor (docs/13 section 6). SEL goals and journals are deferred until a pilot school asks for them. The description below is kept as the record of the previous implementation.
+
 **Capabilities.** Emotion logs, mental-health check-ins, SEL goals with progress, self-assessments with growth analysis, coping strategies with usage and recommendations, empathy scenarios, reflection journals; counsellor alerts; AI emotion detection from images with GDPR and COPPA consent (facial and voice flags, parental consent, retention days, revoke), sessions with summaries, interventions, history and deletion.
 **Entities.** `EmotionLogs`, `MentalHealthCheckIns`, `SELGoals`, `SelfAssessments`, `EmotionRegulationStrategies`, `EmpathyScenarios`, `ReflectionJournals`; AI-owned `EmotionConsents`, `EmotionReadings`, `EmotionSessions`, `EmotionInterventions`.
 **Routes.** `/api/v1/sel` (26). AI service: `/api/ai/emotion/*` (9).
@@ -268,11 +272,21 @@ Route paths in this catalog describe the previous implementation; the target rou
 
 ## 34. Portfolio, skills, stakes, resume, code learning, recruiting
 
+**Scope decision (ADR-024).** Portfolios, skills, resumes and sandboxed code learning are built in Release 3. Stakes (betting-style commitments) and recruiting (employer access to student data) are not built in any release.
+
 **Capabilities.** Student portfolios with projects, media, members and peer reviews; skills with definitions, synonyms, badges and endorsements; public portfolio pages with custom URLs and subdomains; skill stakes (public commitments with accountability); resume generation to PDF from portfolio data; code lessons, challenges, progress, submissions and executions; recruiter profiles, job postings and candidate matching.
 **Entities.** `StudentPortfolios`, `PortfolioProjects`, `ProjectMedia`, `ProjectMembers`, `PeerReviews`, `StudentSkills`, `SkillDefinitions`, `SkillSynonyms`, `SkillBadges`, `SkillEndorsements`, `SkillStakes`, `StudentResumes`, `PortfolioUrls`, `CodeLessons`, `CodeChallenges`, `LessonProgresses`, `CodeSubmissions`, `CodeExecutions`, `RecruiterProfiles`, `JobPostings`, `CandidateMatches`.
 **Routes.** `/api/v1/portfolio` (20), `/api/PublicPortfolio` (7), `/api/Stakes` (9), `/api/Resume` (8), `/api/Code` (15), `/api/v1/recruiting` (12).
 **AI.** `/api/ai/code/*`, `/api/ai/assessment/evaluate-code`.
 **Status.** Partial. Stake assessment score was a constant (stub); code execution must move to a sandbox (ADR-013).
+
+## 36. Rostering and sign-in (new, Release 2)
+
+**Purpose.** People and classes enter SmartSchool from the systems the school already runs. **Capabilities.** OneRoster 1.1 CSV and API import with nightly sync; Clever Instant Login and roster read; ClassLink OneRoster and LaunchPad SSO; Google and Microsoft OpenID Connect sign-in; managed records with `externalId`, `source` and `managedBySis`; organisation configuration with dry run and sync reports. **Entities.** `RosterSources`, `RosterSyncRuns`, `RosterSyncErrors`, external-id columns on users, students, guardians, classes and enrolments. **Status.** New; see [13-US-SCHOOL-READINESS.md](13-US-SCHOOL-READINESS.md) section 2.
+
+## 37. Support and safety (new, Release 2)
+
+**Purpose.** Accommodations, counseling and consent. **Capabilities.** IEP and 504 accommodations applied in the product; counselor role with caseloads and private notes; wellness queue fed by tutor escalations; behaviour records with visibility rules; under-13 AI consent with parent opt-out. **Entities.** `Accommodations`, `CounselorCaseloads`, `CounselorNotes`, `WellnessAlerts`, `BehaviorRecords`, `AiConsents`. **Status.** New; see docs/13 sections 6 and 10.
 
 ## 35. Platform health
 

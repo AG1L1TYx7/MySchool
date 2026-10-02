@@ -11,9 +11,9 @@ Students use SmartSchool every day. An interface that feels alive and rewards ef
 1. **Motion explains, never decorates.** Every animation answers "what changed, where did it go, what can I do next". Nothing moves without a reason.
 2. **Fast and calm.** Micro-interactions 120 to 200 ms, transitions 200 to 320 ms, celebrations at most 1.2 s and skippable. Easing: standard `cubic-bezier(0.2, 0, 0, 1)` for entering, `cubic-bezier(0.4, 0, 1, 1)` for leaving.
 3. **Respect the person.** `prefers-reduced-motion` turns transforms into opacity fades and disables celebrations. Motion never blocks input. Keyboard focus is always visible and animated the same way as pointer hover.
-4. **Age-aware.** Younger bands (K to 5) get warmer, bigger, more playful feedback (confetti, mascots, sounds off by default); older bands (6 to 12) get streaks, levels and leaderboards opt-in; adults (teachers, parents, administrators) get precise, quiet motion and no game mechanics except progress views.
+4. **Age-aware.** Younger bands (K to 5) get warmer, bigger, more playful feedback (confetti, mascots, sounds off by default); older bands (6 to 12) get streaks, levels and private progress views; adults (teachers, parents, administrators) get precise, quiet motion and no game mechanics except progress views.
 5. **Earned, not bought.** Rewards come from learning behaviour (finishing lessons, submitting on time, improving a score, helping a classmate), never from clicks. Teachers can award manually; administrators configure what counts.
-6. **No shaming.** Leaderboards are opt-in and class-scoped; comparisons default to "you versus your past self"; attendance and grades never produce negative badges.
+6. **No shaming.** No leaderboards or rankings visible to other students (ADR-024); comparisons are always "you versus your past self", and class quests show the class total, never positions; attendance and grades never produce negative badges.
 
 ## 3. Motion system (web)
 
@@ -41,7 +41,7 @@ Library: `framer-motion` for component motion and layout animation, CSS for hove
 
 ## 4. Gamified experience
 
-Built on the Release 2 gamification domain (`StudentPoints`, `RewardTransactions`, `Achievements`, `Badges`, `Titles`, `Leaderboards`, docs/02 section 14), surfaced in the interface as follows.
+Built on the Release 2 gamification domain (`StudentPoints`, `RewardTransactions`, `Achievements`, `Badges`, `Titles`, docs/02 section 14), surfaced in the interface as follows.
 
 | Mechanic | Where it appears | Rule |
 |---|---|---|
@@ -52,9 +52,9 @@ Built on the Release 2 gamification domain (`StudentPoints`, `RewardTransactions
 | **Progress maps** | course page | modules shown as a path with nodes that light up as lessons complete; the next step is always highlighted |
 | **Mastery rings** | course and class pages | per-topic mastery from grades and practice (Release 2 learning science), animated on change |
 | **Class challenges** | class page | optional cooperative goals ("class reaches 90 % submissions"); rewards shared; no individual blame |
-| **Leaderboards** | class page, opt-in per student | weekly, class-scoped, show top five plus "you"; off by default for K to 5 |
+| **Class quests** | class page | the whole class works toward a shared goal; shows the class total and each student their own contribution; no positions or names of others |
 | **Teacher console** | class page | award points or a badge with a reason; see who is close to a milestone; configure what counts |
-| **Parent view** | parent dashboard | child's streak, level and latest badges with plain-language explanations; no leaderboard |
+| **Parent view** | parent dashboard | child's streak, level and latest badges with plain-language explanations; no comparison with other children |
 | **AI tutor tie-in** | tutor chat (slice 5) | finishing a tutor-guided practice set counts as a learning action; the tutor congratulates on streaks and suggests the next quest step |
 
 Anti-abuse: XP for an action is granted once per entity (one lesson, one assignment), rate-limited per day, and never granted for AI-generated answers submitted without edits. All grants are audited.
@@ -63,7 +63,7 @@ Anti-abuse: XP for an action is granted once per entity (one lesson, one assignm
 
 - **Slice 5 onward:** every new screen ships with the motion tokens, skeleton loading, animated progress and the feedback patterns above (part of the docs/11 definition of done, section 1 item 7 "walk-through" includes a motion check).
 - **UX slice (after slice 5, two weeks):** retrofit the existing screens (sign-in, dashboard, courses, classes, assignments, grades, attendance, students) with the motion system; add the design tokens file, the `Motion` wrapper components, page transitions, skeletons and the first celebration (submission and grade). Add Playwright flows that assert reduced-motion behaviour and that celebrations do not block input.
-- **Release 2 gamification slice:** XP, levels, streaks, badges, quests, progress maps, class challenges, leaderboards, teacher console and parent view, on the gamification tables; evaluation of engagement metrics in docs/08 section 6 (daily active students, lesson completion, on-time submission rate).
+- **Release 2 gamification slice:** XP, levels, streaks, badges, quests, progress maps, class challenges, teacher console and parent view, on the gamification tables; evaluation of engagement metrics in docs/08 section 6 (daily active students, lesson completion, on-time submission rate).
 
 ## 6. Acceptance checklist (per screen)
 

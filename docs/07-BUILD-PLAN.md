@@ -114,39 +114,45 @@ Release 1 covers catalog domains 1 to 12, 18 and 23 (player and results), and th
 
 ---
 
-## 4. Release 2: Depth (weeks 13 to 24)
+## 4. Release 2: US school readiness and depth (weeks 13 to 30)
 
-Goal: it teaches better than the alternatives, measurably.
+Goal: a US district can switch a school on without typing a student in, and the product teaches measurably better than the alternatives. Scope decision: the complete product, not a minimum (ADR-024); requirements in [13-US-SCHOOL-READINESS.md](13-US-SCHOOL-READINESS.md).
 
-| Slice | Weeks | User outcome | Catalog domains |
+| Slice | Weeks | User outcome | Catalog domains and docs |
 |---|---|---|---|
-| 9 Motivation | 13 | XP, levels, streaks, badges and titles award themselves from grades and completions; a class leaderboard | 14 |
-| 10 Parents | 14 | Parents see progress, attendance and AI insights; conference talking points; communication preferences | 15 |
-| 11 Teacher assistant | 15–16 | Lesson plans, essay grading with review and bulk approve, parent emails, progress narratives, class insights | 19 |
-| 12 Learning records | 17 | xAPI statements from every H5P result; completion hooks award XP, create spaced-repetition cards, record cognitive load | 24 |
-| 13 Learning science | 18–19 | Spaced repetition reviews, mastery per topic, cognitive-load signals, learning curves on student and teacher dashboards; AI card generation | 25 |
-| 14 Wellbeing and access | 20–21 | SEL check-ins, goals, journals, coping strategies; accommodations and IEP data drive simplified and chunked content; emotion consent flows | 26, 27 (minus audits) |
-| 15 Insight | 22–23 | Student, class and organisation analytics; PDF transcripts and reports; scheduled reports by email; calendar with RSVP; mobile-optimised endpoints | 13, 16, 17 |
-| 16 Sign-in everywhere | 24 | Google Workspace and Microsoft Entra SSO; push notifications with Firebase when configured | 1, 11 |
+| 9 Rostering and sign-in | 13–15 | OneRoster import and nightly sync; Clever and ClassLink SSO and roster read; Google and Microsoft sign-in; managed records; organisation configuration screen with dry run and sync report | 1, 2, 3, 5; docs/13 section 2 (ADR-025) |
+| 10 School structure and attendance | 16–17 | Academic years, terms, grading periods, bell schedule, grade levels, school calendar with iCal; period attendance with district codes, daily deadline, state exports | 5, 6, 13; docs/13 sections 3 and 5 |
+| 11 Gradebook and standards | 18–19 | Weighted categories, drop-lowest, extra credit, Assigned/Missing/Turned in/Returned marks, standards-based option, standards tagging from CASE, report cards and progress reports to PDF | 7, 8; docs/13 section 4 |
+| 12 Support and safety | 20 | Accommodations from IEP and 504 plans applied in the product; counselor role with caseloads and private notes; wellness routing from tutor escalations; behaviour records; under-13 AI consent with parent opt-out | 3, 18, 27; docs/13 sections 6 and 10 |
+| 13 Parents | 21–22 | Multi-child switcher, missing-work alerts, weekly digest, Spanish interface and externalised strings, family-language lesson summaries, conference talking points | 15, 11; docs/13 section 7 |
+| 14 Motivation | 23 | Private XP, levels, streaks, badges, titles and class quests awarded from domain events; progress maps; no public rankings | 14 (minus leaderboards), docs/12 |
+| 15 Teacher assistant | 24–25 | Lesson plans, essay grading with review and bulk approve, parent emails, progress narratives; class insight from tutor traces with practice sets; differentiation at three levels; substitute access; weekly planner | 19, 18; docs/13 section 8 |
+| 16 Learning records and science | 26–27 | xAPI statements from every H5P result; spaced repetition on flashcards; mastery per topic; learning curves on dashboards; completion hooks award XP | 24, 25 |
+| 17 Insight | 28–29 | Student, class and school analytics; principal dashboard (attendance today, missing work, failing students, gradebook completeness, AI usage); scheduled reports by email; PDF transcripts | 16; docs/13 section 9 |
+| 18 Mobile and push | 30 | Mobile-optimised API, push notifications with Firebase when configured, offline-tolerant tutor transcript | 17, 11 |
+
+Release 2 ends with a second security review, the first WCAG 2.2 AA conformance report and the signed data-privacy agreement template (docs/13 section 10).
 
 ---
 
-## 5. Release 3: Platform (weeks 25 to 40)
+## 5. Release 3: Platform and breadth (weeks 31 to 48)
 
-Goal: districts and ecosystems.
+Goal: districts, ecosystems and the long tail of the catalogue, built in full.
 
 | Slice | Weeks | User outcome | Catalog domains |
 |---|---|---|---|
-| 17 Tenancy | 25–27 | Tenants with branding, domains, plans; expand-migrate-contract migration adding `TenantId`; two-tenant isolation test; tenant admin dashboard | 32 (part), ADR-019 |
-| 18 Billing and compliance | 28–29 | Stripe subscriptions and invoices with idempotency keys; usage metering; consent, data-subject requests, security policies, incidents | 32 (rest) |
-| 19 Content ecosystem | 30–32 | Content library with versions, ratings, collections, semantic search through the AI service; community feed, groups, forums with moderation; digital library | 10 (library), 30, 31 |
-| 20 Careers and portfolio | 33–34 | Portfolios, skills, stakes, resumes to PDF, code lessons through the sandboxed evaluator, recruiting, career matching through the AI service, integrated learning profile | 28, 29, 34 |
-| 21 Agents | 35–36 | Agent status, workflows and interventions relayed from the AI service with a teacher control panel and audit | 21, 22 |
-| 22 Integrations | 37–38 | LTI 1.3 (tool and platform), OneRoster CSV import, API keys and gateway, organisation and tenant webhooks, tenant reports | 32, 33 |
-| 23 Accessibility audits and hardening | 39–40 | Real accessibility scans of stored content; penetration test fixes; multi-instance deployment with Redis; runbooks | 27, 35 |
+| 19 Accessibility and compliance | 31–32 | Full WCAG 2.2 AA audit and fixes on every screen; data map, retention and deletion jobs, FERPA record export, breach-notification runbook; penetration test | 27, docs/13 section 10 |
+| 20 District | 33–35 | District dashboard and cross-school reports, state reporting exports, district policy switches (AI per school, roles, retention), tenant hosting for districts that want one deployment for many schools with branding and domains (expand-migrate-contract adding `TenantId`, two-tenant isolation test) | 20 (as reports), 32 (tenancy) |
+| 21 Integrations | 36–37 | LTI 1.3 tool and platform; Google Classroom and Canvas export; webhooks for IT; audit export; API keys for district integrations | 33, 32 (part) |
+| 22 Library and content ecosystem | 38–40 | Digital library; content library with versions, collections, semantic search through the AI service; sharing within and across schools with moderation | 10, 30 |
+| 23 Learning paths | 41–42 | Recommendations and learning paths from results, mastery and the tutor; integrated learning profile | 22, 29 |
+| 24 Careers and portfolio | 43–44 | Portfolios, skills and endorsements, resumes to PDF, career and college readiness with the counselor; code lessons through the sandboxed evaluator (ADR-013); no stakes, no recruiting | 28, 34 (part) |
+| 25 Community | 45–46 | Groups and forums with staff moderation tools, reporting and audit; class discussion threads | 31 |
+| 26 Billing and operations | 47–48 | Subscriptions and invoices with idempotency keys, usage metering, security policies and incident records, status page | 32 (rest), 35 |
+
+Excluded from every release (ADR-024): emotion detection, public leaderboards, stakes, recruiting. The old multi-agent hub (21) is replaced by the AI service design (ADR-021).
 
 ---
-
 ## 6. Working agreement for every slice
 
 1. Start with the user outcome and the acceptance test written as a scenario.
