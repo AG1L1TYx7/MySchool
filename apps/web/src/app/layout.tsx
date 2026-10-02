@@ -4,7 +4,7 @@ import { AuthProvider } from '@/lib/auth';
 import './globals.css';
 
 // Local font so builds never depend on network access (offline-first, docs/08).
-const geist = localFont({ src: './fonts/GeistVF.woff', variable: '--font-geist', weight: '100 900', display: 'swap', preload: true });
+const geist = localFont({ src: './fonts/GeistVF.woff', variable: '--font-geist', weight: '100 900', display: 'optional', preload: true });
 
 export const metadata: Metadata = {
   title: { default: 'SmartSchool', template: '%s · SmartSchool' },

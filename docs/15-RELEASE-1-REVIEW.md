@@ -94,7 +94,7 @@ Rules checked: every list paginates with a maximum page size; filters hit indexe
 
 ## 4. Front end
 
-Lighthouse (desktop, simulated throttling) on the sign-in page: accessibility 100, best practices 100, SEO 100, performance 86 (section 6). axe-core finds no WCAG 2.2 AA violations on any page for any role. Remaining accessibility work for Release 3 slice 19 is the manual audit (screen reader walkthroughs, keyboard-only flows, the H5P player's own controls).
+Lighthouse (desktop) on the sign-in and registration pages: accessibility 100, best practices 100, SEO 100, performance 91 with applied (DevTools) throttling. Observed first and largest paint on the local server is 92 ms; the font is marked `display: optional` so slow connections keep the system font instead of delaying the paint, and the sign-in pages ship without the motion library. axe-core finds no WCAG 2.2 AA violations on any page for any role. Remaining accessibility work for Release 3 slice 19 is the manual audit (screen reader walkthroughs, keyboard-only flows, the H5P player's own controls).
 
 ## 5. Operations
 
@@ -105,7 +105,7 @@ Lighthouse (desktop, simulated throttling) on the sign-in page: accessibility 10
 
 ## 6. Known gaps carried into Release 2
 
-- Lighthouse performance on the sign-in page scores 86 under simulated desktop throttling (accessibility, best practices and SEO are 100): the measured cost is the font swap and the framework bundle, not server time (0 ms). Tracked for the accessibility and performance slice.
+- Lighthouse performance is 91 with applied throttling but 86 under the simulated profile, which extrapolates from a local server where every script finishes before the first paint. Tracked for the accessibility and performance slice; the remaining lever is a smaller framework bundle.
 - Docker images untested on this machine (no Docker). Backup and restore drill done with the local database only.
 - Manual accessibility audit and third-party penetration test not yet done.
 - Standalone web build is Docker-only (Windows blocks the symlinks it needs).
