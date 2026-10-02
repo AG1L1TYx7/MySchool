@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "h5p:setup": "node scripts/h5p-setup.mjs"
   },
   "dependencies": {
     "framer-motion": "^13.5.0",
+    "h5p-standalone": "3.8.2",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18"

@@ -148,6 +148,24 @@ enum AiMessageStatus {
   UNAVAILABLE
 }
 
+enum H5PContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum H5PContentSource {
+  AI
+  MANUAL
+}
+
+enum AiJobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -181,6 +199,8 @@ model Organization {
   rubrics     Rubric[]
   assignments Assignment[]
   aiConversations AiConversation[]
+  h5pContents H5PContent[]
+  aiJobs      AiJob[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -236,6 +256,9 @@ model User {
   gradesGiven        Grade[]
   attendanceMarked   Attendance[]
   aiConversations     AiConversation[]
+  h5pContents         H5PContent[]
+  h5pResults          H5PContentResult[]
+  aiJobs              AiJob[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -319,6 +342,7 @@ model Student {
   submissions  AssignmentSubmission[]
   grades       Grade[]
   attendance   Attendance[]
+  h5pResults  H5PContentResult[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -575,6 +599,8 @@ model Assignment {
   class        Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
   createdBy    User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
   rubric       Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  h5pContent   H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
+  h5pResults   H5PContentResult[]
   submissions  AssignmentSubmission[]
   grades       Grade[]
 
@@ -714,6 +740,106 @@ model AiMessage {
 
   @@index([conversationId, createdAt])
   @@map("AiMessages")
+}
+
+// ---------------------------------------------------------------------------
+// Interactive content (H5P) and AI generation jobs. Release 1 slice 6, ADR-022.
+// ---------------------------------------------------------------------------
+
+model H5PLibrary {
+  id           String   @id @map("Id") @db.Char(36)
+  machineName  String   @map("MachineName") @db.VarChar(100)
+  majorVersion Int      @map("MajorVersion")
+  minorVersion Int      @map("MinorVersion")
+  patchVersion Int      @map("PatchVersion")
+  title        String   @map("Title") @db.VarChar(150)
+  runnable     Boolean  @default(false) @map("Runnable")
+  restricted   Boolean  @default(false) @map("Restricted")
+  dependencies String?  @map("Dependencies") @db.Text
+  createdAt    DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  @@unique([machineName, majorVersion, minorVersion, patchVersion])
+  @@map("H5PLibraries")
+}
+
+model H5PContent {
+  id             String           @id @map("Id") @db.Char(36)
+  organizationId String           @map("OrganizationId") @db.Char(36)
+  createdById    String?          @map("CreatedById") @db.Char(36)
+  title          String           @map("Title") @db.VarChar(200)
+  library        String           @map("Library") @db.VarChar(100)
+  contentType    String           @map("ContentType") @db.VarChar(40)
+  parameters     String           @map("Parameters") @db.LongText
+  draft          String?          @map("Draft") @db.LongText
+  maxScore       Int              @default(0) @map("MaxScore")
+  status         H5PContentStatus @default(DRAFT) @map("Status")
+  source         H5PContentSource @default(MANUAL) @map("Source")
+  subject        String?          @map("Subject") @db.VarChar(100)
+  gradeLevel     String?          @map("GradeLevel") @db.VarChar(10)
+  topic          String?          @map("Topic") @db.VarChar(200)
+  difficulty     String?          @map("Difficulty") @db.VarChar(20)
+  courseId       String?          @map("CourseId") @db.Char(36)
+  lessonId       String?          @map("LessonId") @db.Char(36)
+  aiModel        String?          @map("AiModel") @db.VarChar(100)
+  promptVersion  String?          @map("PromptVersion") @db.VarChar(60)
+  aiJobId        String?          @map("AiJobId") @db.Char(36)
+  createdAt      DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt      DateTime?        @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  assignments  Assignment[]
+  results      H5PContentResult[]
+
+  @@index([organizationId, status, deletedAt])
+  @@map("H5PContents")
+}
+
+model H5PContentResult {
+  id               String   @id @map("Id") @db.Char(36)
+  contentId        String   @map("ContentId") @db.Char(36)
+  userId           String   @map("UserId") @db.Char(36)
+  studentId        String?  @map("StudentId") @db.Char(36)
+  assignmentId     String?  @map("AssignmentId") @db.Char(36)
+  score            Decimal  @map("Score") @db.Decimal(7, 2)
+  maxScore         Decimal  @map("MaxScore") @db.Decimal(7, 2)
+  completed        Boolean  @default(true) @map("Completed")
+  timeSpentSeconds Int?     @map("TimeSpentSeconds")
+  detail           String?  @map("Detail") @db.Text
+  createdAt        DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  content    H5PContent  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  student    Student?    @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  assignment Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+
+  @@index([contentId, userId, createdAt])
+  @@index([assignmentId, studentId])
+  @@map("H5PContentResults")
+}
+
+model AiJob {
+  id              String      @id @map("Id") @db.Char(36)
+  organizationId  String?     @map("OrganizationId") @db.Char(36)
+  userId          String      @map("UserId") @db.Char(36)
+  capability      String      @map("Capability") @db.VarChar(50)
+  status          AiJobStatus @default(QUEUED) @map("Status")
+  aiJobId         String?     @map("AiJobId") @db.VarChar(64)
+  traceId         String      @map("TraceId") @db.Char(36)
+  request         String      @map("Request") @db.Text
+  progress        String?     @map("Progress") @db.VarChar(200)
+  resultContentId String?     @map("ResultContentId") @db.Char(36)
+  errorCode       String?     @map("ErrorCode") @db.VarChar(60)
+  errorDetail     String?     @map("ErrorDetail") @db.Text
+  createdAt       DateTime    @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt       DateTime    @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("AiJobs")
 }
 
 // ---------------------------------------------------------------------------

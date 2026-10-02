@@ -36,6 +36,8 @@ export interface Assignment {
   maxAttempts: number | null;
   rubricId: string | null;
   rubric: { id: string; title: string; criteria: RubricCriterion[] } | null;
+  h5pContentId?: string | null;
+  h5pContent?: { id: string; title: string; library: string; maxScore: number; status: string } | null;
   status: string;
   publishedAt: string | null;
   canManage: boolean;

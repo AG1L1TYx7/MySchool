@@ -11,6 +11,7 @@ import type { EnrollmentStatus } from '../src/generated/prisma/client';
 import argon2 from 'argon2';
 import { newId as uuidv7 } from '../src/common/utils/ids';
 import { FEATURE_CATALOG } from '../src/modules/access/feature-catalog';
+import { H5P_LIBRARIES } from '../src/modules/h5p/h5p-libraries';
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
 const prisma = new PrismaClient({
@@ -722,8 +723,40 @@ async function seedAcademics(organizationId: string): Promise<void> {
   );
 }
 
+async function seedH5pLibraries(): Promise<void> {
+  for (const l of H5P_LIBRARIES) {
+    await prisma.h5PLibrary.upsert({
+      where: {
+        machineName_majorVersion_minorVersion_patchVersion: {
+          machineName: l.machineName,
+          majorVersion: l.major,
+          minorVersion: l.minor,
+          patchVersion: l.patch,
+        },
+      },
+      update: {
+        title: l.title,
+        runnable: l.runnable,
+        dependencies: JSON.stringify(l.dependencies),
+      },
+      create: {
+        id: uuidv7(),
+        machineName: l.machineName,
+        majorVersion: l.major,
+        minorVersion: l.minor,
+        patchVersion: l.patch,
+        title: l.title,
+        runnable: l.runnable,
+        dependencies: JSON.stringify(l.dependencies),
+      },
+    });
+  }
+  console.log(`h5p libraries: ${H5P_LIBRARIES.length} present`);
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
+  await seedH5pLibraries();
   await seedFlags();
   const orgId = await seedOrganization();
   await seedUsers(orgId);

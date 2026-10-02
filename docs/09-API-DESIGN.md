@@ -256,10 +256,10 @@ POST   /ai/tutor/conversations/{id}/messages    { content, stream? } -> { userMe
 POST   /ai/tutor/messages/{id}/feedback         { rating: 1|-1, comment? } -> 204 (audited with the trace id)
 POST   /ai/rag/reindex                          { organizationId? } push published lesson text to the AI index (system.health.view; nightly cron too)
 
-POST   /ai/content/quizzes                      topic, gradeLevel, count, difficulty -> 202 job   (Release 2)
-POST   /ai/content/flashcards                                                                     (Release 2)
-POST   /ai/content/lesson-plans                                                                   (Release 2)
-GET    /ai/jobs/{jobId}                                                                           (Release 2)
+POST   /ai/content/quizzes                      { topic, subject?, gradeLevel?, count?, difficulty?, questionTypes?, standard?, lessonId?, courseId? } -> 202 job
+POST   /ai/content/flashcards                   same body -> 202 job
+POST   /ai/content/{id}/regenerate              { feedback } -> 202 job (new draft; original kept)
+GET    /ai/jobs/{jobId}                         { id, status, progress, contentId, content?, error? }
 ```
 
 Internal tool API for the AI service (not for browsers; header `X-Service-Token` = `AI_CALLBACK_TOKEN`, never a user token; excluded from Swagger):
@@ -272,19 +272,28 @@ GET    /internal/ai/organizations/{id}/lessons  every published text lesson as {
 ```
 
 What the API puts in the Context Envelope: the actor (role, age band from date of birth or grade), the lesson text as block `C1` when the conversation is on a lesson, a short "about the student" block, the last 10 turns, and the capability for the mode (`tutor.chat`, `tutor.socratic`, `tutor.homework_help`). Emails, guardians and other students are never sent.
-### H5P
+### H5P (interactive content)
+
+Content is a library name plus parameters, exactly what the H5P player consumes. Teachers create it by hand or from an AI job; it stays a draft until a teacher publishes it. The browser player cannot send our bearer token, so an authorised call mints a 15-minute signed play ticket and the package routes accept only that ticket.
+
 ```
-GET    /h5p/libraries
-GET    /h5p/contents                  library, createdBy, search
-POST   /h5p/contents
-GET    /h5p/contents/{id}
-PATCH  /h5p/contents/{id}
-DELETE /h5p/contents/{id}
-GET    /h5p/contents/{id}/play        parameters and library files for the player
-POST   /h5p/contents/{id}/results     score, maxScore, timeSpent, detail -> result and xAPI statement id
-GET    /h5p/contents/{id}/results
+GET    /h5p/libraries                         libraries the player serves (pinned versions, seeded)
+GET    /h5p/contents                          search, status, contentType, organizationId; learners see published only
+POST   /h5p/contents                          { title, library: "H5P.QuestionSet 1.20", parameters, subject?, gradeLevel?, topic?, courseId?, lessonId? } -> 201 (validated)
+GET    /h5p/contents/{id}                     with parameters, the AI draft and validation { valid, errors }
+PATCH  /h5p/contents/{id}                     title, parameters (validated; maxScore recomputed), subject, gradeLevel, topic
+POST   /h5p/contents/{id}/publish             refuses unplayable parameters
+POST   /h5p/contents/{id}/unpublish
+DELETE /h5p/contents/{id}                     refused while an assignment uses it (h5p.in_use)
+GET    /h5p/contents/{id}/play?assignmentId=  { ticket, h5pJsonPath, title, library, maxScore, expiresAt }
+GET    /h5p/play/{ticket}/h5p.json            package manifest (public route, ticket only)
+GET    /h5p/play/{ticket}/content/content.json
+POST   /h5p/contents/{id}/results             { score, maxScore, completed?, timeSpentSeconds?, assignmentId?, detail? } -> 201
+                                              with assignmentId (students): a submission plus an auto-posted grade scaled to the assignment points
+GET    /h5p/contents/{id}/results             staff: everyone; learners: their own
 ```
 
+AI content generation lives under `/ai/content/*` (previous section): `POST /ai/content/quizzes|flashcards` returns `202 { id, status: queued|running|done|failed, progress, contentId, content?, error? }`; `GET /ai/jobs/{id}` polls it and, on `done`, `contentId` points at the new draft. `POST /ai/content/{id}/regenerate { feedback }` starts a new job from the teacher's feedback and the previous draft; the original stays.
 ### Service callbacks (unchanged contract, ADR-001)
 ```
 POST   /api/ai/h5p/content

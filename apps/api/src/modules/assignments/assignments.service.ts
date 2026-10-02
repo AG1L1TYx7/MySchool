@@ -73,6 +73,13 @@ export interface PublicAssignment {
   rubricId: string | null;
   rubric: { id: string; title: string; criteria: RubricCriterion[] } | null;
   h5pContentId: string | null;
+  h5pContent: {
+    id: string;
+    title: string;
+    library: string;
+    maxScore: number;
+    status: string;
+  } | null;
   status: AssignmentStatusApi;
   publishedAt: Date | null;
   canManage: boolean;
@@ -144,6 +151,13 @@ type AssignmentRow = Assignment & {
     teachers: Array<{ teacherId: string }>;
   };
   rubric: { id: string; title: string; criteria: string } | null;
+  h5pContent: {
+    id: string;
+    title: string;
+    library: string;
+    maxScore: number;
+    status: string;
+  } | null;
   _count: { submissions: number; grades: number };
 };
 
@@ -278,6 +292,7 @@ export class AssignmentsService {
   ): Promise<PublicAssignment> {
     const klass = await this.manageableClass(dto.classId, actor);
     if (dto.rubricId) await this.rubrics.find(dto.rubricId, actor);
+    if (dto.h5pContentId) await this.assertContent(dto.h5pContentId, actor);
     const dates = this.datesFrom(dto);
     const row = await this.prisma.assignment.create({
       data: {
@@ -338,6 +353,7 @@ export class AssignmentsService {
         detail: 'An assignment cannot move to another class.',
       });
     if (dto.rubricId) await this.rubrics.find(dto.rubricId, actor);
+    if (dto.h5pContentId) await this.assertContent(dto.h5pContentId, actor);
     const row = await this.prisma.assignment.update({
       where: { id },
       data: {
@@ -745,6 +761,197 @@ export class AssignmentsService {
     return toPublicGrade(grade);
   }
 
+  /** The interactive content must exist, be playable in this organisation, and be published before students meet it. */
+  private async assertContent(
+    h5pContentId: string,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    const content = await this.prisma.h5PContent.findFirst({
+      where: { id: h5pContentId, deletedAt: null },
+      select: { organizationId: true, status: true },
+    });
+    if (!content)
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'Interactive content not found.',
+      });
+    assertOrganizationAccess(actor, content.organizationId);
+    if (content.status === 'ARCHIVED')
+      throw new BadRequestException({
+        code: 'h5p.archived',
+        detail: 'That content is archived.',
+      });
+  }
+
+  /**
+   * A result from interactive content becomes a submission and an auto-posted grade (docs/07 slice 6).
+   * Scores scale onto the assignment points; late rules and attempt limits apply exactly as for typed work.
+   */
+  async recordExternalResult(
+    assignmentId: string,
+    h5pContentId: string,
+    result: {
+      score: number;
+      maxScore: number;
+      detail?: Record<string, unknown>;
+    },
+    actor: AuthenticatedUser,
+  ): Promise<{ submission: PublicSubmission; grade: PublicGrade }> {
+    const student = await this.prisma.student.findFirst({
+      where: { userId: actor.id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!student)
+      throw new ForbiddenException({
+        code: 'authz.forbidden',
+        detail: 'Your account is not linked to a student record.',
+      });
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        id: assignmentId,
+        deletedAt: null,
+        h5pContentId,
+        class: {
+          enrollments: {
+            some: {
+              studentId: student.id,
+              status: { in: ['ENROLLED', 'COMPLETED'] },
+            },
+          },
+        },
+      },
+      include: this.include,
+    });
+    if (!assignment)
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'Assignment not found or it does not use this content.',
+      });
+    const now = new Date();
+    const window = submissionWindow({
+      now,
+      status: assignment.status,
+      availableFrom: assignment.availableFrom,
+      dueAt: assignment.dueAt,
+      allowLateUntil: assignment.allowLateUntil,
+    });
+    if (!window.accepted)
+      throw new BadRequestException({
+        code: 'assignment.not_accepting',
+        detail: window.reason ?? 'Submissions are not accepted.',
+      });
+    const attempts = await this.prisma.assignmentSubmission.count({
+      where: { assignmentId, studentId: student.id },
+    });
+    if (assignment.maxAttempts && attempts >= assignment.maxAttempts)
+      throw new BadRequestException({
+        code: 'assignment.attempts_exhausted',
+        detail: `You have used all ${assignment.maxAttempts} attempts.`,
+      });
+    const maxPoints = Number(assignment.maxPoints);
+    const raw =
+      maxScore(result) > 0
+        ? Math.round(
+            (Math.min(result.score, result.maxScore) / result.maxScore) *
+              maxPoints *
+              100,
+          ) / 100
+        : 0;
+    const penalised = applyLatePenalty(
+      raw,
+      maxPoints,
+      window.late,
+      assignment.latePenaltyPercent,
+    );
+    const percentage = percentageOf(penalised.score, maxPoints);
+    const submission = await this.prisma.assignmentSubmission.create({
+      data: {
+        id: newId(),
+        assignmentId,
+        studentId: student.id,
+        attemptNumber: attempts + 1,
+        status: 'GRADED',
+        textContent: `Interactive content result: ${result.score} of ${result.maxScore}`,
+        isLate: window.late,
+        submittedAt: now,
+      },
+      include: this.submissionInclude,
+    });
+    const data = {
+      submissionId: submission.id,
+      gradedById: null,
+      score: penalised.score,
+      maxPoints,
+      percentage,
+      letterGrade: letterGrade(percentage),
+      feedback: 'Auto-graded from the interactive activity.',
+      rubricScores: null,
+      latePenaltyApplied: penalised.penaltyApplied,
+      gradedAt: now,
+    };
+    const grade = await this.prisma.grade.upsert({
+      where: {
+        assignmentId_studentId: { assignmentId, studentId: student.id },
+      },
+      create: { id: newId(), assignmentId, studentId: student.id, ...data },
+      update: data,
+    });
+    await this.refreshCurrentGrade(assignment.classId, student.id);
+    await this.audit.record({
+      userId: actor.id,
+      organizationId: assignment.organizationId,
+      action: 'grades.post',
+      entityType: 'Grade',
+      entityId: grade.id,
+      details: {
+        assignmentId,
+        studentId: student.id,
+        score: penalised.score,
+        auto: true,
+        h5pContentId,
+      },
+    });
+    this.events.emit(
+      'assignment.submitted',
+      domainEvent({
+        eventType: 'assignment.submitted',
+        entityType: 'AssignmentSubmission',
+        entityId: submission.id,
+        organizationId: assignment.organizationId,
+        actorId: actor.id,
+        data: {
+          assignmentId,
+          studentId: student.id,
+          attemptNumber: submission.attemptNumber,
+          late: window.late,
+          interactive: true,
+        },
+      }),
+    );
+    this.events.emit(
+      'grade.posted',
+      domainEvent({
+        eventType: 'grade.posted',
+        entityType: 'Grade',
+        entityId: grade.id,
+        organizationId: assignment.organizationId,
+        actorId: actor.id,
+        data: {
+          assignmentId,
+          studentId: student.id,
+          score: penalised.score,
+          maxPoints,
+          percentage,
+          auto: true,
+        },
+      }),
+    );
+    return {
+      submission: toPublicSubmission(submission),
+      grade: toPublicGrade(grade),
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Grades and gradebook
   // ---------------------------------------------------------------------------
@@ -923,6 +1130,15 @@ export class AssignmentsService {
       },
     },
     rubric: { select: { id: true, title: true, criteria: true } },
+    h5pContent: {
+      select: {
+        id: true,
+        title: true,
+        library: true,
+        maxScore: true,
+        status: true,
+      },
+    },
     _count: { select: { submissions: true, grades: true } },
   } satisfies Prisma.AssignmentInclude;
 
@@ -1126,6 +1342,9 @@ function toPublic(
     latePenaltyPercent: a.latePenaltyPercent,
     maxAttempts: a.maxAttempts,
     rubricId: a.rubricId,
+    h5pContent: a.h5pContent
+      ? { ...a.h5pContent, status: a.h5pContent.status.toLowerCase() }
+      : null,
     rubric: a.rubric
       ? {
           id: a.rubric.id,
@@ -1215,4 +1434,8 @@ function toPublicGrade(g: Grade): PublicGrade {
     latePenaltyApplied: g.latePenaltyApplied,
     gradedAt: g.gradedAt,
   };
+}
+
+function maxScore(result: { maxScore: number }): number {
+  return Number.isFinite(result.maxScore) ? result.maxScore : 0;
 }

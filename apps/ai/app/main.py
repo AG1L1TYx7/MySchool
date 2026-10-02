@@ -1,4 +1,4 @@
-"""FastAPI entry point: /health, /v1/tutor/chat (JSON or SSE), /v1/rag/index, /v1/rag/search, /v1/jobs/{id}."""
+"""FastAPI entry point: /health, /v1/tutor/chat (JSON or SSE), /v1/content/generate (202), /v1/rag/*, /v1/jobs/{id}."""
 
 from __future__ import annotations
 
@@ -15,9 +15,12 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.agents.content import ContentAuthor, ContentRefused, InvalidOutput
 from app.agents.tutor import StreamState, TutorAgent, extract_citations, next_steps_from
 from app.config import Settings, get_settings
+from app.content import ContentRequest, ContentResult, Job
 from app.envelopes import ContextEnvelope, ModelInfo, ResultEnvelope, SafetyDecision, TutorOutput, Usage
+from app.jobs import JobFailure, JobRunner, cache_key
 from app.models import FakeProvider, ModelProvider, ModelUnavailable, OllamaProvider
 from app.prompts import PromptLibrary
 from app.rag.chunk import chunk_text
@@ -70,7 +73,8 @@ class Runtime:
             model_safety=settings.safety_model_check,
             tool_timeout=settings.tool_timeout_seconds,
         )
-        self.jobs: dict[str, dict[str, Any]] = {}
+        self.content = ContentAuthor(self._provider, self.library, timeout=settings.generation_timeout_seconds)
+        self.jobs = JobRunner()
 
     @property
     def provider(self) -> ModelProvider:
@@ -81,6 +85,7 @@ class Runtime:
         """Swapping the provider (tests, future hot reload) must reach the agents too."""
         self._provider = value
         self.tutor.provider = value
+        self.content.provider = value
 
 
 _runtime: Runtime | None = None
@@ -334,11 +339,50 @@ async def rag_search(req: SearchRequest, runtime: Runtime = Depends(get_runtime)
     }
 
 
+@app.post("/v1/content/generate", status_code=202, dependencies=[Depends(require_service_token)])
+async def content_generate(req: ContentRequest, runtime: Runtime = Depends(get_runtime)) -> dict[str, Any]:
+    """Starts a generation job. Poll /v1/jobs/{jobId}; identical requests are served from a 24-hour cache."""
+    prompt = runtime.library.get(req.capability)
+
+    async def work(job: Job) -> ContentResult:
+        try:
+            result = await runtime.content.run(req)
+        except ContentRefused as e:
+            raise JobFailure(
+                "ai.refused", "That topic cannot be used for school content: " + ", ".join(e.categories)
+            ) from e
+        except InvalidOutput as e:
+            raise JobFailure(
+                "ai.invalid_output",
+                "The model did not return a valid draft after one repair: " + "; ".join(e.errors[:5]),
+            ) from e
+        except ModelUnavailable as e:
+            raise JobFailure("ai.unavailable", f"The model is unavailable: {e}") from e
+        runtime.tracer.record(
+            {
+                "traceId": req.traceId,
+                "capability": req.capability,
+                "promptVersion": result.promptVersion,
+                "model": result.model,
+                "org": runtime.tracer.pseudonym(req.organizationId),
+                "user": runtime.tracer.pseudonym(req.actor.userId),
+                "status": "ok" if result.validation.valid else "degraded",
+                "usage": result.usage.model_dump(),
+                "items": result.h5p.maxScore,
+            }
+        )
+        return result
+
+    job = runtime.jobs.submit(req, work, cache=cache_key(req, prompt.version_tag))
+    return {"jobId": job.jobId, "status": job.status}
+
+
 @app.get("/v1/jobs/{job_id}", dependencies=[Depends(require_service_token)])
 async def job(job_id: str, runtime: Runtime = Depends(get_runtime)) -> dict[str, Any]:
-    if job_id not in runtime.jobs:
+    found = runtime.jobs.get(job_id)
+    if found is None:
         raise HTTPException(status_code=404, detail={"code": "resource.not_found", "detail": "Job not found."})
-    return runtime.jobs[job_id]
+    return runtime.jobs.snapshot(found)
 
 
 @app.exception_handler(HTTPException)

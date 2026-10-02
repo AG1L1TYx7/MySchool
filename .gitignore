@@ -43,3 +43,6 @@ Thumbs.db
 # Python build metadata
 *.egg-info/
 apps/ai/data/
+
+# H5P player runtime and hub libraries (pnpm --filter @smartschool/web h5p:setup)
+apps/web/public/h5p/

@@ -53,6 +53,57 @@ export interface ResultEnvelope {
   status: 'ok' | 'refused' | 'degraded' | 'unavailable';
 }
 
+/** Content generation request (AI service /v1/content/generate). */
+export interface ContentRequest {
+  traceId: string;
+  capability: 'content.quiz' | 'content.flashcards';
+  organizationId: string | null;
+  actor: { userId: string; role: string; ageBand: string };
+  request: {
+    topic: string;
+    subject: string;
+    gradeLevel: string;
+    count: number;
+    difficulty: string;
+    questionTypes: string[];
+    language: string;
+    standard: string | null;
+    feedback?: string;
+    previousDraft?: Record<string, unknown>;
+  };
+  context: {
+    courseId: string | null;
+    lessonId: string | null;
+    blocks: Array<{ id: string; label: string; text: string }>;
+  };
+}
+
+export interface ContentJobSnapshot {
+  jobId: string;
+  status: 'queued' | 'running' | 'done' | 'failed';
+  progress?: string;
+  result?: {
+    promptVersion: string;
+    model: { provider: string; name: string };
+    draft: Record<string, unknown>;
+    h5p: {
+      library: string;
+      title: string;
+      params: Record<string, unknown>;
+      maxScore: number;
+    };
+    validation: { valid: boolean; errors: string[] };
+    usage: {
+      promptTokens: number;
+      completionTokens: number;
+      latencyMs: number;
+      repairs: number;
+    };
+    cached: boolean;
+  } | null;
+  error?: { code: string; detail: string } | null;
+}
+
 export interface AiHealth {
   status: string;
   provider?: string;
@@ -155,6 +206,46 @@ export class AiClient {
         throw new Error(`AI service responded ${res.status}`);
       this.consecutiveFailures = 0;
       return res.body;
+    } catch (err) {
+      this.recordFailure(err);
+    }
+  }
+
+  /** 202: the AI service queues the generation; poll job(). */
+  async contentGenerate(
+    request: ContentRequest,
+  ): Promise<{ jobId: string; status: ContentJobSnapshot['status'] }> {
+    this.assertCircuitClosed();
+    try {
+      const res = await fetch(`${this.baseUrl}/v1/content/generate`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(request),
+        signal: AbortSignal.timeout(this.config.get('AI_SERVICE_TIMEOUT_MS')),
+      });
+      if (!res.ok) throw new Error(`AI service responded ${res.status}`);
+      this.consecutiveFailures = 0;
+      return (await res.json()) as {
+        jobId: string;
+        status: ContentJobSnapshot['status'];
+      };
+    } catch (err) {
+      this.recordFailure(err);
+    }
+  }
+
+  /** Null when the AI service no longer knows the job (restart); throws when unreachable. */
+  async job(aiJobId: string): Promise<ContentJobSnapshot | null> {
+    this.assertCircuitClosed();
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/v1/jobs/${encodeURIComponent(aiJobId)}`,
+        { headers: this.headers(), signal: AbortSignal.timeout(10_000) },
+      );
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`AI service responded ${res.status}`);
+      this.consecutiveFailures = 0;
+      return (await res.json()) as ContentJobSnapshot;
     } catch (err) {
       this.recordFailure(err);
     }

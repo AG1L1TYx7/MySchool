@@ -31,6 +31,7 @@ Tests use the deterministic fake provider; nothing touches the network.
 | `POST /v1/rag/index` | index lesson documents (chunked, embedded) |
 | `POST /v1/rag/search` | semantic search scoped to an organisation and optionally a course |
 | `DELETE /v1/rag/documents/{docId}` | remove a document |
-| `GET /v1/jobs/{id}` | job status (content generation arrives in slice 6) |
+| `POST /v1/content/generate` | 202 `{ jobId }`: quiz or flashcards from a topic (JSON mode, one repair pass, H5P conversion and validation, 24 h cache) |
+| `GET /v1/jobs/{id}` | job status; `result` carries the draft, the H5P package `{ library, title, params, maxScore }` and validation |
 
 All `/v1/*` routes require `Authorization: Bearer <AI_SERVICE_TOKEN>`. Errors are RFC 9457 problem details.

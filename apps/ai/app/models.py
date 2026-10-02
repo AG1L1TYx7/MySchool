@@ -43,6 +43,7 @@ class ModelProvider(Protocol):
         max_tokens: int,
         tools: list[ToolSpec] | None = None,
         timeout: float = 30.0,
+        json_mode: bool = False,
     ) -> ChatResult: ...
 
     def stream(
@@ -88,6 +89,7 @@ class OllamaProvider:
         max_tokens: int,
         tools: list[ToolSpec] | None = None,
         timeout: float = 30.0,
+        json_mode: bool = False,
     ) -> ChatResult:
         payload: dict[str, Any] = {
             "model": model,
@@ -99,6 +101,8 @@ class OllamaProvider:
         tool_payload = _tool_payload(tools)
         if tool_payload:
             payload["tools"] = tool_payload
+        if json_mode:
+            payload["format"] = "json"
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 res = await client.post(f"{self.base_url}/api/chat", json=payload)
@@ -178,8 +182,9 @@ class FakeProvider:
 
     name = "fake"
 
-    def __init__(self, scripted_tool_call: ToolCall | None = None):
+    def __init__(self, scripted_tool_call: ToolCall | None = None, scripted_replies: list[str] | None = None):
         self.scripted_tool_call = scripted_tool_call
+        self.scripted_replies = list(scripted_replies or [])
         self.calls: list[list[dict[str, Any]]] = []
 
     async def chat(
@@ -191,8 +196,11 @@ class FakeProvider:
         max_tokens: int,
         tools: list[ToolSpec] | None = None,
         timeout: float = 30.0,
+        json_mode: bool = False,
     ) -> ChatResult:
         self.calls.append(messages)
+        if self.scripted_replies:
+            return ChatResult(content=self.scripted_replies.pop(0), prompt_tokens=30, completion_tokens=40)
         last_user = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
         has_tool_result = any(m.get("role") == "tool" for m in messages)
         if self.scripted_tool_call and tools and not has_tool_result:

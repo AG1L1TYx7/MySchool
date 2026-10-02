@@ -17,6 +17,7 @@ const NAV: Array<{ href: string; label: string; feature: string }> = [
   { href: '/tutor', label: 'AI tutor', feature: 'ai.tutor.chat' },
   { href: '/grades', label: 'Grades', feature: 'grades.view.own' },
   { href: '/grades', label: 'Grades', feature: 'grades.view.child' },
+  { href: '/content', label: 'Interactive content', feature: 'h5p.create' },
   { href: '/students', label: 'Students', feature: 'students.view' },
   { href: '/users', label: 'Users', feature: 'users.view' },
   { href: '/organizations', label: 'Organisations', feature: 'organizations.view' },

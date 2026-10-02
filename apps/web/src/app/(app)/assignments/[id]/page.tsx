@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { H5pPlayer } from '@/components/h5p-player';
 import { Celebration, ProgressBar, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card, Input } from '@/components/ui';
 import { api, download, errorMessage, upload } from '@/lib/api';
@@ -84,6 +85,17 @@ export default function AssignmentPage() {
           {a.instructions && <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{a.instructions}</p>}
         </Card>
       )}
+      {a.h5pContent && a.canManage && (
+        <Card title="Interactive activity" description="Students play this activity here; their score posts to the gradebook automatically.">
+          <p className="text-sm text-slate-700">
+            <Link href={`/content/${a.h5pContent.id}`} className="font-medium text-brand-700 hover:underline">
+              {a.h5pContent.title}
+            </Link>{' '}
+            · {a.h5pContent.maxScore} item{a.h5pContent.maxScore === 1 ? '' : 's'} · scaled to {a.maxPoints} points
+            {a.h5pContent.status !== 'published' ? <span className="text-amber-700"> · not published: students cannot play it yet</span> : null}
+          </p>
+        </Card>
+      )}
       {a.rubric && (
         <Card title={`Rubric: ${a.rubric.title}`}>
           <ul className="text-sm text-slate-700">
@@ -151,7 +163,12 @@ function LearnerView({ assignment, canSubmit, onChange }: { assignment: Assignme
           ))}
         </ul>
       </Card>
-      {canSubmit && open && (attemptsLeft === null || attemptsLeft > 0) && (
+      {canSubmit && open && assignment.h5pContent && (attemptsLeft === null || attemptsLeft > 0) && (
+        <Card title={subs.length ? 'Play again' : 'Play the activity'} description={`${assignment.h5pContent.maxScore} item${assignment.h5pContent.maxScore === 1 ? '' : 's'}; your score posts to the gradebook when you finish.${attemptsLeft !== null ? ` ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left.` : ''}`}>
+          <H5pPlayer contentId={assignment.h5pContent.id} assignmentId={assignment.id} onResult={() => void onChange()} />
+        </Card>
+      )}
+      {canSubmit && open && !assignment.h5pContent && (attemptsLeft === null || attemptsLeft > 0) && (
         <Card title={subs.length ? 'Submit another attempt' : 'Submit'} description={attemptsLeft !== null ? `${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left.` : undefined}>
           <form onSubmit={submit} className="space-y-4" noValidate>
             {state.error && <Alert>{state.error}</Alert>}

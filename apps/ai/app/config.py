@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     embedding_model: str = Field(default="all-minilm", alias="EMBEDDING_MODEL")
     tutor_timeout_seconds: float = Field(default=60.0, alias="TUTOR_TIMEOUT_SECONDS")
     tool_timeout_seconds: float = Field(default=5.0, alias="TOOL_TIMEOUT_SECONDS")
+    generation_timeout_seconds: float = Field(default=120.0, alias="GENERATION_TIMEOUT_SECONDS")
     max_tool_calls: int = Field(default=4, alias="MAX_TOOL_CALLS")
 
     # Safety: the keyword classifier always runs; the model classifier adds a call per message.
