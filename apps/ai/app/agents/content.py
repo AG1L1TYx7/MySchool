@@ -19,7 +19,6 @@ from app.content import (
     ContentRequest,
     ContentResult,
     ContentUsage,
-    FlashcardsDraft,
     QuizDraft,
     Validation,
 )
