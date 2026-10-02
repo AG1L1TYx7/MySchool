@@ -1,0 +1,102 @@
+# SmartSchool: one command for a pilot server (docs/07 slice 8, docs/14 getting started).
+#
+#   cp .env.docker.example .env.docker   # then set the secrets
+#   docker compose --env-file .env.docker up -d --build
+#   docker compose run --rm api pnpm db:seed      # demo school (optional)
+#
+# Services: MariaDB 10.4 (matches the development database), API, web, AI service, Ollama.
+# Ollama needs a GPU for comfortable tutor latency; add the "gpu" profile on a machine with NVIDIA drivers.
+services:
+  db:
+    image: mariadb:10.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME:-smartschooldb}
+      MARIADB_USER: ${DB_USER:-smartschool}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-buffer-pool-size=512M
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MARIADB_ROOT_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: mysql://${DB_USER:-smartschool}:${DB_PASSWORD}@db:3306/${DB_NAME:-smartschooldb}?connection_limit=10
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32+ characters)}
+      JWT_ISSUER: ${JWT_ISSUER:-smartschool}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-smartschool-web}
+      AI_SERVICE_URL: http://ai:8000
+      AI_SERVICE_API_KEY: ${AI_SERVICE_TOKEN:?set AI_SERVICE_TOKEN}
+      AI_CALLBACK_TOKEN: ${AI_CALLBACK_TOKEN:?set AI_CALLBACK_TOKEN}
+      WEB_APP_URL: ${WEB_APP_URL:-https://localhost}
+      CORS_ORIGINS: ${WEB_APP_URL:-https://localhost}
+      UPLOAD_DIR: /app/apps/api/uploads
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-SmartSchool <no-reply@example.org>}
+      AUTH_COOKIE_SECURE: "true"
+    volumes:
+      - uploads:/app/apps/api/uploads
+    ports:
+      - "127.0.0.1:5000:5000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_URL: http://api:5000
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+  ai:
+    build:
+      context: apps/ai
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+      LMS_URL: http://api:5000
+      LMS_SERVICE_TOKEN: ${AI_CALLBACK_TOKEN}
+      MODEL_PROVIDER: ollama
+      OLLAMA_URL: http://ollama:11434
+      CHAT_MODEL: ${CHAT_MODEL:-llama3.1:8b}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-all-minilm}
+      TRACE_SALT: ${TRACE_SALT:?set TRACE_SALT}
+    volumes:
+      - ai-data:/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    # Pulls the models once at first start, then serves.
+    entrypoint: ["sh", "-c", "ollama serve & sleep 5 && ollama pull ${CHAT_MODEL:-llama3.1:8b} && ollama pull ${EMBEDDING_MODEL:-all-minilm} && wait"]
+
+volumes:
+  db-data:
+  uploads:
+  ai-data:
+  ollama:

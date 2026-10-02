@@ -16,7 +16,7 @@ export function AnnouncementCard({ a, compact, onPublish, onDelete, onPin }: { a
             <span>· {a.className ?? 'Whole school'}</span>
             {a.status !== 'published' && <span className="text-amber-700">· {a.status}</span>}
           </p>
-          <h3 className="mt-1 text-base font-semibold text-slate-900">{a.title}</h3>
+          <h2 className="mt-1 text-base font-semibold text-slate-900">{a.title}</h2>
         </div>
         <span className="text-xs text-slate-500">
           {a.author ? `${a.author.firstName} ${a.author.lastName} · ` : ''}

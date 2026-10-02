@@ -33,7 +33,18 @@ export class HealthService {
   }
 
   /** Readiness and detailed health: database is required, the AI service is reported but not required. */
+  private cached: { at: number; report: HealthReport } | null = null;
+
+  /** Dependency checks are shared for five seconds so probes and dashboards cannot amplify load. */
   async report(): Promise<HealthReport> {
+    if (this.cached && Date.now() - this.cached.at < 5_000)
+      return this.cached.report;
+    const report = await this.buildReport();
+    this.cached = { at: Date.now(), report };
+    return report;
+  }
+
+  private async buildReport(): Promise<HealthReport> {
     const [database, aiService] = await Promise.all([
       this.checkDatabase(),
       this.checkAiService(),

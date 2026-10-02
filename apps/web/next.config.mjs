@@ -3,6 +3,8 @@ const apiUrl = process.env.API_URL ?? 'http://localhost:5000';
 
 const nextConfig = {
   reactStrictMode: true,
+  // Standalone output is for the Docker image (needs symlinks, which Windows blocks without privileges).
+  output: process.env.NEXT_STANDALONE === '1' ? 'standalone' : undefined,
   poweredByHeader: false,
   async headers() {
     const csp = [

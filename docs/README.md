@@ -23,6 +23,8 @@ An AI-native K-12 learning management system for US schools and districts that r
 | 11 | [Quality and Security](11-QUALITY-AND-SECURITY.md) | Know what "done" means: the test pyramid, the security checklist reviewed per slice, performance rules, release review. |
 | 12 | [UX: Motion and Gamification](12-UX-MOTION-AND-GAMIFICATION.md) | Build any screen: the motion system (tokens, patterns, reduced motion), the gamified experience (private XP, streaks, badges, quests, progress maps) and the per-screen acceptance checklist. |
 | 13 | [US School Readiness](13-US-SCHOOL-READINESS.md) | Build anything a US district will evaluate: rostering and SSO, terms and periods, gradebook and report cards, attendance codes, accommodations and counseling, parents and Spanish, FERPA, COPPA, state privacy laws, accessibility, and the four exclusions with reasons. |
+| 14 | [Getting Started](14-GETTING-STARTED.md) | Install SmartSchool for a pilot (Docker) or a workstation; demo accounts; backups; checks; updating. |
+| 15 | [Release 1 Review](15-RELEASE-1-REVIEW.md) | See how Release 1 measures against the security checklist and the performance budget, with the load-test and audit results and the gaps carried forward. |
 
 ## Reading order
 

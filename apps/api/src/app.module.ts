@@ -69,7 +69,13 @@ import { UsersModule } from './modules/users/users.module';
       }),
     }),
     ThrottlerModule.forRoot({
-      throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60_000,
+          limit: Number(process.env.RATE_LIMIT_PER_MINUTE ?? 100),
+        },
+      ],
     }),
     EventEmitterModule.forRoot({ wildcard: true }),
     ScheduleModule.forRoot(),

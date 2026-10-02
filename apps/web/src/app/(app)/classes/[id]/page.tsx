@@ -72,7 +72,7 @@ export default function ClassPage() {
       {state.error && <Alert>{state.error}</Alert>}
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
 
-      <nav className="flex flex-wrap gap-2 text-sm">
+      <nav aria-label="Class sections" className="flex flex-wrap gap-2 text-sm">
         <Link href={`/classes/${id}/assignments`} className="rounded-md bg-white px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">
           Assignments
         </Link>
@@ -304,7 +304,7 @@ function Roster({ klass, onChange }: { klass: ClassItem; onChange: () => Promise
               <td className="py-2 pr-4">{e.student.gradeLevel ?? ''}</td>
               <td className="py-2 pr-4">{label(e.status)}</td>
               <td className="py-2">
-                <select className="rounded-md border-0 py-1 text-sm ring-1 ring-inset ring-slate-300" value={e.status} onChange={(ev) => void setStatus(e, ev.target.value)}>
+                <select aria-label="Enrolment status" className="rounded-md border-0 py-1 text-sm ring-1 ring-inset ring-slate-300" value={e.status} onChange={(ev) => void setStatus(e, ev.target.value)}>
                   {ENROLLMENT_STATUSES.map((s) => (
                     <option key={s} value={s}>
                       {label(s)}

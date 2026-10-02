@@ -1,0 +1,133 @@
+{
+  "target": "http://localhost:5000",
+  "connections": 60,
+  "duration": 15,
+  "at": "2026-10-02T15:43:43.445Z",
+  "rows": [
+    {
+      "name": "health",
+      "rps": 3182,
+      "p50": 15,
+      "p95": 32,
+      "p99": 35,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 47721,
+      "total": 47721
+    },
+    {
+      "name": "auth/me",
+      "rps": 1291,
+      "p50": 45,
+      "p95": 64,
+      "p99": 69,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 19372,
+      "total": 19372
+    },
+    {
+      "name": "students list (page of 50)",
+      "rps": 580,
+      "p50": 102,
+      "p95": 123,
+      "p99": 130,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 8701,
+      "total": 8701
+    },
+    {
+      "name": "students search",
+      "rps": 371,
+      "p50": 160,
+      "p95": 173,
+      "p99": 199,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 5564,
+      "total": 5564
+    },
+    {
+      "name": "classes/mine (student)",
+      "rps": 555,
+      "p50": 105,
+      "p95": 126,
+      "p99": 140,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 8321,
+      "total": 8321
+    },
+    {
+      "name": "assignments (student week)",
+      "rps": 390,
+      "p50": 142,
+      "p95": 293,
+      "p99": 357,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 5848,
+      "total": 5848
+    },
+    {
+      "name": "assignment detail",
+      "rps": 474,
+      "p50": 125,
+      "p95": 141,
+      "p99": 147,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 7103,
+      "total": 7103
+    },
+    {
+      "name": "class roster",
+      "rps": 638,
+      "p50": 91,
+      "p95": 116,
+      "p99": 124,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 9575,
+      "total": 9575
+    },
+    {
+      "name": "gradebook",
+      "rps": 622,
+      "p50": 95,
+      "p95": 115,
+      "p99": 121,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 9324,
+      "total": 9324
+    },
+    {
+      "name": "notifications summary",
+      "rps": 1171,
+      "p50": 50,
+      "p95": 66,
+      "p99": 72,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 17571,
+      "total": 17571
+    },
+    {
+      "name": "announcements feed",
+      "rps": 882,
+      "p50": 67,
+      "p95": 82,
+      "p99": 86,
+      "errors": 0,
+      "non2xx": 0,
+      "ok2xx": 13224,
+      "total": 13224
+    },
+    {
+      "name": "audit log page",
+      "skipped": true
+    }
+  ]
+}

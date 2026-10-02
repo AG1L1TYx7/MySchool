@@ -101,6 +101,16 @@ describe('Communication (e2e)', () => {
     await prisma.notification.deleteMany({
       where: { recipientId: { in: Object.values(userIds) } },
     });
+    // A restored or reused database may already hold a direct chat between these two; start clean.
+    await prisma.conversation.deleteMany({
+      where: {
+        type: 'DIRECT',
+        AND: [
+          { participants: { some: { userId: userIds.student } } },
+          { participants: { some: { userId: userIds.teacher } } },
+        ],
+      },
+    });
   });
 
   afterAll(async () => {

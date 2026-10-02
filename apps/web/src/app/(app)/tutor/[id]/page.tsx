@@ -134,7 +134,7 @@ export default function ConversationPage() {
           Send
         </Button>
       </form>
-      <p className="pt-1 text-[11px] text-slate-400">AI answers can be wrong. Check important facts with your teacher. Messages may be reviewed to keep students safe.</p>
+      <p className="pt-1 text-xs text-slate-600">AI answers can be wrong. Check important facts with your teacher. Messages may be reviewed to keep students safe.</p>
     </div>
   );
 }

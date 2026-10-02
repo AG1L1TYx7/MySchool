@@ -143,7 +143,7 @@ function TutorHome() {
 }
 
 function Availability({ status }: { status: TutorStatus | null }) {
-  if (!status) return <span className="text-xs text-slate-400">Checking tutor…</span>;
+  if (!status) return <span className="text-xs text-slate-600">Checking tutor…</span>;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${status.available ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${status.available ? 'bg-green-600' : 'bg-amber-500'}`} aria-hidden />

@@ -67,6 +67,7 @@ export function H5pPlayer({ contentId, assignmentId, preview, onResult }: H5pPla
         host.current.innerHTML = '';
         await new runtime.H5P(host.current, { h5pJsonPath: t.h5pJsonPath, frameJs: '/h5p/frame.bundle.js', frameCss: '/h5p/styles/h5p.css', librariesPath: '/h5p/libraries', copyright: false, embed: false, fullScreen: true });
         if (cancelled) return;
+        host.current.querySelector('iframe')?.setAttribute('title', `Interactive activity: ${t.title}`);
         setReady(true);
         handler = (e) => {
           const s = e.data.statement;

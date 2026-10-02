@@ -55,7 +55,7 @@ jobs:
       - run: pnpm --filter @smartschool/api test
       - run: pnpm --filter @smartschool/api db:seed
       - run: pnpm --filter @smartschool/api test:e2e
-      - run: pnpm audit --audit-level=high || true
+      - run: pnpm audit --audit-level=high
 
   web:
     name: Web client
@@ -92,3 +92,4 @@ jobs:
       - run: mypy app
         working-directory: apps/ai
       - run: pytest apps/ai -q
+      - run: pip install pip-audit && pip-audit --skip-editable

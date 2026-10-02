@@ -4,11 +4,20 @@ import { AnimatePresence, animate, motion, useMotionValue, useTransform } from '
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { duration, fadeOnly, fadeRise, spring, stagger, staggerItem, useMotionVariants, useReducedMotion } from '@/lib/motion';
 
-/** Wraps a page: fade and rise on mount, exit on route change. Keyed by the route in the app layout. */
+/**
+ * Wraps a page: fade and rise on route change, exit on leave. Keyed by the route in the app layout.
+ * The very first render is painted visible, so the server-rendered page is readable before hydration
+ * (largest contentful paint must not wait for JavaScript).
+ */
+let hydratedOnce = false;
 export function MotionPage({ children, className }: { children: ReactNode; className?: string }) {
   const variants = useMotionVariants(fadeRise);
+  const [animateIn] = useState(() => hydratedOnce);
+  useEffect(() => {
+    hydratedOnce = true;
+  }, []);
   return (
-    <motion.div variants={variants} initial="hidden" animate="visible" exit="exit" className={className}>
+    <motion.div variants={variants} initial={animateIn ? 'hidden' : false} animate="visible" exit="exit" className={className}>
       {children}
     </motion.div>
   );

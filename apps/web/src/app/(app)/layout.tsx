@@ -45,9 +45,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
-      <aside className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
+      <aside aria-label="Sidebar" className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
         <Logo />
-        <nav className="mt-6 flex gap-1 overflow-x-auto md:flex-col">
+        <nav aria-label="Primary" className="mt-6 flex gap-1 overflow-x-auto md:flex-col">
           {NAV.filter((n) => can(n.feature))
             .filter((n, i, all) => all.findIndex((x) => x.href === n.href) === i)
             .map((n) => {

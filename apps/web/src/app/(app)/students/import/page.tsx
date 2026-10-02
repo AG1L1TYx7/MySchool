@@ -44,7 +44,7 @@ export default function ImportStudentsPage() {
       </div>
 
       <Card title="1. Choose a CSV file" description="Required columns: studentNumber, firstName, lastName. Optional: email, phone, dateOfBirth, gender, gradeLevel, enrollmentStatus, enrollmentDate, preferredLearningStyle, guardianEmail, guardianFirstName, guardianLastName, guardianRelationship. Existing student numbers are updated; new ones are created; guardians are linked (and invited when unknown).">
-        <input type="file" accept=".csv,text/csv" className="block text-sm" onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0])} />
+        <input type="file" accept=".csv,text/csv" aria-label="CSV file" className="block text-sm" onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0])} />
         {fileName && <p className="mt-2 text-xs text-slate-500">{fileName}: {csv.split('\n').filter((l) => l.trim()).length - 1} data rows</p>}
         <textarea className="mt-4 h-40 w-full rounded-md border-0 p-3 font-mono text-xs shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-brand-500" placeholder="…or paste CSV text here" value={csv} onChange={(e) => (setCsv(e.target.value), setPreview(null), setResult(null))} />
       </Card>

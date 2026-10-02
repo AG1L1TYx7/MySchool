@@ -59,7 +59,7 @@ export default function GradebookPage() {
                     <Link href={`/assignments/${a.id}`} className="hover:underline">
                       {a.title}
                     </Link>
-                    <div className="text-[10px] normal-case text-slate-400">
+                    <div className="text-[11px] normal-case text-slate-600">
                       /{a.maxPoints} · w{a.weight} · avg {book.perAssignmentAverage[a.id] ?? '—'}
                     </div>
                   </th>
