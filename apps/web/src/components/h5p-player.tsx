@@ -56,6 +56,7 @@ export function H5pPlayer({ contentId, assignmentId, preview, onResult }: H5pPla
   useEffect(() => {
     let cancelled = false;
     let handler: ((e: { data: { statement: XapiStatement } }) => void) | null = null;
+    let dispatcher: { on: (e: string, fn: (e: { data: { statement: XapiStatement } }) => void) => void; off: (e: string, fn: (e: { data: { statement: XapiStatement } }) => void) => void } | null = null;
     (async () => {
       try {
         const t = await api<PlayTicket>(`/h5p/contents/${contentId}/play${assignmentId ? `?assignmentId=${assignmentId}` : ''}`);
@@ -78,14 +79,16 @@ export function H5pPlayer({ contentId, assignmentId, preview, onResult }: H5pPla
             void post(t.maxScore, t.maxScore, s);
           }
         };
-        window.H5P?.externalDispatcher.on('xAPI', handler);
+        // The runtime renders inside a same-origin iframe with its own H5P core; events are dispatched there.
+        dispatcher = frameWindow(host.current)?.H5P?.externalDispatcher ?? window.H5P?.externalDispatcher ?? null;
+        dispatcher?.on('xAPI', handler);
       } catch (err) {
         if (!cancelled) setError(errorMessage(err));
       }
     })();
     return () => {
       cancelled = true;
-      if (handler) window.H5P?.externalDispatcher.off('xAPI', handler);
+      if (handler && dispatcher) dispatcher.off('xAPI', handler);
     };
   }, [contentId, assignmentId, post]);
 
@@ -115,4 +118,13 @@ export function H5pPlayer({ contentId, assignmentId, preview, onResult }: H5pPla
       )}
     </div>
   );
+}
+
+function frameWindow(host: HTMLElement): Window | null {
+  const iframe = host.querySelector('iframe');
+  try {
+    return iframe?.contentWindow ?? null;
+  } catch {
+    return null;
+  }
 }
