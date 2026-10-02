@@ -435,6 +435,50 @@ export class AuthService {
   // Sessions and refresh tokens (rotation with reuse detection, absolute lifetime)
   // ---------------------------------------------------------------------------
 
+  /**
+   * Sign-in after a provider proved the identity (docs/13 section 2). Same lockout, status and
+   * two-factor rules as a password sign-in; the password step is simply skipped.
+   */
+  async loginWithIdentity(
+    user: User,
+    provider: string,
+    ctx: RequestContext,
+  ): Promise<LoginResult> {
+    if (user.deletedAt || user.status !== 'ACTIVE')
+      throw new UnauthorizedException({
+        code: 'auth.account_disabled',
+        detail: 'This account is not active.',
+      });
+    if (user.lockedUntil && user.lockedUntil > new Date())
+      throw new UnauthorizedException({
+        code: 'auth.locked',
+        detail: 'Too many failed attempts. Try again later.',
+      });
+    if (user.twoFactorEnabled)
+      return { mfaRequired: true, mfaToken: this.tokens.signMfaToken(user.id) };
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date(), failedLoginCount: 0, lockedUntil: null },
+    });
+    const pair = await this.issueSession(updated, false, ctx);
+    await this.audit.record({
+      userId: user.id,
+      organizationId: user.organizationId,
+      action: 'auth.login',
+      entityType: 'User',
+      entityId: user.id,
+      ipAddress: ctx.ip,
+      userAgent: ctx.userAgent,
+      details: { provider },
+    });
+    return {
+      mfaRequired: false,
+      user: this.toPublic(updated),
+      mfaSetupRequired: this.mfaSetupRequired(updated),
+      ...pair,
+    };
+  }
+
   private async issueSession(
     user: User,
     rememberMe: boolean,

@@ -315,6 +315,18 @@ export class ClassesService {
     actor: AuthenticatedUser,
   ): Promise<PublicClass> {
     const existing = await this.findManageable(id, actor);
+    if (
+      existing.managedBySis &&
+      (dto.name !== undefined ||
+        dto.term !== undefined ||
+        dto.section !== undefined ||
+        dto.courseId !== undefined)
+    )
+      throw new ConflictException({
+        code: 'record.managed',
+        detail:
+          "This record is managed by the school's student information system; change it there and it syncs overnight.",
+      });
     if (dto.courseId && dto.courseId !== existing.courseId) {
       const course = await this.prisma.course.findFirst({
         where: {
@@ -455,6 +467,12 @@ export class ClassesService {
     actor: AuthenticatedUser,
   ): Promise<EnrollResult> {
     const klass = await this.findManageable(id, actor);
+    if (klass.managedBySis)
+      throw new ConflictException({
+        code: 'record.managed',
+        detail:
+          "Enrolment for this class is managed by the school's student information system; schedule changes there sync overnight.",
+      });
     const ids = [...new Set(dto.studentIds)];
     const students = await this.prisma.student.findMany({
       where: {
@@ -531,6 +549,12 @@ export class ClassesService {
     actor: AuthenticatedUser,
   ): Promise<PublicEnrollment> {
     const klass = await this.findManageable(id, actor);
+    if (klass.managedBySis)
+      throw new ConflictException({
+        code: 'record.managed',
+        detail:
+          "Enrolment for this class is managed by the school's student information system; schedule changes there sync overnight.",
+      });
     const current = await this.prisma.classEnrollment.findUnique({
       where: { classId_studentId: { classId: id, studentId } },
     });
@@ -667,6 +691,12 @@ export class ClassesService {
     actor: AuthenticatedUser,
   ): Promise<ClassRow> {
     const row = await this.find(id, actor);
+    if (row.managedBySis)
+      throw new ConflictException({
+        code: 'record.managed',
+        detail:
+          "Enrolment for this class is managed by the school's student information system; schedule changes there sync overnight.",
+      });
     if (!canManage(row, actor))
       throw new ForbiddenException({
         code: 'authz.forbidden',

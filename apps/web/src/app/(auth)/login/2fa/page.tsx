@@ -16,6 +16,13 @@ export default function TwoFactorChallengePage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hash.get('sso') === '1' && hash.get('mfaToken')) {
+      // Arrived from a provider sign-in; the second factor still applies.
+      history.replaceState(null, '', window.location.pathname);
+      setPending({ mfaToken: hash.get('mfaToken') as string, rememberMe: false });
+      return;
+    }
     const raw = sessionStorage.getItem('smartschool.mfa');
     if (!raw) {
       router.replace('/login');

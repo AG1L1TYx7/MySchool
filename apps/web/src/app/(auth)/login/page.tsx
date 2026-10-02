@@ -2,13 +2,30 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Input } from '@/components/ui';
 import { ApiError, api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
+const SSO_ERRORS: Record<string, string> = {
+  sso_unknown: 'No SmartSchool account matches that email. Ask your school to add you, then try again.',
+  sso_not_allowed: 'Your school has not enabled that sign-in provider for your email address.',
+  sso_disabled: 'This account is not active. Ask your school office.',
+  sso_no_email: 'The provider did not share an email address, so the account could not be matched.',
+  sso_state: 'The sign-in request expired. Start again.',
+  sso_denied: 'The sign-in was cancelled.',
+  sso_not_configured: 'That sign-in provider is not set up on this server.',
+};
+
 export default function LoginPage() {
   const { login } = useAuth();
+  const [providers, setProviders] = useState<Array<{ id: string; label: string }>>([]);
+  const [ssoError, setSsoError] = useState<string | null>(null);
+  useEffect(() => {
+    api<{ data: Array<{ id: string; label: string }> }>('/auth/sso/providers', { auth: false }).then((r) => setProviders(r.data)).catch(() => setProviders([]));
+    const code = new URLSearchParams(window.location.search).get('error');
+    if (code) setSsoError(SSO_ERRORS[code] ?? 'Sign-in with the provider did not complete. Try again.');
+  }, []);
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -77,6 +94,19 @@ export default function LoginPage() {
           Sign in
         </Button>
       </form>
+      {providers.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-2 text-center text-xs uppercase tracking-wide text-slate-500">Or sign in with your school account</p>
+          {ssoError && <Alert>{ssoError}</Alert>}
+          <div className="mt-2 grid gap-2">
+            {providers.map((p) => (
+              <a key={p.id} href={`/api/v1/auth/sso/${p.id}/start`} className="inline-flex w-full items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                Continue with {p.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
       <p className="mt-6 text-center text-sm text-slate-600">
         New here?{' '}
         <Link href="/register" className="font-medium text-brand-700 hover:underline">

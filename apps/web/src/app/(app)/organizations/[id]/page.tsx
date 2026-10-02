@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { RosterSettings } from '@/components/roster-settings';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { ROLE_LABELS, useAuth } from '@/lib/auth';
@@ -109,6 +110,7 @@ export default function OrganizationDetailPage() {
         </form>
       </Card>
 
+      {can('organizations.roster') && <RosterSettings organizationId={id} />}
       <Card title="Members" description="Staff, students and parents attached to this organisation.">
         <table className="min-w-full text-sm">
           <thead className="text-left text-xs uppercase tracking-wide text-slate-500">

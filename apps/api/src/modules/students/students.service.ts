@@ -287,6 +287,19 @@ export class StudentsService {
     actor: AuthenticatedUser,
   ): Promise<PublicStudent> {
     const existing = await this.find(id, actor);
+    if (
+      existing.managedBySis &&
+      (dto.firstName !== undefined ||
+        dto.lastName !== undefined ||
+        dto.studentNumber !== undefined ||
+        dto.gradeLevel !== undefined ||
+        dto.email !== undefined)
+    )
+      throw new ConflictException({
+        code: 'record.managed',
+        detail:
+          "This record is managed by the school's student information system; change it there and it syncs overnight.",
+      });
     if (dto.studentNumber && dto.studentNumber !== existing.studentNumber)
       await this.assertNumberFree(existing.organizationId, dto.studentNumber);
     if (dto.userId && dto.userId !== existing.userId)

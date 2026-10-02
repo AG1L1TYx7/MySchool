@@ -74,6 +74,17 @@ export const envSchema = z
       .string()
       .min(16, 'AI_CALLBACK_TOKEN must be at least 16 characters'),
 
+    // Single sign-on (docs/13 section 2). A provider is offered when its client id and secret are set.
+    SSO_GOOGLE_CLIENT_ID: z.string().optional(),
+    SSO_GOOGLE_CLIENT_SECRET: z.string().optional(),
+    SSO_MICROSOFT_CLIENT_ID: z.string().optional(),
+    SSO_MICROSOFT_CLIENT_SECRET: z.string().optional(),
+    SSO_MICROSOFT_TENANT: z.string().optional().default('common'),
+    SSO_CLEVER_CLIENT_ID: z.string().optional(),
+    SSO_CLEVER_CLIENT_SECRET: z.string().optional(),
+    SSO_CLASSLINK_CLIENT_ID: z.string().optional(),
+    SSO_CLASSLINK_CLIENT_SECRET: z.string().optional(),
+
     REDIS_URL: z.string().optional().default(''),
 
     CORS_ORIGINS: csv,

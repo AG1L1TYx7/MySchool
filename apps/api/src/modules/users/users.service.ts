@@ -187,6 +187,17 @@ export class UsersService {
         detail: 'You cannot change your own role or status.',
       });
     }
+    if (
+      existing.managedBySis &&
+      (dto.firstName !== undefined ||
+        dto.lastName !== undefined ||
+        dto.role !== undefined)
+    )
+      throw new ConflictException({
+        code: 'record.managed',
+        detail:
+          "This account is managed by the school's student information system; change names, email or role there and it syncs overnight.",
+      });
     const role = dto.role ? (roleFromApi(dto.role) as Role) : undefined;
     if (
       role &&

@@ -77,6 +77,33 @@ DELETE /auth/sessions/{id}
 ```
 
 While a user in `AUTH_MFA_REQUIRED_ROLES` has no second factor, every route outside `/auth/*` answers 403 `auth.mfa_setup_required`.
+### Single sign-on (Release 2 slice 9, docs/13 section 2)
+
+```
+GET    /auth/sso/providers                  providers configured on this server: [{ id, label }]
+GET    /auth/sso/{provider}/start?redirect= 302 to the provider; signed state in a short-lived cookie; PKCE
+GET    /auth/sso/{provider}/callback        302 into the web app with the refresh cookie set, or /login?error=sso_<code>; two-factor still applies
+```
+
+Providers: google, microsoft, clever, classlink. A person signs in when their provider identity is already linked, or their rostered email belongs to an organisation that enabled the provider for that email domain. Nobody is created by sign-in; rostering or invitations create accounts.
+
+### Rostering (Release 2 slice 9)
+
+```
+GET    /organizations/{id}/roster/sources              connected sources with their last run
+POST   /organizations/{id}/roster/sources              { provider: oneroster_api|classlink|clever, name, config } (secrets encrypted, never returned)
+PATCH  /organizations/{id}/roster/sources/{sourceId}   name, config (blank secret keeps the stored one), isEnabled
+DELETE /organizations/{id}/roster/sources/{sourceId}
+POST   /organizations/{id}/roster/sources/{sourceId}/run   { dryRun? } -> 202 run; poll it
+POST   /organizations/{id}/roster/import?dryRun=        multipart "files": a OneRoster 1.1 zip or CSVs -> 202 run
+GET    /organizations/{id}/roster/runs
+GET    /organizations/{id}/roster/runs/{runId}          status, counts per entity, up to 200 errors
+GET    /organizations/{id}/roster/sso                   { providers, allowedDomains, passwordOptional, schoolExternalId }
+PUT    /organizations/{id}/roster/sso
+```
+
+Synced records carry `externalId`, `source` and `managedBySis`; edits to managed fields answer `409 record.managed`. Enabled API sources sync nightly at 02:30 server time. Feature: `organizations.roster` (principal and district roles).
+
 ### Users, roles, permissions
 ```
 GET    /users                         admin list with search, role, status filters

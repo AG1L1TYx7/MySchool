@@ -74,6 +74,12 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('system.health.view', 'View system health', 'Administration', DISTRICT),
   f('organizations.view', 'View organisations', 'Administration', ADMINS),
   f(
+    'organizations.roster',
+    'Configure rostering and sign-in',
+    'Administration',
+    ADMINS,
+  ),
+  f(
     'organizations.manage',
     'Create and edit organisations',
     'Administration',

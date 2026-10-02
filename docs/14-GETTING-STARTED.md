@@ -112,6 +112,12 @@ Password for all: `SmartSchool!Demo2026`. School join code for self-registration
 
 In development, email verification is optional and the registration screen shows the verification link directly.
 
+## 4a. Rostering and single sign-on
+
+Sign-in buttons appear on the login page when the API has credentials for a provider (`SSO_GOOGLE_CLIENT_ID` and `SSO_GOOGLE_CLIENT_SECRET`, likewise `SSO_MICROSOFT_*`, `SSO_CLEVER_*`, `SSO_CLASSLINK_*`). Register this redirect URL with the provider: `<WEB_APP_URL>/api/v1/auth/sso/<provider>/callback`. Then, as a principal, open the organisation page, enable the provider under Sign-in and list the allowed email domains.
+
+Rostering: on the same page, connect the district's OneRoster API, ClassLink or Clever source, press Preview to see what would change, then Sync now; or import a OneRoster CSV bundle exported from the SIS. Synced people and classes are read-only in SmartSchool and refresh nightly.
+
 ## 5. Backups
 
 ```bash
