@@ -63,6 +63,20 @@ export class TokenService {
     );
   }
 
+  /** Claims of a valid access token, or null; the caller still checks the session row. */
+  verifyAccessToken(token: string): AccessTokenClaims | null {
+    try {
+      return this.jwt.verify<AccessTokenClaims>(token, {
+        secret: this.config.get('JWT_SECRET'),
+        issuer: this.config.get('JWT_ISSUER'),
+        audience: this.config.get('JWT_AUDIENCE'),
+        algorithms: ['HS256'],
+      });
+    } catch {
+      return null;
+    }
+  }
+
   verifyMfaToken(token: string): string | null {
     try {
       const payload = this.jwt.verify<{ sub: string; purpose: string }>(token, {

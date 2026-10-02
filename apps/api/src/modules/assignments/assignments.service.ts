@@ -411,6 +411,24 @@ export class AssignmentsService {
       entityType: 'Assignment',
       entityId: id,
     });
+    if (status === 'PUBLISHED') {
+      this.events.emit(
+        'assignment.published',
+        domainEvent({
+          eventType: 'assignment.published',
+          entityType: 'Assignment',
+          entityId: row.id,
+          organizationId: row.organizationId,
+          actorId: actor.id,
+          data: {
+            assignmentId: row.id,
+            classId: row.classId,
+            title: row.title,
+            dueAt: row.dueAt ? row.dueAt.toISOString() : null,
+          },
+        }),
+      );
+    }
     return toPublic(row, actor);
   }
 

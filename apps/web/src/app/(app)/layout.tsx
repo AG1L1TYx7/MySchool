@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { MotionPage } from '@/components/motion';
+import { NotificationBell } from '@/components/notification-bell';
 import { Button, Logo } from '@/components/ui';
 import { ROLE_LABELS, useAuth } from '@/lib/auth';
 
@@ -14,6 +15,8 @@ const NAV: Array<{ href: string; label: string; feature: string }> = [
   { href: '/courses', label: 'Courses', feature: 'courses.view' },
   { href: '/classes', label: 'Classes', feature: 'classes.view' },
   { href: '/assignments', label: 'Assignments', feature: 'assignments.view' },
+  { href: '/announcements', label: 'Announcements', feature: 'announcements.view' },
+  { href: '/messages', label: 'Messages', feature: 'messages.view' },
   { href: '/tutor', label: 'AI tutor', feature: 'ai.tutor.chat' },
   { href: '/grades', label: 'Grades', feature: 'grades.view.own' },
   { href: '/grades', label: 'Grades', feature: 'grades.view.child' },
@@ -69,9 +72,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </span>
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{ROLE_LABELS[user.role] ?? user.role}</span>
           </div>
-          <Button variant="secondary" onClick={() => void logout().then(() => router.replace('/login'))}>
-            Sign out
-          </Button>
+          <div className="flex items-center gap-2">
+            {can('notifications.view') && <NotificationBell />}
+            <Button variant="secondary" onClick={() => void logout().then(() => router.replace('/login'))}>
+              Sign out
+            </Button>
+          </div>
         </header>
         <main className="flex-1 px-4 py-6 md:px-8">
           <AnimatePresence mode="wait" initial={false}>

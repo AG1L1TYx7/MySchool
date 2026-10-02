@@ -166,6 +166,44 @@ enum AiJobStatus {
   FAILED
 }
 
+enum AnnouncementType {
+  GENERAL
+  ACADEMIC
+  EVENT
+  EMERGENCY
+  ADMINISTRATIVE
+  SOCIAL
+}
+
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationCategory {
+  ANNOUNCEMENT
+  ASSIGNMENT
+  GRADE
+  MESSAGE
+  ATTENDANCE
+  SYSTEM
+  AI
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  CLASS
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -201,6 +239,8 @@ model Organization {
   aiConversations AiConversation[]
   h5pContents H5PContent[]
   aiJobs      AiJob[]
+  announcements Announcement[]
+  conversations Conversation[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -259,6 +299,12 @@ model User {
   h5pContents         H5PContent[]
   h5pResults          H5PContentResult[]
   aiJobs              AiJob[]
+  announcements       Announcement[]
+  notifications       Notification[]
+  notificationPrefs   NotificationPreference[]
+  conversationsMade   Conversation[]
+  participations      ConversationParticipant[]
+  messagesSent        Message[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -484,6 +530,8 @@ model Class {
   enrollments  ClassEnrollment[]
   assignments  Assignment[]
   attendance   Attendance[]
+  announcements Announcement[]
+  conversations Conversation[]
 
   @@index([organizationId, term, status, deletedAt])
   @@index([courseId])
@@ -543,6 +591,7 @@ model FileUpload {
   organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   uploader        User             @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
   submissionFiles SubmissionFile[]
+  messageFiles    MessageFile[]
 
   @@index([organizationId, category, deletedAt])
   @@index([uploaderId])
@@ -840,6 +889,140 @@ model AiJob {
 
   @@index([userId, createdAt])
   @@map("AiJobs")
+}
+
+// ---------------------------------------------------------------------------
+// Communication: announcements, notifications, messaging. Release 1 slice 7.
+// ---------------------------------------------------------------------------
+
+model Announcement {
+  id             String               @id @map("Id") @db.Char(36)
+  organizationId String               @map("OrganizationId") @db.Char(36)
+  classId        String?              @map("ClassId") @db.Char(36)
+  authorId       String?              @map("AuthorId") @db.Char(36)
+  title          String               @map("Title") @db.VarChar(200)
+  content        String               @map("Content") @db.Text
+  type           AnnouncementType     @default(GENERAL) @map("Type")
+  priority       AnnouncementPriority @default(NORMAL) @map("Priority")
+  status         AnnouncementStatus   @default(DRAFT) @map("Status")
+  pinned         Boolean              @default(false) @map("Pinned")
+  publishedAt    DateTime?            @map("PublishedAt") @db.DateTime(6)
+  expiresAt      DateTime?            @map("ExpiresAt") @db.DateTime(6)
+  createdAt      DateTime             @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime             @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt      DateTime?            @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class        Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  author       User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, publishedAt])
+  @@index([classId, status])
+  @@map("Announcements")
+}
+
+model Notification {
+  id          String               @id @map("Id") @db.Char(36)
+  recipientId String               @map("RecipientId") @db.Char(36)
+  category    NotificationCategory @map("Category")
+  title       String               @map("Title") @db.VarChar(200)
+  body        String?              @map("Body") @db.Text
+  link        String?              @map("Link") @db.VarChar(500)
+  entityType  String?              @map("EntityType") @db.VarChar(60)
+  entityId    String?              @map("EntityId") @db.Char(36)
+  isRead      Boolean              @default(false) @map("IsRead")
+  readAt      DateTime?            @map("ReadAt") @db.DateTime(6)
+  createdAt   DateTime             @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, isRead, createdAt])
+  @@map("Notifications")
+}
+
+model NotificationPreference {
+  id        String               @id @map("Id") @db.Char(36)
+  userId    String               @map("UserId") @db.Char(36)
+  category  NotificationCategory @map("Category")
+  inApp     Boolean              @default(true) @map("InApp")
+  email     Boolean              @default(false) @map("Email")
+  updatedAt DateTime             @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@map("NotificationPreferences")
+}
+
+model Conversation {
+  id             String           @id @map("Id") @db.Char(36)
+  organizationId String?          @map("OrganizationId") @db.Char(36)
+  type           ConversationType @default(DIRECT) @map("Type")
+  classId        String?          @map("ClassId") @db.Char(36)
+  title          String?          @map("Title") @db.VarChar(200)
+  createdById    String?          @map("CreatedById") @db.Char(36)
+  lastMessageAt  DateTime?        @map("LastMessageAt") @db.DateTime(6)
+  createdAt      DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  class        Class?                    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy    User?                     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([organizationId, lastMessageAt])
+  @@index([classId])
+  @@map("Conversations")
+}
+
+model ConversationParticipant {
+  id             String    @id @map("Id") @db.Char(36)
+  conversationId String    @map("ConversationId") @db.Char(36)
+  userId         String    @map("UserId") @db.Char(36)
+  joinedAt       DateTime  @default(now()) @map("JoinedAt") @db.DateTime(6)
+  leftAt         DateTime? @map("LeftAt") @db.DateTime(6)
+  lastReadAt     DateTime? @map("LastReadAt") @db.DateTime(6)
+  muted          Boolean   @default(false) @map("Muted")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, leftAt])
+  @@map("ConversationParticipants")
+}
+
+model Message {
+  id               String    @id @map("Id") @db.Char(36)
+  conversationId   String    @map("ConversationId") @db.Char(36)
+  senderId         String?   @map("SenderId") @db.Char(36)
+  content          String    @map("Content") @db.Text
+  replyToMessageId String?   @map("ReplyToMessageId") @db.Char(36)
+  editedAt         DateTime? @map("EditedAt") @db.DateTime(6)
+  deletedAt        DateTime? @map("DeletedAt") @db.DateTime(6)
+  createdAt        DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?         @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  replyTo      Message?      @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies      Message[]     @relation("MessageReplies")
+  files        MessageFile[]
+
+  @@index([conversationId, createdAt])
+  @@map("Messages")
+}
+
+model MessageFile {
+  id        String @id @map("Id") @db.Char(36)
+  messageId String @map("MessageId") @db.Char(36)
+  fileId    String @map("FileId") @db.Char(36)
+
+  message Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  file    FileUpload @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, fileId])
+  @@map("MessageFiles")
 }
 
 // ---------------------------------------------------------------------------

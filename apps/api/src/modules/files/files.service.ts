@@ -181,6 +181,10 @@ export class FilesService {
   }
 
   /** Files a student attaches to a submission must be their own, live, and in the submission category. */
+  toPublic(f: FileUpload): PublicFile {
+    return toPublic(f);
+  }
+
   async assertOwnedFiles(
     fileIds: string[],
     actor: AuthenticatedUser,
@@ -220,6 +224,17 @@ export class FilesService {
     )
       return row;
     if (await this.hasFeature(actor, 'files.manage')) return row;
+    const viaMessage = await this.prisma.messageFile.count({
+      where: {
+        fileId: id,
+        message: {
+          conversation: {
+            participants: { some: { userId: actor.id, leftAt: null } },
+          },
+        },
+      },
+    });
+    if (viaMessage > 0) return row;
     if (actor.role === 'PARENT') {
       const viaChild = await this.prisma.submissionFile.count({
         where: {
@@ -259,7 +274,7 @@ function sameOrganization(row: FileUpload, actor: AuthenticatedUser): boolean {
   );
 }
 
-function toPublic(f: FileUpload): PublicFile {
+export function toPublic(f: FileUpload): PublicFile {
   return {
     id: f.id,
     organizationId: f.organizationId,

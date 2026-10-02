@@ -204,43 +204,53 @@ GET    /classes/{id}/attendance/summary        from, to -> per-student counts an
 GET    /students/{id}/attendance/summary       from, to -> overall and per-class counts
 ```
 ### Announcements, notifications, files
+
+Announcements are drafts until published; publishing notifies the class (teachers, students, guardians) or the whole school. Teachers post to classes they teach; school-wide posts need an administrator. Learners see only published, unexpired items for their school and classes.
+
 ```
-GET    /announcements                 classId, organizationId, type, priority
-POST   /announcements
+GET    /announcements                 classId, type, priority, status, page; pinned first, then urgency, then newest
+POST   /announcements                 { title, content, classId?, type?, priority?, pinned?, expiresAt?, publish? } -> 201
 GET    /announcements/{id}
-PATCH  /announcements/{id}
+PATCH  /announcements/{id}            author or administrator
 DELETE /announcements/{id}
-POST   /announcements/{id}/publish
-GET    /notifications                 unreadOnly, category, cursor
-GET    /notifications/summary
+POST   /announcements/{id}/publish    -> notifications; urgent or emergency items are also emailed
+
+GET    /notifications                 unreadOnly, category, page
+GET    /notifications/summary         { unread, byCategory, latest[8] } for the bell
 POST   /notifications/{id}/read
 POST   /notifications/read-all
-GET    /notifications/preferences
-PUT    /notifications/preferences
+GET    /notifications/preferences     every category with in-app and email switches (defaults: in-app on; email on for security only)
+PUT    /notifications/preferences     { preferences: [{ category, inApp, email }] }
+
 POST   /files?category=               multipart field "file"; extension allowlist (ALLOWED_EXTENSIONS or the default list, never executables),
                                       MAX_FILE_SIZE_MB; stored under UPLOAD_DIR/<org>/<yyyy>/<mm>/<id>.<ext>; sha256 recorded
-GET    /files/{id}                    metadata (uploader, staff of the organisation, file managers, guardians via submissions)
+GET    /files/{id}                    metadata (uploader, staff of the organisation, file managers, guardians via submissions, participants of a conversation the file was sent in)
 GET    /files/{id}/download           bytes with a safe Content-Disposition
 DELETE /files/{id}                    uploader or files.manage; refused while attached to a submission
 ```
 
+Notification categories: announcement, assignment, grade, message, attendance, system, ai. Producers: `assignment.published`, `assignment.submitted`, `grade.posted`, `announcement.published`, `message.sent` (docs/04 section 6). The actor of an event is never notified about it.
 ### Messaging
+
+Who may message whom (`messaging-rules.ts`): staff reach everyone in their school; students and parents reach school staff only; classmates meet in class conversations a teacher opens. Nobody reaches outside their organisation.
+
 ```
-GET    /conversations                 cursor
-POST   /conversations                 type direct|group|class, participantIds or classId
+GET    /conversations                 mine, newest activity first, with unreadCount, lastMessage, participants
+GET    /conversations/contacts        people I may message (search)
+POST   /conversations                 { type: direct|group|class, participantIds? | classId?, title? } -> 201 (an existing direct or class conversation is returned)
 GET    /conversations/{id}
-PATCH  /conversations/{id}            title, mute
-POST   /conversations/{id}/participants
+PATCH  /conversations/{id}            title (creator or staff), muted (for me)
+POST   /conversations/{id}/participants    { userIds } (staff)
 DELETE /conversations/{id}/participants/{userId}
 POST   /conversations/{id}/leave
-GET    /conversations/{id}/messages   cursor
-POST   /conversations/{id}/messages   content, replyToMessageId, fileIds
-PATCH  /messages/{id}
-DELETE /messages/{id}
-POST   /conversations/{id}/read
+GET    /conversations/{id}/messages   oldest first; before=<messageId>, limit
+POST   /conversations/{id}/messages   { content, replyToMessageId?, fileIds? } -> 201; participants get it live and a `message` notification
+POST   /conversations/{id}/read       moves my read mark
+PATCH  /messages/{id}                 sender, within an hour
+DELETE /messages/{id}                 sender, or staff with messages.delete (audited)
 ```
-Socket namespace `/hubs/messaging` carries the same events as before (docs/04 section 3).
 
+Socket namespaces `/hubs/notifications` and `/hubs/messaging` are served at path `/api/socket.io` (no trailing slash) so the web client reaches them through its same-origin proxy, polling first with a WebSocket upgrade where the proxy forwards it. The handshake carries the access token in `auth.token` (or `Authorization` / `access_token`) and is checked against the session like any HTTP call. Events follow docs/04 section 3: `NewNotification`, `SummaryChanged`; `JoinConversation`, `LeaveConversation`, `SendMessage`, `Typing`, `StopTyping`, `MarkConversationAsRead`, `GetOnlineUsers`; `ReceiveMessage` (plus `ReceiveMessage:list` to every participant for list updates), `MessageEdited`, `MessageDeleted`, `ConversationRead`, `UserTyping`, `UserStoppedTyping`, `ParticipantAdded`, `ParticipantRemoved`, `AddedToConversation`, `RemovedFromConversation`, `MessageError`.
 ### AI tutor and AI content
 
 The tutor is a conversation the LMS owns; the AI service (docs/10) only answers one turn at a time from a Context Envelope. Every assistant message is stored with its status (`ok`, `refused`, `degraded`, `unavailable`), prompt version, model, citations and safety labels, so a parent or teacher can later see exactly what the tutor said and why. All routes sit behind the `ai.tutor` feature flag and the `ai.tutor.chat` feature; a per-user daily message quota (`AI_TUTOR_DAILY_LIMIT`, default 150) answers `403 ai.quota_exceeded`; when the AI service is down the API answers `503 ai.unavailable` and stores an `unavailable` turn rather than inventing an answer.

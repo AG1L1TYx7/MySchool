@@ -16,6 +16,10 @@ import { AccessGuard } from './modules/access/guards/access.guard';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
 import { AssignmentsModule } from './modules/assignments/assignments.module';
 import { AiModule } from './modules/ai/ai.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { H5pModule } from './modules/h5p/h5p.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -86,6 +90,10 @@ import { UsersModule } from './modules/users/users.module';
     AttendanceModule,
     H5pModule,
     AiModule,
+    RealtimeModule,
+    NotificationsModule,
+    AnnouncementsModule,
+    MessagingModule,
     HealthModule,
     MetricsModule,
   ],

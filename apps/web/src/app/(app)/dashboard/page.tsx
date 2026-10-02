@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MotionItem, MotionList, ProgressRing, SkeletonRows } from '@/components/motion';
+import { AnnouncementCard } from '@/components/announcement-card';
 import { Alert, Card } from '@/components/ui';
 import { api } from '@/lib/api';
 import { ROLE_LABELS, useAuth } from '@/lib/auth';
+import type { Announcement } from '@/lib/communication';
 import type { ClassItem } from '@/lib/curriculum';
 import { label } from '@/lib/students';
 
@@ -77,6 +79,27 @@ function ThisWeek() {
   );
 }
 
+function LatestAnnouncements() {
+  const [rows, setRows] = useState<Announcement[] | null>(null);
+  useEffect(() => {
+    api<{ data: Announcement[] }>('/announcements?pageSize=3')
+      .then((r) => setRows(r.data))
+      .catch(() => setRows([]));
+  }, []);
+  if (!rows || rows.length === 0) return null;
+  return (
+    <Card title="Announcements" description="Latest from your school and classes." actions={<Link href="/announcements" className="text-sm text-brand-700 hover:underline">All</Link>}>
+      <MotionList as="div" className="space-y-3">
+        {rows.map((a) => (
+          <MotionItem as="div" key={a.id}>
+            <AnnouncementCard a={a} compact />
+          </MotionItem>
+        ))}
+      </MotionList>
+    </Card>
+  );
+}
+
 function MyClasses() {
   const [classes, setClasses] = useState<ClassItem[] | null>(null);
   useEffect(() => {
@@ -135,6 +158,7 @@ export default function DashboardPage() {
       )}
 
       <ThisWeek />
+      <LatestAnnouncements />
       <MyClasses />
 
       <div className="grid gap-6 md:grid-cols-2">
