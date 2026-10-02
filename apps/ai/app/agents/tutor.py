@@ -6,7 +6,7 @@ import re
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from app.envelopes import (
     Citation,
@@ -22,6 +22,8 @@ from app.models import ChatResult, ModelProvider, ModelUnavailable, ToolCall, To
 from app.prompts import Prompt, PromptLibrary
 from app.safety import REFUSAL_OUTPUT, classify_rules, refusal_for, strip_personal_data
 from app.tools import math_tool
+
+ResultStatus = Literal["ok", "refused", "degraded", "unavailable"]
 
 AGE_BAND_LABEL = {
     "5-7": "5 to 7 years old",
@@ -249,14 +251,15 @@ class TutorAgent:
 
         content = strip_personal_data(result.content if result else "")
         output_rules = classify_rules(content, env.actor.ageBand)
+        citations: list[Citation] = []
+        status: ResultStatus = "ok"
         if output_rules.decision != "allow":
             safety.output = output_rules.decision
             safety.categories = sorted(set(safety.categories) | set(output_rules.categories))
-            content, citations = REFUSAL_OUTPUT, []
+            content = REFUSAL_OUTPUT
             status = "refused"
         else:
             content, citations = extract_citations(content, blocks)
-            status = "ok"
         return ResultEnvelope(
             traceId=env.traceId,
             capability=env.capability,

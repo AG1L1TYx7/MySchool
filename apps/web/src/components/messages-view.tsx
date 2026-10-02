@@ -62,6 +62,8 @@ export function MessagesView({ selectedId }: { selectedId?: string }) {
     };
   }, [load, selectedId, user?.id]);
 
+  // Stable callback: the thread's effects depend on it, so it must not change on every render.
+  const markReadLocally = useCallback((id: string) => setConversations((l) => (l && l.some((c) => c.id === id && c.unreadCount > 0) ? l.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)) : l)), []);
   const selected = conversations?.find((c) => c.id === selectedId) ?? null;
 
   return (
@@ -118,7 +120,7 @@ export function MessagesView({ selectedId }: { selectedId?: string }) {
             }}
           />
         ) : selected ? (
-          <Thread key={selected.id} conversation={selected} onRead={() => setConversations((l) => l?.map((c) => (c.id === selected.id ? { ...c, unreadCount: 0 } : c)) ?? l)} />
+          <Thread key={selected.id} conversation={selected} onRead={markReadLocally} />
         ) : (
           <Card>
             <p className="text-sm text-slate-500">Pick a conversation, or start a new one.</p>
@@ -200,7 +202,7 @@ function Compose({ onCancel, onCreated }: { onCancel: () => void; onCreated: (c:
   );
 }
 
-function Thread({ conversation, onRead }: { conversation: Conversation; onRead: () => void }) {
+function Thread({ conversation, onRead }: { conversation: Conversation; onRead: (id: string) => void }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [draft, setDraft] = useState('');
@@ -216,13 +218,14 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
 
   useEffect(() => {
     api<{ data: Message[] }>(`/conversations/${conversation.id}/messages`).then((r) => setMessages(r.data)).catch((err) => setError(errorMessage(err)));
-    void api(`/conversations/${conversation.id}/read`, { method: 'POST' }).then(onRead).catch(() => undefined);
+    const conversationId = conversation.id;
+    void api(`/conversations/${conversationId}/read`, { method: 'POST' }).then(() => onRead(conversationId)).catch(() => undefined);
     const socket = connectHub('/hubs/messaging');
     socket.emit('JoinConversation', { conversationId: conversation.id });
     const onMessage = (m: Message) => {
       if (m.conversationId !== conversation.id) return;
       setMessages((list) => (list && !list.some((x) => x.id === m.id) ? [...list, m] : list));
-      if (m.sender?.id !== user?.id) void api(`/conversations/${conversation.id}/read`, { method: 'POST' }).then(onRead).catch(() => undefined);
+      if (m.sender?.id !== user?.id) void api(`/conversations/${conversationId}/read`, { method: 'POST' }).then(() => onRead(conversationId)).catch(() => undefined);
     };
     const onEdited = (e: { messageId: string; newContent: string; editedAt: string }) => setMessages((l) => l?.map((m) => (m.id === e.messageId ? { ...m, content: e.newContent, editedAt: e.editedAt } : m)) ?? l);
     const onDeleted = (e: { messageId: string }) => setMessages((l) => l?.map((m) => (m.id === e.messageId ? { ...m, content: '', deletedAt: new Date().toISOString() } : m)) ?? l);

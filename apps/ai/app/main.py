@@ -11,15 +11,15 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.agents.content import ContentAuthor, ContentRefused, InvalidOutput
-from app.agents.tutor import StreamState, TutorAgent, extract_citations, next_steps_from
+from app.agents.tutor import ResultStatus, StreamState, ToolFn, TutorAgent, extract_citations, next_steps_from
 from app.config import Settings, get_settings
 from app.content import ContentRequest, ContentResult, Job
-from app.envelopes import ContextEnvelope, ModelInfo, ResultEnvelope, SafetyDecision, TutorOutput, Usage
+from app.envelopes import Citation, ContextEnvelope, ModelInfo, ResultEnvelope, SafetyDecision, TutorOutput, Usage
 from app.jobs import JobFailure, JobRunner, cache_key
 from app.models import FakeProvider, ModelProvider, ModelUnavailable, OllamaProvider
 from app.prompts import PromptLibrary
@@ -30,7 +30,7 @@ from app.tracing import Tracer
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Loads the chat model into memory at start so the first student does not wait for a cold start."""
     task = asyncio.create_task(_warm_up())
     yield
@@ -142,7 +142,7 @@ async def health(runtime: Runtime = Depends(get_runtime)) -> dict[str, Any]:
     }
 
 
-def _rag_tool(runtime: Runtime, env: ContextEnvelope):
+def _rag_tool(runtime: Runtime, env: ContextEnvelope) -> ToolFn | None:
     if not env.organizationId:
         return None
 
@@ -171,7 +171,7 @@ def _rag_tool(runtime: Runtime, env: ContextEnvelope):
 
 
 @app.post("/v1/tutor/chat", dependencies=[Depends(require_service_token)])
-async def tutor_chat(env: ContextEnvelope, runtime: Runtime = Depends(get_runtime)):
+async def tutor_chat(env: ContextEnvelope, runtime: Runtime = Depends(get_runtime)) -> Response:
     if not env.capability.startswith("tutor."):
         raise HTTPException(status_code=400, detail={"code": "ai.capability", "detail": "Use a tutor capability."})
     if env.options.stream:
@@ -197,7 +197,7 @@ async def _stream_tutor(env: ContextEnvelope, runtime: Runtime) -> AsyncIterator
         yield _sse("result", result.model_dump())
         return
     text = ""
-    status = "ok"
+    status: ResultStatus = "ok"
     state = StreamState()
     try:
         async for token in runtime.tutor.stream(env, rag_search=_rag_tool(runtime, env), state=state):
@@ -208,10 +208,11 @@ async def _stream_tutor(env: ContextEnvelope, runtime: Runtime) -> AsyncIterator
     text = strip_personal_data(text)
     safety = SafetyDecision()
     out_rules = classify_rules(text, env.actor.ageBand)
+    citations: list[Citation] = []
     if out_rules.decision != "allow":
         safety.output = out_rules.decision
         safety.categories = out_rules.categories
-        content, citations, status = REFUSAL_OUTPUT, [], "refused"
+        content, status = REFUSAL_OUTPUT, "refused"
     else:
         content, citations = extract_citations(text, state.blocks or list(env.context.blocks))
     result = ResultEnvelope(
@@ -227,7 +228,7 @@ async def _stream_tutor(env: ContextEnvelope, runtime: Runtime) -> AsyncIterator
             latencyMs=int((time.monotonic() - started) * 1000),
             toolCalls=state.tool_calls,
         ),
-        status=status,  # type: ignore[arg-type]
+        status=status,
     )
     _trace(runtime, env, result)
     yield _sse("result", result.model_dump())

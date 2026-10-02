@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { PillGroup, ProgressBar, SkeletonRows } from '@/components/motion';
+import { NotForYou } from '@/components/not-for-you';
 import { Alert, Button, Card, Input } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { ATTENDANCE_STATUSES, type AttendanceCounts, type AttendanceRecord } from '@/lib/academics';
 import type { ClassItem, Enrollment } from '@/lib/curriculum';
 import { label } from '@/lib/students';
@@ -19,6 +21,8 @@ interface Summary {
 
 export default function AttendancePage() {
   const { id } = useParams<{ id: string }>();
+  const { can } = useAuth();
+  const allowed = can('attendance.view');
   const [klass, setKlass] = useState<ClassItem | null>(null);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [roster, setRoster] = useState<Enrollment[]>([]);
@@ -49,8 +53,8 @@ export default function AttendancePage() {
     }
   }, [id, date]);
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (allowed) void load();
+  }, [load, allowed]);
 
   async function save() {
     setState({ busy: true });
@@ -63,6 +67,7 @@ export default function AttendancePage() {
     }
   }
 
+  if (!allowed) return <NotForYou what="the attendance sheet" back={`/classes/${id}`} alt={{ href: '/grades', label: 'your attendance and grades' }} />;
   if (!klass) return state.error ? <Alert>{state.error}</Alert> : <SkeletonRows rows={5} />;
 
   return (

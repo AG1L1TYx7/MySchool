@@ -440,7 +440,7 @@ export class ClassesService {
     id: string,
     actor: AuthenticatedUser,
   ): Promise<PublicEnrollment[]> {
-    await this.findManageable(id, actor);
+    await this.findReadable(id, actor);
     const rows = await this.prisma.classEnrollment.findMany({
       where: { classId: id },
       include: { student: true },
@@ -639,6 +639,29 @@ export class ClassesService {
   }
 
   /** Administrators manage any class in their organisation; teachers only classes they are assigned to. */
+  /** Roster readers: whoever manages the class, plus assistants and staff of the same school (attendance, gradebook). */
+  private async findReadable(id: string, actor: AuthenticatedUser) {
+    const row = await this.prisma.class.findFirst({
+      where: { id, deletedAt: null },
+      include: { teachers: { select: { teacherId: true } } },
+    });
+    if (!row)
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'Class not found.',
+      });
+    const staffHere =
+      actor.organizationId === row.organizationId &&
+      (actor.role === 'ASSISTANT' ||
+        ROLE_LEVEL[actor.role] >= ROLE_LEVEL.TEACHER);
+    if (!canManage(row, actor) && !staffHere)
+      throw new ForbiddenException({
+        code: 'authz.forbidden',
+        detail: 'Only school staff can view this roster.',
+      });
+    return row;
+  }
+
   private async findManageable(
     id: string,
     actor: AuthenticatedUser,

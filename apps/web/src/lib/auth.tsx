@@ -49,18 +49,52 @@ interface AuthContextValue {
   reload: () => Promise<void>;
 }
 
+/** Per-browser note that a session exists; wrapped because storage can be blocked or throw. */
+const sessionMarker = {
+  get(): boolean {
+    try {
+      return localStorage.getItem('ss_session') === '1';
+    } catch {
+      return false;
+    }
+  },
+  set(): void {
+    try {
+      localStorage.setItem('ss_session', '1');
+    } catch {
+      /* ignore */
+    }
+  },
+  clear(): void {
+    try {
+      localStorage.removeItem('ss_session');
+    } catch {
+      /* ignore */
+    }
+  },
+};
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /** Loads the profile; with no access token in memory the client silently refreshes from the cookie first. */
+  /**
+   * Loads the profile; with no access token in memory the client silently refreshes from the cookie first.
+   * The refresh cookie is HttpOnly, so a local marker records that a session was started on this browser;
+   * without it (first visit, after sign-out) no request is made at all.
+   */
   const reload = useCallback(async () => {
+    if (!tokenStore.access && !sessionMarker.get()) {
+      setUser(null);
+      return;
+    }
     try {
       setUser(await api<CurrentUser>('/auth/me'));
     } catch {
       tokenStore.clear();
+      sessionMarker.clear();
       setUser(null);
     }
   }, []);
@@ -73,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await api<LoginResponse>('/auth/login', { method: 'POST', body: input, auth: false });
     if (!result.mfaRequired) {
       tokenStore.set(result.accessToken);
+      sessionMarker.set();
       setUser(await api<CurrentUser>('/auth/me'));
     }
     return result;
@@ -82,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await api<LoginResponse>('/auth/2fa/challenge', { method: 'POST', body: input, auth: false });
     if (result.mfaRequired) throw new Error('Unexpected response');
     tokenStore.set(result.accessToken);
+    sessionMarker.set();
     setUser(await api<CurrentUser>('/auth/me'));
   }, []);
 
@@ -94,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* the local session is cleared regardless */
     }
     tokenStore.clear();
+    sessionMarker.clear();
     setUser(null);
   }, []);
 

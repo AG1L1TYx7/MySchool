@@ -10,6 +10,7 @@ from app.envelopes import Actor, ContextBlock
 
 ContentCapability = Literal["content.quiz", "content.flashcards"]
 QuestionType = Literal["multiple_choice", "true_false", "fill_blank"]
+DEFAULT_QUESTION_TYPES: list[QuestionType] = ["multiple_choice", "true_false"]
 
 
 class ContentSpec(BaseModel):
@@ -20,7 +21,7 @@ class ContentSpec(BaseModel):
     gradeLevel: str = Field(default="7", max_length=10)
     count: int = Field(default=10, ge=3, le=30)
     difficulty: Literal["easy", "medium", "hard", "mixed"] = "mixed"
-    questionTypes: list[QuestionType] = Field(default_factory=lambda: ["multiple_choice", "true_false"])
+    questionTypes: list[QuestionType] = Field(default_factory=lambda: list(DEFAULT_QUESTION_TYPES))
     language: str = "en"
     standard: str | None = Field(default=None, max_length=200)
     feedback: str | None = Field(default=None, max_length=2000, description="Teacher guidance when regenerating")

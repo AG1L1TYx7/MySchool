@@ -89,4 +89,6 @@ jobs:
       - run: pip install -e "apps/ai[dev]"
       - run: ruff check apps/ai
       - run: ruff format --check apps/ai
+      - run: mypy app
+        working-directory: apps/ai
       - run: pytest apps/ai -q

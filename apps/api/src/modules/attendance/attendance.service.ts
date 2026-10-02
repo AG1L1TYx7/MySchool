@@ -366,11 +366,15 @@ export class AttendanceService {
         code: 'resource.not_found',
         detail: 'Class not found.',
       });
-    if (!canManage(klass, actor))
+    // Assistants mark attendance for any class in their school; teachers only for their own.
+    const assistantHere =
+      actor.role === 'ASSISTANT' &&
+      actor.organizationId === klass.organizationId;
+    if (!canManage(klass, actor) && !assistantHere)
       throw new ForbiddenException({
         code: 'authz.forbidden',
         detail:
-          'Only an assigned teacher or an administrator can mark attendance for this class.',
+          'Only an assigned teacher, an assistant or an administrator can mark attendance for this class.',
       });
     return klass;
   }

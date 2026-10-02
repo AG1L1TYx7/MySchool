@@ -8,6 +8,7 @@ import { Alert, Button, Card } from '@/components/ui';
 import { api, download, errorMessage } from '@/lib/api';
 import type { Gradebook } from '@/lib/academics';
 import { useAuth } from '@/lib/auth';
+import { NotForYou } from '@/components/not-for-you';
 
 export default function GradebookPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,12 +16,15 @@ export default function GradebookPage() {
   const [book, setBook] = useState<Gradebook | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const allowed = can('grades.view.all');
   useEffect(() => {
+    if (!allowed) return;
     api<Gradebook>(`/classes/${id}/gradebook`)
       .then(setBook)
       .catch((err) => setError(errorMessage(err)));
-  }, [id]);
+  }, [id, allowed]);
 
+  if (!allowed) return <NotForYou what="the class gradebook" back={`/classes/${id}`} alt={{ href: '/grades', label: 'your grades' }} />;
   if (error) return <Alert>{error}</Alert>;
   if (!book) return <SkeletonRows rows={5} />;
 

@@ -5,10 +5,11 @@ from __future__ import annotations
 import ast
 import math
 import operator
+from collections.abc import Callable
 from fractions import Fraction
 from typing import Any
 
-_BIN = {
+_BIN: dict[type[ast.operator], Callable[[float, float], float]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
@@ -17,7 +18,7 @@ _BIN = {
     ast.Mod: operator.mod,
     ast.FloorDiv: operator.floordiv,
 }
-_UNARY = {ast.UAdd: operator.pos, ast.USub: operator.neg}
+_UNARY: dict[type[ast.unaryop], Callable[[float], float]] = {ast.UAdd: operator.pos, ast.USub: operator.neg}
 _FUNCS: dict[str, Any] = {"sqrt": math.sqrt, "abs": abs, "round": round}
 _MAX_LEN = 200
 _MAX_POWER = 1000

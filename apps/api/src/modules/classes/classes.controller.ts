@@ -11,7 +11,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { RequireFeature } from '../access/decorators/access.decorators';
+import {
+  RequireFeature,
+  RequireAnyFeature,
+} from '../access/decorators/access.decorators';
 import { Audit } from '../audit/audit.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -121,7 +124,11 @@ export class ClassesController {
   }
 
   @Get(':id/enrollments')
-  @RequireFeature('classes.roster.manage')
+  @RequireAnyFeature(
+    'classes.roster.manage',
+    'attendance.view',
+    'grades.view.all',
+  )
   @ApiOperation({
     summary: 'Roster: enrolled, waitlisted, dropped and completed students',
   })
