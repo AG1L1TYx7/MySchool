@@ -44,7 +44,12 @@ export default function GradesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <h1 className="text-2xl font-semibold">Grades</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Grades</h1>
+        <Link href="/report-cards" className="text-sm text-brand-700 underline">
+          Report cards
+        </Link>
+      </div>
       {error && <Alert>{error}</Alert>}
       {learner &&
         students.map((s) => {

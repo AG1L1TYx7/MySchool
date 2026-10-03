@@ -122,6 +122,10 @@ Rostering: on the same page, connect the district's OneRoster API, ClassLink or 
 
 As a principal, open the organisation page and scroll to School structure: tick the grades the school serves, set the time attendance is due each day, add the school year with its terms and grading periods, add a bell schedule with its periods, and adjust the attendance codes (the seven defaults cover present, tardy, excused, unexcused, remote, field trip and suspended). Classes then pick a term, a period and a grade level; the attendance sheet shows the codes and the period. The office view at /attendance/today lists classes that still owe attendance and downloads the average daily attendance and chronic absenteeism CSVs. Everyone has a calendar at /calendar with a private subscription link for phones and Google Calendar.
 
+## 4c. Grading, standards and report cards
+
+On the organisation page, set the letter cutoffs and GPA points the district uses and, for standards-based classes, the proficiency levels. Each teacher opens their class and sets the grading mode, the weighted categories (for example Homework 30, Quizzes 30, Tests 40 with the lowest homework dropped), the late work policy and the syllabus; students and parents see the policy and syllabus on the class page. Assignments pick a category, a grading period and the standards they assess; Common Core, NGSS and a Texas sample set are included, and a district imports its own from a CASE file on the Standards page. The gradebook shows marks (Missing counts as zero, Excused is left out), dropped scores and category totals, with a standards view for standards-based classes. At the end of a grading period an administrator generates report cards for the school (or a teacher for one class), teachers add comments, and the office publishes them; students and parents are notified and can download the PDF.
+
 ## 5. Backups
 
 ```bash

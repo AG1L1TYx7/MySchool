@@ -55,6 +55,8 @@ export interface SchoolStructure {
   gradeLevels: string[];
   attendanceDeadlineTime: string | null;
   timezone: string;
+  gradingScale: Array<{ letter: string; min: number }>;
+  gpaScale: Array<{ letter: string; points: number }>;
   years: AcademicYear[];
   bellSchedules: BellSchedule[];
   attendanceCodes: AttendanceCode[];

@@ -24,6 +24,9 @@ import { RosterModule } from './modules/roster/roster.module';
 import { SsoModule } from './modules/sso/sso.module';
 import { SchoolModule } from './modules/school/school.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { GradebookModule } from './modules/gradebook/gradebook.module';
+import { StandardsModule } from './modules/standards/standards.module';
+import { ReportCardsModule } from './modules/report-cards/report-cards.module';
 import { H5pModule } from './modules/h5p/h5p.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -108,6 +111,9 @@ import { UsersModule } from './modules/users/users.module';
     SsoModule,
     SchoolModule,
     CalendarModule,
+    GradebookModule,
+    StandardsModule,
+    ReportCardsModule,
     HealthModule,
     MetricsModule,
   ],

@@ -80,6 +80,10 @@ describe('Curriculum and classes (e2e)', () => {
       select: { id: true, organizationId: true },
     });
     teacherId = teacher.id;
+    // The ids only change once a day; clear anything a crashed run left behind.
+    await prisma.student.deleteMany({
+      where: { studentNumber: { startsWith: 'E2E-C-' } },
+    });
     for (let i = 0; i < 2; i++) {
       const s = await prisma.student.create({
         data: {

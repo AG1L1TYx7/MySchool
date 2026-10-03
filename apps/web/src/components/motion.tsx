@@ -51,7 +51,7 @@ export function Skeleton({ className = 'h-4 w-full' }: { className?: string }) {
 
 export function SkeletonRows({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+    <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="h-9 w-9 rounded-full" />

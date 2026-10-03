@@ -1,16 +1,19 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Length,
   Matches,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -122,7 +125,44 @@ export class AttendanceCodeDto {
 }
 export class UpdateAttendanceCodeDto extends PartialType(AttendanceCodeDto) {}
 
+export class LetterCutoffDto {
+  @ApiProperty({ example: 'A' }) @IsString() @Length(1, 4) letter!: string;
+  @ApiProperty({ example: 90 })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  min!: number;
+}
+export class GpaPointsDto {
+  @ApiProperty({ example: 'A' }) @IsString() @Length(1, 4) letter!: string;
+  @ApiProperty({ example: 4 })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  points!: number;
+}
+
 export class SchoolSettingsDto {
+  @ApiProperty({
+    required: false,
+    type: [LetterCutoffDto],
+    description: 'Letter cutoffs, highest first; the lowest starts at 0',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(15)
+  @ValidateNested({ each: true })
+  @Type(() => LetterCutoffDto)
+  gradingScale?: LetterCutoffDto[];
+  @ApiProperty({ required: false, type: [GpaPointsDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(15)
+  @ValidateNested({ each: true })
+  @Type(() => GpaPointsDto)
+  gpaScale?: GpaPointsDto[];
   @ApiProperty({ type: [String], example: ['6', '7', '8'] })
   @IsOptional()
   @IsArray()

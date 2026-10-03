@@ -27,6 +27,10 @@ export interface Assignment {
   type: string;
   submissionType: string;
   category: string | null;
+  categoryId: string | null;
+  isExtraCredit: boolean;
+  gradingPeriodId: string | null;
+  standards: Array<{ id: string; setId: string; setCode?: string; code: string; description: string; gradeLevels: string[] }>;
   maxPoints: number;
   weight: number;
   availableFrom: string | null;
@@ -46,6 +50,7 @@ export interface Assignment {
   mySubmission?: { status: string; attemptNumber: number; submittedAt: string } | null;
   myGrade?: { score: number; maxPoints: number; percentage: number } | null;
   mySubmissions?: Submission[];
+  myMark?: import('./gradebook').Mark;
 }
 
 export interface FileMeta {
@@ -67,6 +72,7 @@ export interface Grade {
   feedback: string | null;
   rubricScores: Array<{ criterionId: string; points: number; comment?: string }> | null;
   latePenaltyApplied: number | null;
+  standardScores: Array<{ standardId: string; level: number; label: string }>;
   gradedAt: string;
   assignment?: { id: string; title: string; classId: string; className: string; dueAt: string | null; category: string | null };
   student?: { id: string; studentNumber: string; firstName: string; lastName: string };
@@ -90,6 +96,8 @@ export interface SubmissionRow {
   student: { id: string; studentNumber: string; firstName: string; lastName: string };
   submission: Submission | null;
   grade: Grade | null;
+  mark: import('./gradebook').Mark;
+  markNote: string | null;
 }
 
 export interface Gradebook {

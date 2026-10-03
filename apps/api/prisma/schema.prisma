@@ -74,6 +74,27 @@ enum LessonType {
   INTERACTIVE
 }
 
+enum GradingMode {
+  POINTS
+  STANDARDS
+}
+
+enum MarkStatus {
+  MISSING
+  EXCUSED
+  INCOMPLETE
+}
+
+enum ReportCardKind {
+  PROGRESS
+  REPORT_CARD
+}
+
+enum ReportCardStatus {
+  DRAFT
+  PUBLISHED
+}
+
 enum ClassStatus {
   SCHEDULED
   IN_PROGRESS
@@ -268,43 +289,48 @@ enum UserStatus {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id                String    @id @map("Id") @db.Char(36)
-  name              String    @map("Name") @db.VarChar(200)
-  description       String?   @map("Description") @db.VarChar(500)
-  email             String?   @map("Email") @db.VarChar(100)
-  phone             String?   @map("Phone") @db.VarChar(20)
-  address           String?   @map("Address") @db.VarChar(500)
-  timezone          String    @default("UTC") @map("Timezone") @db.VarChar(64)
-  isActive          Boolean   @default(true) @map("IsActive")
-  joinCode          String?   @unique @map("JoinCode") @db.VarChar(16)
-  joinCodeRotatedAt DateTime? @map("JoinCodeRotatedAt") @db.DateTime(6)
-  externalId          String?   @map("ExternalId") @db.VarChar(128)
-  ssoProviders        String?   @map("SsoProviders") @db.VarChar(200)
-  ssoAllowedDomains   String?   @map("SsoAllowedDomains") @db.VarChar(500)
-  ssoPasswordOptional Boolean   @default(false) @map("SsoPasswordOptional")
+  id                     String    @id @map("Id") @db.Char(36)
+  name                   String    @map("Name") @db.VarChar(200)
+  description            String?   @map("Description") @db.VarChar(500)
+  email                  String?   @map("Email") @db.VarChar(100)
+  phone                  String?   @map("Phone") @db.VarChar(20)
+  address                String?   @map("Address") @db.VarChar(500)
+  timezone               String    @default("UTC") @map("Timezone") @db.VarChar(64)
+  isActive               Boolean   @default(true) @map("IsActive")
+  joinCode               String?   @unique @map("JoinCode") @db.VarChar(16)
+  joinCodeRotatedAt      DateTime? @map("JoinCodeRotatedAt") @db.DateTime(6)
+  externalId             String?   @map("ExternalId") @db.VarChar(128)
+  ssoProviders           String?   @map("SsoProviders") @db.VarChar(200)
+  ssoAllowedDomains      String?   @map("SsoAllowedDomains") @db.VarChar(500)
+  ssoPasswordOptional    Boolean   @default(false) @map("SsoPasswordOptional")
   gradeLevels            String?   @map("GradeLevels") @db.VarChar(100)
   attendanceDeadlineTime String?   @map("AttendanceDeadlineTime") @db.VarChar(5)
-  createdAt         DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
-  updatedAt         DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
-  deletedAt         DateTime? @map("DeletedAt") @db.DateTime(6)
+  gradingScale           String?   @map("GradingScale") @db.Text
+  gpaScale               String?   @map("GpaScale") @db.Text
+  createdAt              DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt              DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt              DateTime? @map("DeletedAt") @db.DateTime(6)
 
-  users       User[]
-  students    Student[]
-  courses     Course[]
-  classes     Class[]
-  files       FileUpload[]
-  rubrics     Rubric[]
-  assignments Assignment[]
-  aiConversations AiConversation[]
-  h5pContents H5PContent[]
-  aiJobs      AiJob[]
-  announcements Announcement[]
-  conversations Conversation[]
-  rosterSources RosterSource[]
-  academicYears   AcademicYear[]
-  bellSchedules   BellSchedule[]
-  attendanceCodes AttendanceCode[]
-  calendarEvents  CalendarEvent[]
+  users             User[]
+  students          Student[]
+  courses           Course[]
+  classes           Class[]
+  files             FileUpload[]
+  rubrics           Rubric[]
+  assignments       Assignment[]
+  aiConversations   AiConversation[]
+  h5pContents       H5PContent[]
+  standardSets      StandardSet[]
+  proficiencyScales ProficiencyScale[]
+  reportCards       ReportCard[]
+  aiJobs            AiJob[]
+  announcements     Announcement[]
+  conversations     Conversation[]
+  rosterSources     RosterSource[]
+  academicYears     AcademicYear[]
+  bellSchedules     BellSchedule[]
+  attendanceCodes   AttendanceCode[]
+  calendarEvents    CalendarEvent[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -335,10 +361,10 @@ model User {
   twoFactorSecret  String? @map("TwoFactorSecret") @db.VarChar(512) // AES-256-GCM encrypted
   backupCodes      String? @map("BackupCodes") @db.Text // JSON array of argon2 hashes (TEXT: MariaDB 10.4 has no native JSON, ADR-002)
 
-  lastTotpStep     Int?      @map("LastTotpStep")
-  failedLoginCount Int       @default(0) @map("FailedLoginCount")
-  lockedUntil      DateTime? @map("LockedUntil") @db.DateTime(6)
-  lastLoginAt      DateTime? @map("LastLoginAt") @db.DateTime(6)
+  lastTotpStep     Int?         @map("LastTotpStep")
+  failedLoginCount Int          @default(0) @map("FailedLoginCount")
+  lockedUntil      DateTime?    @map("LockedUntil") @db.DateTime(6)
+  lastLoginAt      DateTime?    @map("LastLoginAt") @db.DateTime(6)
   externalId       String?      @map("ExternalId") @db.VarChar(128)
   source           RecordSource @default(MANUAL) @map("Source")
   managedBySis     Boolean      @default(false) @map("ManagedBySis")
@@ -347,35 +373,35 @@ model User {
   updatedAt DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt DateTime? @map("DeletedAt") @db.DateTime(6)
 
-  organization       Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization       Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   sessions           AuthSession[]
   authTokens         AuthToken[]
   featureOverrides   UserFeatureOverride[]
   auditLogs          AuditLog[]
   student            Student?
   guardianLinks      StudentGuardian[]
-  coursesInstructed  Course[]              @relation("CourseInstructor")
-  coursesCreated     Course[]              @relation("CourseCreator")
+  coursesInstructed  Course[]                  @relation("CourseInstructor")
+  coursesCreated     Course[]                  @relation("CourseCreator")
   classesTaught      ClassTeacher[]
   uploads            FileUpload[]
   rubricsCreated     Rubric[]
   assignmentsCreated Assignment[]
   gradesGiven        Grade[]
   attendanceMarked   Attendance[]
-  aiConversations     AiConversation[]
-  h5pContents         H5PContent[]
-  h5pResults          H5PContentResult[]
-  aiJobs              AiJob[]
-  announcements       Announcement[]
-  notifications       Notification[]
-  notificationPrefs   NotificationPreference[]
-  conversationsMade   Conversation[]
-  participations      ConversationParticipant[]
-  messagesSent        Message[]
-  identities          UserIdentity[]
-  rosterRuns          RosterSyncRun[]
-  calendarEvents      CalendarEvent[]
-  icalToken           String?      @unique @map("IcalToken") @db.VarChar(64)
+  aiConversations    AiConversation[]
+  h5pContents        H5PContent[]
+  h5pResults         H5PContentResult[]
+  aiJobs             AiJob[]
+  announcements      Announcement[]
+  notifications      Notification[]
+  notificationPrefs  NotificationPreference[]
+  conversationsMade  Conversation[]
+  participations     ConversationParticipant[]
+  messagesSent       Message[]
+  identities         UserIdentity[]
+  rosterRuns         RosterSyncRun[]
+  calendarEvents     CalendarEvent[]
+  icalToken          String?                   @unique @map("IcalToken") @db.VarChar(64)
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -458,12 +484,14 @@ model Student {
 
   organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  marks        AssignmentMark[]
+  reportCards  ReportCard[]
   guardians    StudentGuardian[]
   enrollments  ClassEnrollment[]
   submissions  AssignmentSubmission[]
   grades       Grade[]
   attendance   Attendance[]
-  h5pResults  H5PContentResult[]
+  h5pResults   H5PContentResult[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -580,49 +608,57 @@ model Lesson {
   createdAt       DateTime   @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt       DateTime   @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
-  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module    Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  standards LessonStandard[]
 
   @@index([moduleId, sortOrder])
   @@map("Lessons")
 }
 
 model Class {
-  id              String      @id @map("Id") @db.Char(36)
-  organizationId  String      @map("OrganizationId") @db.Char(36)
-  courseId        String      @map("CourseId") @db.Char(36)
-  name            String      @map("Name") @db.VarChar(200)
-  section         String?     @map("Section") @db.VarChar(50)
-  term            String      @map("Term") @db.VarChar(50)
-  startDate       DateTime?   @map("StartDate") @db.Date
-  endDate         DateTime?   @map("EndDate") @db.Date
-  room            String?     @map("Room") @db.VarChar(100)
-  meetingSchedule String?     @map("MeetingSchedule") @db.Text
-  maxStudents     Int?        @map("MaxStudents")
-  periodLabel     String?     @map("PeriodLabel") @db.VarChar(50)
-  academicYearId  String?     @map("AcademicYearId") @db.Char(36)
-  termId          String?     @map("TermId") @db.Char(36)
-  periodId        String?     @map("PeriodId") @db.Char(36)
-  gradeLevel      String?     @map("GradeLevel") @db.VarChar(16)
-  externalId      String?     @map("ExternalId") @db.VarChar(128)
-  source          RecordSource @default(MANUAL) @map("Source")
-  managedBySis    Boolean     @default(false) @map("ManagedBySis")
-  status          ClassStatus @default(SCHEDULED) @map("Status")
-  createdAt       DateTime    @default(now()) @map("CreatedAt") @db.DateTime(6)
-  updatedAt       DateTime    @updatedAt @map("UpdatedAt") @db.DateTime(6)
-  deletedAt       DateTime?   @map("DeletedAt") @db.DateTime(6)
+  id                 String       @id @map("Id") @db.Char(36)
+  organizationId     String       @map("OrganizationId") @db.Char(36)
+  courseId           String       @map("CourseId") @db.Char(36)
+  name               String       @map("Name") @db.VarChar(200)
+  section            String?      @map("Section") @db.VarChar(50)
+  term               String       @map("Term") @db.VarChar(50)
+  startDate          DateTime?    @map("StartDate") @db.Date
+  endDate            DateTime?    @map("EndDate") @db.Date
+  room               String?      @map("Room") @db.VarChar(100)
+  meetingSchedule    String?      @map("MeetingSchedule") @db.Text
+  maxStudents        Int?         @map("MaxStudents")
+  periodLabel        String?      @map("PeriodLabel") @db.VarChar(50)
+  academicYearId     String?      @map("AcademicYearId") @db.Char(36)
+  termId             String?      @map("TermId") @db.Char(36)
+  periodId           String?      @map("PeriodId") @db.Char(36)
+  gradeLevel         String?      @map("GradeLevel") @db.VarChar(16)
+  gradingMode        GradingMode  @default(POINTS) @map("GradingMode")
+  proficiencyScaleId String?      @map("ProficiencyScaleId") @db.Char(36)
+  latePolicy         String?      @map("LatePolicy") @db.Text
+  syllabus           String?      @map("Syllabus") @db.Text
+  externalId         String?      @map("ExternalId") @db.VarChar(128)
+  source             RecordSource @default(MANUAL) @map("Source")
+  managedBySis       Boolean      @default(false) @map("ManagedBySis")
+  status             ClassStatus  @default(SCHEDULED) @map("Status")
+  createdAt          DateTime     @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt          DateTime     @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt          DateTime?    @map("DeletedAt") @db.DateTime(6)
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course       Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  teachers     ClassTeacher[]
-  enrollments  ClassEnrollment[]
-  assignments  Assignment[]
-  attendance   Attendance[]
-  academicYear  AcademicYear?  @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
-  termRef       Term?          @relation(fields: [termId], references: [id], onDelete: SetNull)
-  period        Period?        @relation(fields: [periodId], references: [id], onDelete: SetNull)
-  calendarEvents CalendarEvent[]
-  announcements Announcement[]
-  conversations Conversation[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course           Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  teachers         ClassTeacher[]
+  enrollments      ClassEnrollment[]
+  assignments      Assignment[]
+  attendance       Attendance[]
+  academicYear     AcademicYear?     @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  termRef          Term?             @relation(fields: [termId], references: [id], onDelete: SetNull)
+  period           Period?           @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  calendarEvents   CalendarEvent[]
+  gradeCategories  GradeCategory[]
+  proficiencyScale ProficiencyScale? @relation(fields: [proficiencyScaleId], references: [id], onDelete: SetNull)
+  reportCardLines  ReportCardLine[]
+  announcements    Announcement[]
+  conversations    Conversation[]
 
   @@index([organizationId, term, status, deletedAt])
   @@index([courseId])
@@ -724,6 +760,9 @@ model Assignment {
   type               AssignmentType   @default(HOMEWORK) @map("Type")
   submissionType     SubmissionType   @default(ONLINE) @map("SubmissionType")
   category           String?          @map("Category") @db.VarChar(50)
+  categoryId         String?          @map("CategoryId") @db.Char(36)
+  isExtraCredit      Boolean          @default(false) @map("IsExtraCredit")
+  gradingPeriodId    String?          @map("GradingPeriodId") @db.Char(36)
   maxPoints          Decimal          @default(100) @map("MaxPoints") @db.Decimal(7, 2)
   weight             Decimal          @default(1) @map("Weight") @db.Decimal(5, 2)
   availableFrom      DateTime?        @map("AvailableFrom") @db.DateTime(6)
@@ -739,14 +778,18 @@ model Assignment {
   updatedAt          DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt          DateTime?        @map("DeletedAt") @db.DateTime(6)
 
-  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  class        Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
-  createdBy    User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  rubric       Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  h5pContent   H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
-  h5pResults   H5PContentResult[]
-  submissions  AssignmentSubmission[]
-  grades       Grade[]
+  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class         Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy     User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  rubric        Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  h5pContent    H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
+  h5pResults    H5PContentResult[]
+  submissions   AssignmentSubmission[]
+  grades        Grade[]
+  gradeCategory GradeCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  gradingPeriod GradingPeriod?         @relation(fields: [gradingPeriodId], references: [id], onDelete: SetNull)
+  marks         AssignmentMark[]
+  standards     AssignmentStandard[]
 
   @@index([classId, status, dueAt])
   @@index([organizationId, deletedAt])
@@ -805,10 +848,11 @@ model Grade {
   createdAt          DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt          DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
-  assignment Assignment            @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  student    Student               @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  submission AssignmentSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
-  gradedBy   User?                 @relation(fields: [gradedById], references: [id], onDelete: SetNull)
+  assignment     Assignment            @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student        Student               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  submission     AssignmentSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  gradedBy       User?                 @relation(fields: [gradedById], references: [id], onDelete: SetNull)
+  standardScores StandardScore[]
 
   @@unique([assignmentId, studentId])
   @@index([studentId, gradedAt])
@@ -828,9 +872,9 @@ model Attendance {
   createdAt  DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt  DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
-  class    Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  markedBy User?   @relation(fields: [markedById], references: [id], onDelete: SetNull)
+  class    Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student  Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  markedBy User?           @relation(fields: [markedById], references: [id], onDelete: SetNull)
   code     AttendanceCode? @relation(fields: [codeId], references: [id], onDelete: SetNull)
   period   Period?         @relation(fields: [periodId], references: [id], onDelete: SetNull)
 
@@ -1162,17 +1206,17 @@ model RosterSource {
 }
 
 model RosterSyncRun {
-  id            String          @id @map("Id") @db.Char(36)
-  sourceId      String?         @map("SourceId") @db.Char(36)
-  organizationId String         @map("OrganizationId") @db.Char(36)
-  provider      RosterProvider  @map("Provider")
-  status        RosterRunStatus @default(QUEUED) @map("Status")
-  dryRun        Boolean         @default(false) @map("DryRun")
-  triggeredById String?         @map("TriggeredById") @db.Char(36)
-  startedAt     DateTime        @default(now()) @map("StartedAt") @db.DateTime(6)
-  finishedAt    DateTime?       @map("FinishedAt") @db.DateTime(6)
-  summary       String?         @map("Summary") @db.Text
-  errorMessage  String?         @map("ErrorMessage") @db.Text
+  id             String          @id @map("Id") @db.Char(36)
+  sourceId       String?         @map("SourceId") @db.Char(36)
+  organizationId String          @map("OrganizationId") @db.Char(36)
+  provider       RosterProvider  @map("Provider")
+  status         RosterRunStatus @default(QUEUED) @map("Status")
+  dryRun         Boolean         @default(false) @map("DryRun")
+  triggeredById  String?         @map("TriggeredById") @db.Char(36)
+  startedAt      DateTime        @default(now()) @map("StartedAt") @db.DateTime(6)
+  finishedAt     DateTime?       @map("FinishedAt") @db.DateTime(6)
+  summary        String?         @map("Summary") @db.Text
+  errorMessage   String?         @map("ErrorMessage") @db.Text
 
   source      RosterSource?     @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   triggeredBy User?             @relation(fields: [triggeredById], references: [id], onDelete: SetNull)
@@ -1244,7 +1288,9 @@ model GradingPeriod {
   endDate   DateTime @map("EndDate") @db.Date
   sortOrder Int      @default(0) @map("SortOrder")
 
-  term Term @relation(fields: [termId], references: [id], onDelete: Cascade)
+  term        Term         @relation(fields: [termId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+  reportCards ReportCard[]
 
   @@unique([termId, name])
   @@map("GradingPeriods")
@@ -1428,4 +1474,177 @@ model JobRun {
   runCount   Int       @default(0) @map("RunCount")
 
   @@map("JobRuns")
+}
+
+/// Weighted grade categories per class (docs/13 section 4): Homework 20, Quizzes 30, Tests 50.
+model GradeCategory {
+  id         String  @id @map("Id") @db.Char(36)
+  classId    String  @map("ClassId") @db.Char(36)
+  name       String  @map("Name") @db.VarChar(60)
+  weight     Decimal @default(0) @map("Weight") @db.Decimal(5, 2)
+  dropLowest Int     @default(0) @map("DropLowest")
+  sortOrder  Int     @default(0) @map("SortOrder")
+
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@unique([classId, name])
+  @@map("GradeCategories")
+}
+
+/// A teacher-set mark that overrides the derived one (Missing counts as zero; Excused is left out).
+model AssignmentMark {
+  id           String     @id @map("Id") @db.Char(36)
+  assignmentId String     @map("AssignmentId") @db.Char(36)
+  studentId    String     @map("StudentId") @db.Char(36)
+  mark         MarkStatus @map("Mark")
+  note         String?    @map("Note") @db.VarChar(500)
+  setById      String?    @map("SetById") @db.Char(36)
+  updatedAt    DateTime   @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@map("AssignmentMarks")
+}
+
+/// A set of academic standards (Common Core, NGSS, a state set); organisation-less sets are shared by everyone.
+model StandardSet {
+  id             String   @id @map("Id") @db.Char(36)
+  organizationId String?  @map("OrganizationId") @db.Char(36)
+  code           String   @map("Code") @db.VarChar(40)
+  name           String   @map("Name") @db.VarChar(200)
+  subject        String?  @map("Subject") @db.VarChar(100)
+  jurisdiction   String?  @map("Jurisdiction") @db.VarChar(100)
+  sourceUri      String?  @map("SourceUri") @db.VarChar(500)
+  version        String?  @map("Version") @db.VarChar(40)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  standards    Standard[]
+
+  @@index([organizationId, code])
+  @@map("StandardSets")
+}
+
+model Standard {
+  id          String  @id @map("Id") @db.Char(36)
+  setId       String  @map("SetId") @db.Char(36)
+  parentId    String? @map("ParentId") @db.Char(36)
+  code        String  @map("Code") @db.VarChar(80)
+  description String  @map("Description") @db.Text
+  gradeLevels String? @map("GradeLevels") @db.VarChar(100)
+  sortOrder   Int     @default(0) @map("SortOrder")
+
+  set         StandardSet          @relation(fields: [setId], references: [id], onDelete: Cascade)
+  parent      Standard?            @relation("StandardTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Standard[]           @relation("StandardTree")
+  assignments AssignmentStandard[]
+  lessons     LessonStandard[]
+  scores      StandardScore[]
+
+  @@unique([setId, code])
+  @@index([setId, gradeLevels])
+  @@map("Standards")
+}
+
+model AssignmentStandard {
+  assignmentId String @map("AssignmentId") @db.Char(36)
+  standardId   String @map("StandardId") @db.Char(36)
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  standard   Standard   @relation(fields: [standardId], references: [id], onDelete: Cascade)
+
+  @@id([assignmentId, standardId])
+  @@map("AssignmentStandards")
+}
+
+model LessonStandard {
+  lessonId   String @map("LessonId") @db.Char(36)
+  standardId String @map("StandardId") @db.Char(36)
+
+  lesson   Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  standard Standard @relation(fields: [standardId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, standardId])
+  @@map("LessonStandards")
+}
+
+/// Levels for standards-based grading, e.g. Beginning 1, Developing 2, Proficient 3, Advanced 4 (JSON in Levels).
+model ProficiencyScale {
+  id             String  @id @map("Id") @db.Char(36)
+  organizationId String  @map("OrganizationId") @db.Char(36)
+  name           String  @map("Name") @db.VarChar(80)
+  levels         String  @map("Levels") @db.Text
+  isDefault      Boolean @default(false) @map("IsDefault")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  classes      Class[]
+
+  @@unique([organizationId, name])
+  @@map("ProficiencyScales")
+}
+
+/// The level a student reached on one standard in one graded assignment.
+model StandardScore {
+  id         String @id @map("Id") @db.Char(36)
+  gradeId    String @map("GradeId") @db.Char(36)
+  standardId String @map("StandardId") @db.Char(36)
+  level      Int    @map("Level")
+  label      String @map("Label") @db.VarChar(40)
+
+  grade    Grade    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  standard Standard @relation(fields: [standardId], references: [id], onDelete: Cascade)
+
+  @@unique([gradeId, standardId])
+  @@map("StandardScores")
+}
+
+/// A report card or progress report for one student and grading period: a snapshot, with teacher comments.
+model ReportCard {
+  id              String           @id @map("Id") @db.Char(36)
+  organizationId  String           @map("OrganizationId") @db.Char(36)
+  studentId       String           @map("StudentId") @db.Char(36)
+  gradingPeriodId String           @map("GradingPeriodId") @db.Char(36)
+  kind            ReportCardKind   @default(REPORT_CARD) @map("Kind")
+  status          ReportCardStatus @default(DRAFT) @map("Status")
+  gpa             Decimal?         @map("GPA") @db.Decimal(4, 2)
+  attendance      String?          @map("Attendance") @db.Text
+  generatedById   String?          @map("GeneratedById") @db.Char(36)
+  publishedAt     DateTime?        @map("PublishedAt") @db.DateTime(6)
+  createdAt       DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt       DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  student       Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  gradingPeriod GradingPeriod    @relation(fields: [gradingPeriodId], references: [id], onDelete: Cascade)
+  lines         ReportCardLine[]
+
+  @@unique([studentId, gradingPeriodId, kind])
+  @@index([organizationId, gradingPeriodId, status])
+  @@map("ReportCards")
+}
+
+model ReportCardLine {
+  id           String   @id @map("Id") @db.Char(36)
+  reportCardId String   @map("ReportCardId") @db.Char(36)
+  classId      String   @map("ClassId") @db.Char(36)
+  className    String   @map("ClassName") @db.VarChar(200)
+  courseTitle  String   @map("CourseTitle") @db.VarChar(200)
+  teacherName  String?  @map("TeacherName") @db.VarChar(200)
+  percentage   Decimal? @map("Percentage") @db.Decimal(5, 2)
+  letter       String?  @map("Letter") @db.VarChar(4)
+  gpaPoints    Decimal? @map("GpaPoints") @db.Decimal(4, 2)
+  categories   String?  @map("Categories") @db.Text
+  standards    String?  @map("Standards") @db.Text
+  comment      String?  @map("Comment") @db.Text
+  commentById  String?  @map("CommentById") @db.Char(36)
+  updatedAt    DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  reportCard ReportCard @relation(fields: [reportCardId], references: [id], onDelete: Cascade)
+  class      Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([reportCardId, classId])
+  @@map("ReportCardLines")
 }

@@ -191,6 +191,17 @@ export class CreateLessonDto {
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
+  @ApiProperty({
+    required: false,
+    type: [String],
+    format: 'uuid',
+    description: 'Standards this lesson teaches',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID(undefined, { each: true })
+  standardIds?: string[];
 }
 
 export class UpdateLessonDto extends PartialType(CreateLessonDto) {}

@@ -912,6 +912,276 @@ async function seedStructure(organizationId: string): Promise<void> {
   );
 }
 
+/** Grade categories, a shared standards catalogue, a proficiency scale and the district scales for the demo. */
+async function seedGrading(organizationId: string): Promise<void> {
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: {
+      gradingScale: JSON.stringify([
+        { letter: 'A', min: 90 },
+        { letter: 'B', min: 80 },
+        { letter: 'C', min: 70 },
+        { letter: 'D', min: 60 },
+        { letter: 'F', min: 0 },
+      ]),
+      gpaScale: JSON.stringify([
+        { letter: 'A', points: 4 },
+        { letter: 'B', points: 3 },
+        { letter: 'C', points: 2 },
+        { letter: 'D', points: 1 },
+        { letter: 'F', points: 0 },
+      ]),
+    },
+  });
+  await prisma.proficiencyScale.upsert({
+    where: { organizationId_name: { organizationId, name: 'Four levels' } },
+    update: {},
+    create: {
+      id: uuidv7(),
+      organizationId,
+      name: 'Four levels',
+      isDefault: true,
+      levels: JSON.stringify([
+        { level: 1, label: 'Beginning', minPercent: 0 },
+        { level: 2, label: 'Developing', minPercent: 60 },
+        { level: 3, label: 'Proficient', minPercent: 80 },
+        { level: 4, label: 'Advanced', minPercent: 95 },
+      ]),
+    },
+  });
+  const sets: Array<{
+    code: string;
+    name: string;
+    subject: string;
+    jurisdiction: string;
+    sourceUri: string;
+    standards: Array<[string, string, string]>;
+  }> = [
+    {
+      code: 'CCSS-MATH',
+      name: 'Common Core State Standards: Mathematics',
+      subject: 'Mathematics',
+      jurisdiction: 'CCSSO',
+      sourceUri: 'https://www.thecorestandards.org/Math/',
+      standards: [
+        [
+          'CCSS.MATH.CONTENT.7.EE.A.1',
+          'Apply properties of operations as strategies to add, subtract, factor, and expand linear expressions with rational coefficients.',
+          '7',
+        ],
+        [
+          'CCSS.MATH.CONTENT.7.EE.B.3',
+          'Solve multi-step real-life and mathematical problems posed with positive and negative rational numbers in any form.',
+          '7',
+        ],
+        [
+          'CCSS.MATH.CONTENT.7.EE.B.4',
+          'Use variables to represent quantities in a real-world or mathematical problem, and construct simple equations and inequalities to solve problems.',
+          '7',
+        ],
+        [
+          'CCSS.MATH.CONTENT.7.RP.A.2',
+          'Recognize and represent proportional relationships between quantities.',
+          '7',
+        ],
+        [
+          'CCSS.MATH.CONTENT.7.NS.A.1',
+          'Apply and extend previous understandings of addition and subtraction to add and subtract rational numbers.',
+          '7',
+        ],
+        [
+          'CCSS.MATH.CONTENT.8.EE.C.7',
+          'Solve linear equations in one variable.',
+          '8',
+        ],
+      ],
+    },
+    {
+      code: 'CCSS-ELA',
+      name: 'Common Core State Standards: English Language Arts',
+      subject: 'English Language Arts',
+      jurisdiction: 'CCSSO',
+      sourceUri: 'https://www.thecorestandards.org/ELA-Literacy/',
+      standards: [
+        [
+          'CCSS.ELA-LITERACY.RL.7.1',
+          'Cite several pieces of textual evidence to support analysis of what the text says explicitly as well as inferences drawn from the text.',
+          '7',
+        ],
+        [
+          'CCSS.ELA-LITERACY.RL.7.3',
+          'Analyze how particular elements of a story or drama interact.',
+          '7',
+        ],
+        [
+          'CCSS.ELA-LITERACY.W.7.3',
+          'Write narratives to develop real or imagined experiences or events using effective technique, relevant descriptive details, and well-structured event sequences.',
+          '7',
+        ],
+        [
+          'CCSS.ELA-LITERACY.W.7.4',
+          'Produce clear and coherent writing in which the development, organization, and style are appropriate to task, purpose, and audience.',
+          '7',
+        ],
+      ],
+    },
+    {
+      code: 'NGSS',
+      name: 'Next Generation Science Standards',
+      subject: 'Science',
+      jurisdiction: 'NGSS Lead States',
+      sourceUri: 'https://www.nextgenscience.org/',
+      standards: [
+        [
+          'MS-PS1-1',
+          'Develop models to describe the atomic composition of simple molecules and extended structures.',
+          '6,7,8',
+        ],
+        [
+          'MS-LS1-1',
+          'Conduct an investigation to provide evidence that living things are made of cells.',
+          '6,7,8',
+        ],
+        [
+          'MS-ESS2-4',
+          "Develop a model to describe the cycling of water through Earth's systems driven by energy from the sun and the force of gravity.",
+          '6,7,8',
+        ],
+      ],
+    },
+    {
+      code: 'TEKS-MATH',
+      name: 'Texas Essential Knowledge and Skills: Mathematics',
+      subject: 'Mathematics',
+      jurisdiction: 'Texas',
+      sourceUri: 'https://tea.texas.gov/academics/curriculum-standards/teks',
+      standards: [
+        [
+          'TEKS.MATH.7.10.A',
+          'Write one-variable, two-step equations and inequalities to represent constraints or conditions within problems.',
+          '7',
+        ],
+        [
+          'TEKS.MATH.7.11.A',
+          'Model and solve one-variable, two-step equations and inequalities.',
+          '7',
+        ],
+        [
+          'TEKS.MATH.7.4.A',
+          'Represent constant rates of change in mathematical and real-world problems given pictorial, tabular, verbal, numeric, graphical, and algebraic representations.',
+          '7',
+        ],
+      ],
+    },
+  ];
+  const standardIdByCode = new Map<string, string>();
+  for (const set of sets) {
+    let row = await prisma.standardSet.findFirst({
+      where: { organizationId: null, code: set.code },
+    });
+    if (!row)
+      row = await prisma.standardSet.create({
+        data: {
+          id: uuidv7(),
+          organizationId: null,
+          code: set.code,
+          name: set.name,
+          subject: set.subject,
+          jurisdiction: set.jurisdiction,
+          sourceUri: set.sourceUri,
+        },
+      });
+    for (const [
+      i,
+      [code, description, gradeLevels],
+    ] of set.standards.entries()) {
+      const st = await prisma.standard.upsert({
+        where: { setId_code: { setId: row.id, code } },
+        update: {},
+        create: {
+          id: uuidv7(),
+          setId: row.id,
+          code,
+          description,
+          gradeLevels,
+          sortOrder: i,
+        },
+      });
+      standardIdByCode.set(code, st.id);
+    }
+  }
+  const q1 = await prisma.gradingPeriod.findFirst({
+    where: { name: 'Q1', term: { academicYear: { organizationId } } },
+  });
+  const classes = await prisma.class.findMany({
+    where: { organizationId, deletedAt: null },
+  });
+  for (const klass of classes) {
+    const categories: Array<[string, number, number]> = [
+      ['Homework', 30, 1],
+      ['Quizzes', 30, 0],
+      ['Tests', 40, 0],
+    ];
+    const ids = new Map<string, string>();
+    for (const [i, [name, weight, dropLowest]] of categories.entries()) {
+      const c = await prisma.gradeCategory.upsert({
+        where: { classId_name: { classId: klass.id, name } },
+        update: {},
+        create: {
+          id: uuidv7(),
+          classId: klass.id,
+          name,
+          weight,
+          dropLowest,
+          sortOrder: i,
+        },
+      });
+      ids.set(name, c.id);
+    }
+    await prisma.class.update({
+      where: { id: klass.id },
+      data: {
+        latePolicy:
+          'Late work loses 10% per day for up to four days, then is accepted for feedback only.',
+        syllabus:
+          klass.syllabus ??
+          `${klass.name}: weekly homework, a quiz every other Friday, and a test at the end of each unit.`,
+      },
+    });
+    const assignments = await prisma.assignment.findMany({
+      where: { classId: klass.id, deletedAt: null },
+    });
+    for (const a of assignments) {
+      const standard = standardIdByCode.get(
+        klass.name.startsWith('Algebra')
+          ? 'CCSS.MATH.CONTENT.7.EE.B.4'
+          : 'CCSS.ELA-LITERACY.RL.7.3',
+      );
+      await prisma.assignment.update({
+        where: { id: a.id },
+        data: {
+          categoryId: a.categoryId ?? ids.get(a.category ?? 'Homework') ?? null,
+          gradingPeriodId: a.gradingPeriodId ?? q1?.id ?? null,
+        },
+      });
+      if (standard)
+        await prisma.assignmentStandard.upsert({
+          where: {
+            assignmentId_standardId: {
+              assignmentId: a.id,
+              standardId: standard,
+            },
+          },
+          update: {},
+          create: { assignmentId: a.id, standardId: standard },
+        });
+    }
+  }
+  console.log(
+    `grading: ${sets.length} shared standard sets, categories on ${classes.length} classes, one proficiency scale`,
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedH5pLibraries();
@@ -922,6 +1192,7 @@ async function main(): Promise<void> {
   await seedCurriculum(orgId);
   await seedStructure(orgId);
   await seedAcademics(orgId);
+  await seedGrading(orgId);
 }
 
 main()

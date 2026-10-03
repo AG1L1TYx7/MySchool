@@ -116,6 +116,26 @@ export class NotificationsListener {
     });
   }
 
+  @OnEvent('report_card.published', { async: true })
+  async onReportCardPublished(
+    event: DomainEvent<{ studentId: string; kind: string; periodName: string }>,
+  ): Promise<void> {
+    await this.guard('report_card.published', async () => {
+      const a = await studentAudience(this.prisma, event.data.studentId);
+      await this.notifications.notify(
+        recipientsExcluding([a.student, ...a.guardians], event.actorId),
+        {
+          category: 'GRADE',
+          title: `${event.data.kind === 'progress' ? 'Progress report' : 'Report card'} ready: ${event.data.periodName}`,
+          body: 'Open it to see grades, comments and attendance for the period.',
+          link: `/report-cards/${event.entityId}`,
+          entityType: 'ReportCard',
+          entityId: event.entityId,
+        },
+      );
+    });
+  }
+
   @OnEvent('announcement.published', { async: true })
   async onAnnouncementPublished(
     event: DomainEvent<{

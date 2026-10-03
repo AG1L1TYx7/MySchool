@@ -7,6 +7,9 @@ import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { ASSIGNMENT_TYPES, SUBMISSION_TYPES, fmtDate, fromLocalInput, type Assignment, type Rubric } from '@/lib/academics';
 import type { H5pContentSummary } from '@/lib/h5p';
+import { StandardsPicker } from '@/components/standards-picker';
+import type { ClassGrading, Standard } from '@/lib/gradebook';
+import type { SchoolStructure } from '@/lib/school';
 import { useAuth } from '@/lib/auth';
 import type { ClassItem } from '@/lib/curriculum';
 import { label, type Paged } from '@/lib/students';
@@ -19,9 +22,12 @@ export default function ClassAssignmentsPage() {
   const [rows, setRows] = useState<Assignment[]>([]);
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
   const [contents, setContents] = useState<H5pContentSummary[]>([]);
+  const [grading, setGrading] = useState<ClassGrading | null>(null);
+  const [periods, setPeriods] = useState<Array<{ id: string; label: string }>>([]);
+  const [standards, setStandards] = useState<Standard[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title: '', type: 'homework', submissionType: 'online', category: 'Homework', maxPoints: '100', weight: '1', dueAt: '', allowLateUntil: '', latePenaltyPercent: '', maxAttempts: '', rubricId: '', h5pContentId: '', description: '' });
+  const [form, setForm] = useState({ title: '', type: 'homework', submissionType: 'online', category: 'Homework', categoryId: '', isExtraCredit: false, gradingPeriodId: '', maxPoints: '100', weight: '1', dueAt: '', allowLateUntil: '', latePenaltyPercent: '', maxAttempts: '', rubricId: '', h5pContentId: '', description: '' });
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const load = useCallback(async () => {
@@ -32,6 +38,11 @@ export default function ClassAssignmentsPage() {
       if (k.canManage) {
         setRubrics((await api<{ data: Rubric[] }>('/rubrics')).data);
         setContents((await api<{ data: H5pContentSummary[] }>('/h5p/contents?status=published').catch(() => ({ data: [] }))).data);
+        const g = await api<ClassGrading>(`/classes/${id}/grading`).catch(() => null);
+        setGrading(g);
+        if (g?.categories[0]) setForm((f) => ({ ...f, categoryId: f.categoryId || g.categories[0].id }));
+        const st = await api<SchoolStructure>(`/organizations/${k.organizationId}/structure`).catch(() => null);
+        setPeriods((st?.years ?? []).flatMap((y) => y.terms.flatMap((t) => t.gradingPeriods.map((p) => ({ id: p.id, label: `${t.name} · ${p.name}` })))));
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -45,7 +56,10 @@ export default function ClassAssignmentsPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      const body: Record<string, unknown> = { classId: id, title: form.title, type: form.type, submissionType: form.submissionType, category: form.category || undefined, maxPoints: Number(form.maxPoints), weight: Number(form.weight), description: form.description || undefined };
+      const body: Record<string, unknown> = { classId: id, title: form.title, type: form.type, submissionType: form.submissionType, maxPoints: Number(form.maxPoints), weight: Number(form.weight), description: form.description || undefined, isExtraCredit: form.isExtraCredit, standardIds: standards.map((s) => s.id) };
+      if (form.categoryId) body.categoryId = form.categoryId;
+      else if (form.category) body.category = form.category;
+      if (form.gradingPeriodId) body.gradingPeriodId = form.gradingPeriodId;
       if (form.dueAt) body.dueAt = fromLocalInput(form.dueAt);
       if (form.allowLateUntil) body.allowLateUntil = fromLocalInput(form.allowLateUntil);
       if (form.latePenaltyPercent) body.latePenaltyPercent = Number(form.latePenaltyPercent);
@@ -113,7 +127,18 @@ export default function ClassAssignmentsPage() {
                   </option>
                 ))}
               </Select>
-              <Input label="Category" value={form.category} onChange={set('category')} />
+              {grading && grading.categories.length > 0 ? (
+                <Select label="Category" value={form.categoryId} onChange={set('categoryId')}>
+                  <option value="">No category</option>
+                  {grading.categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.weight}%)
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Input label="Category" value={form.category} onChange={set('category')} />
+              )}
               <Input label="Max points" type="number" min="0" value={form.maxPoints} onChange={set('maxPoints')} />
             </div>
             <div className="grid gap-4 md:grid-cols-4">
@@ -122,8 +147,26 @@ export default function ClassAssignmentsPage() {
               <Input label="Late penalty %" type="number" min="0" max="100" value={form.latePenaltyPercent} onChange={set('latePenaltyPercent')} />
               <Input label="Max attempts" type="number" min="1" value={form.maxAttempts} onChange={set('maxAttempts')} />
             </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Select label="Grading period" value={form.gradingPeriodId} onChange={set('gradingPeriodId')}>
+                <option value="">Not set</option>
+                {periods.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+              <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
+                <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={form.isExtraCredit} onChange={(e) => setForm((f) => ({ ...f, isExtraCredit: e.target.checked }))} />
+                Extra credit (adds points, never lowers a grade)
+              </label>
+              <Input label={grading && grading.categories.length > 0 ? 'Weight within category' : 'Weight'} type="number" step="0.5" min="0" value={form.weight} onChange={set('weight')} />
+            </div>
+            <fieldset>
+              <legend className="mb-1 block text-sm font-medium text-slate-700">Standards this work assesses</legend>
+              <StandardsPicker value={standards} onChange={setStandards} gradeLevel={klass?.gradeLevel ?? null} />
+            </fieldset>
             <div className="grid gap-4 md:grid-cols-2">
-              <Input label="Weight" type="number" step="0.5" min="0" value={form.weight} onChange={set('weight')} />
               <Select label="Interactive activity (optional)" value={form.h5pContentId} onChange={set('h5pContentId')}>
                 <option value="">None: students submit text or files</option>
                 {contents.map((c) => (

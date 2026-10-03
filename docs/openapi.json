@@ -2657,6 +2657,253 @@
         ]
       }
     },
+    "/api/v1/standards/sets": {
+      "get": {
+        "operationId": "StandardsController_sets_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Standard sets visible to me: shared ones and my district's",
+        "tags": [
+          "Standards"
+        ]
+      },
+      "post": {
+        "operationId": "StandardsController_createSet_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Standards"
+        ]
+      }
+    },
+    "/api/v1/standards/sets/import": {
+      "post": {
+        "operationId": "StandardsController_importCase_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Import a 1EdTech CASE package (JSON file in field \"file\")",
+        "tags": [
+          "Standards"
+        ]
+      }
+    },
+    "/api/v1/standards/sets/{id}/standards": {
+      "post": {
+        "operationId": "StandardsController_createStandard_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStandardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Standards"
+        ]
+      }
+    },
+    "/api/v1/standards/sets/{id}": {
+      "delete": {
+        "operationId": "StandardsController_removeSet_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Standards"
+        ]
+      }
+    },
+    "/api/v1/standards": {
+      "get": {
+        "operationId": "StandardsController_list_api/v1",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated fields; prefix with - for descending, e.g. -createdAt,lastName",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "setId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "gradeLevel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "7",
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search standards by set, grade level and text",
+        "tags": [
+          "Standards"
+        ]
+      }
+    },
     "/api/v1/classes": {
       "get": {
         "operationId": "ClassesController_list_api/v1",
@@ -3821,64 +4068,6 @@
         ]
       }
     },
-    "/api/v1/classes/{id}/gradebook": {
-      "get": {
-        "operationId": "GradebookController_gradebook_api/v1",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Gradebook matrix with weighted totals, letters and averages",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/classes/{id}/gradebook/export": {
-      "get": {
-        "operationId": "GradebookController_exportCsv_api/v1",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Gradebook as CSV",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
     "/api/v1/rubrics": {
       "get": {
         "operationId": "RubricsController_list_api/v1",
@@ -4017,6 +4206,438 @@
         "summary": "Delete a rubric",
         "tags": [
           "Assignments"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/grading": {
+      "get": {
+        "operationId": "ClassGradingController_grading_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Grading settings of a class: mode, categories, late policy and syllabus (members and staff)",
+        "tags": [
+          "Grades"
+        ]
+      },
+      "put": {
+        "operationId": "ClassGradingController_setGrading_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassGradingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/grading/categories": {
+      "post": {
+        "operationId": "ClassGradingController_createCategory_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/grading/categories/{id}": {
+      "patch": {
+        "operationId": "ClassGradingController_updateCategory_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      },
+      "delete": {
+        "operationId": "ClassGradingController_removeCategory_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/gradebook": {
+      "get": {
+        "operationId": "ClassGradingController_book_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gradebook: weighted categories, drop-lowest, extra credit, marks; standards levels for standards-based classes",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/gradebook/export": {
+      "get": {
+        "operationId": "ClassGradingController_exportCsv_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gradebook as CSV",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/assignments/{assignmentId}/marks/{studentId}": {
+      "put": {
+        "operationId": "MarksController_set_api/v1",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "studentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMarkDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set a mark for one student: missing, excused, incomplete, or null to clear",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/proficiency-scales": {
+      "get": {
+        "operationId": "ProficiencyScalesController_list_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      },
+      "post": {
+        "operationId": "ProficiencyScalesController_create_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScaleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/proficiency-scales/{id}": {
+      "patch": {
+        "operationId": "ProficiencyScalesController_update_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScaleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      },
+      "delete": {
+        "operationId": "ProficiencyScalesController_remove_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Grades"
         ]
       }
     },
@@ -7236,6 +7857,316 @@
         ]
       }
     },
+    "/api/v1/report-cards/generate": {
+      "post": {
+        "operationId": "ReportCardsController_generate_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateReportCardsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create or refresh draft report cards for a grading period (teachers: one class; administrators: the school)",
+        "tags": [
+          "Report cards"
+        ]
+      }
+    },
+    "/api/v1/report-cards/publish": {
+      "post": {
+        "operationId": "ReportCardsController_publishAll_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishReportCardsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publish every draft for a grading period; students and parents are told",
+        "tags": [
+          "Report cards"
+        ]
+      }
+    },
+    "/api/v1/report-cards": {
+      "get": {
+        "operationId": "ReportCardsController_list_api/v1",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated fields; prefix with - for descending, e.g. -createdAt,lastName",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "studentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "gradingPeriodId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "classId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published"
+              ]
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "report_card",
+                "progress"
+              ]
+            }
+          },
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report cards: staff see their classes or school; students and parents see published ones",
+        "tags": [
+          "Report cards"
+        ]
+      }
+    },
+    "/api/v1/report-cards/{id}": {
+      "get": {
+        "operationId": "ReportCardsController_get_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Report cards"
+        ]
+      }
+    },
+    "/api/v1/report-cards/{id}/pdf": {
+      "get": {
+        "operationId": "ReportCardsController_pdf_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Report cards"
+        ]
+      }
+    },
+    "/api/v1/report-cards/{id}/lines/{lineId}": {
+      "patch": {
+        "operationId": "ReportCardsController_comment_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lineId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Teacher comment on one class line (while the card is a draft)",
+        "tags": [
+          "Report cards"
+        ]
+      }
+    },
+    "/api/v1/report-cards/{id}/publish": {
+      "post": {
+        "operationId": "ReportCardsController_publish_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Report cards"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -8213,6 +9144,14 @@
           "isPublished": {
             "type": "boolean",
             "default": true
+          },
+          "standardIds": {
+            "description": "Standards this lesson teaches",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         },
         "required": [
@@ -8253,8 +9192,93 @@
           "isPublished": {
             "type": "boolean",
             "default": true
+          },
+          "standardIds": {
+            "description": "Standards this lesson teaches",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
+      },
+      "CreateSetDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "TEKS-MATH"
+          },
+          "name": {
+            "type": "string",
+            "example": "Texas Essential Knowledge and Skills: Mathematics"
+          },
+          "subject": {
+            "type": "string",
+            "example": "Mathematics"
+          },
+          "jurisdiction": {
+            "type": "string",
+            "example": "Texas"
+          },
+          "sourceUri": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Omit (district roles) for a set shared by every school"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "ImportCaseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "CCSS-MATH",
+            "description": "Code for the new set; defaults to the document title"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CreateStandardDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "CCSS.MATH.CONTENT.7.EE.A.1"
+          },
+          "description": {
+            "type": "string"
+          },
+          "gradeLevels": {
+            "type": "string",
+            "example": "7"
+          },
+          "parentCode": {
+            "type": "string",
+            "description": "Code of the parent standard in the same set"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "description"
+        ]
       },
       "CreateClassDto": {
         "type": "object",
@@ -8544,6 +9568,28 @@
           "h5pContentId": {
             "type": "string",
             "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A grade category of the class; sets the category label"
+          },
+          "isExtraCredit": {
+            "type": "boolean",
+            "default": false,
+            "description": "Adds to the score without adding to the possible points"
+          },
+          "gradingPeriodId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "standardIds": {
+            "description": "Standards this work assesses",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         },
         "required": [
@@ -8629,6 +9675,28 @@
           "h5pContentId": {
             "type": "string",
             "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A grade category of the class; sets the category label"
+          },
+          "isExtraCredit": {
+            "type": "boolean",
+            "default": false,
+            "description": "Adds to the score without adding to the possible points"
+          },
+          "gradingPeriodId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "standardIds": {
+            "description": "Standards this work assesses",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },
@@ -8665,6 +9733,24 @@
           "points"
         ]
       },
+      "StandardScoreDto": {
+        "type": "object",
+        "properties": {
+          "standardId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "level": {
+            "type": "number",
+            "example": 3,
+            "description": "A level of the class proficiency scale"
+          }
+        },
+        "required": [
+          "standardId",
+          "level"
+        ]
+      },
       "GradeSubmissionDto": {
         "type": "object",
         "properties": {
@@ -8685,6 +9771,13 @@
             "type": "boolean",
             "default": false,
             "description": "Skip the automatic late penalty"
+          },
+          "standardScores": {
+            "description": "Standards-based classes: the level reached per standard; derived from the percentage when omitted",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StandardScoreDto"
+            }
           }
         },
         "required": [
@@ -8780,6 +9873,160 @@
           "isTemplate": {
             "type": "boolean",
             "default": false
+          }
+        }
+      },
+      "ClassGradingDto": {
+        "type": "object",
+        "properties": {
+          "gradingMode": {
+            "type": "string",
+            "enum": [
+              "points",
+              "standards"
+            ]
+          },
+          "proficiencyScaleId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "latePolicy": {
+            "type": "string",
+            "description": "Shown to students and parents on the class page"
+          },
+          "syllabus": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Homework"
+          },
+          "weight": {
+            "type": "number",
+            "example": 20,
+            "description": "Percent of the final grade"
+          },
+          "dropLowest": {
+            "type": "number",
+            "default": 0
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "weight"
+        ]
+      },
+      "UpdateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Homework"
+          },
+          "weight": {
+            "type": "number",
+            "example": 20,
+            "description": "Percent of the final grade"
+          },
+          "dropLowest": {
+            "type": "number",
+            "default": 0
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        }
+      },
+      "SetMarkDto": {
+        "type": "object",
+        "properties": {
+          "mark": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "excused",
+              "incomplete"
+            ],
+            "nullable": true,
+            "description": "null clears the mark"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mark"
+        ]
+      },
+      "ProficiencyLevelDto": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "number",
+            "example": 3
+          },
+          "label": {
+            "type": "string",
+            "example": "Proficient"
+          },
+          "minPercent": {
+            "type": "number",
+            "example": 80,
+            "description": "Lowest percentage that maps to this level"
+          }
+        },
+        "required": [
+          "level",
+          "label",
+          "minPercent"
+        ]
+      },
+      "CreateScaleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Four levels"
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProficiencyLevelDto"
+            }
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "levels"
+        ]
+      },
+      "UpdateScaleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Four levels"
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProficiencyLevelDto"
+            }
+          },
+          "isDefault": {
+            "type": "boolean"
           }
         }
       },
@@ -9433,9 +10680,56 @@
           "passwordOptional"
         ]
       },
+      "LetterCutoffDto": {
+        "type": "object",
+        "properties": {
+          "letter": {
+            "type": "string",
+            "example": "A"
+          },
+          "min": {
+            "type": "number",
+            "example": 90
+          }
+        },
+        "required": [
+          "letter",
+          "min"
+        ]
+      },
+      "GpaPointsDto": {
+        "type": "object",
+        "properties": {
+          "letter": {
+            "type": "string",
+            "example": "A"
+          },
+          "points": {
+            "type": "number",
+            "example": 4
+          }
+        },
+        "required": [
+          "letter",
+          "points"
+        ]
+      },
       "SchoolSettingsDto": {
         "type": "object",
         "properties": {
+          "gradingScale": {
+            "description": "Letter cutoffs, highest first; the lowest starts at 0",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LetterCutoffDto"
+            }
+          },
+          "gpaScale": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GpaPointsDto"
+            }
+          },
           "gradeLevels": {
             "example": [
               "6",
@@ -9830,6 +11124,70 @@
             "description": "District accounts choose the organisation"
           }
         }
+      },
+      "GenerateReportCardsDto": {
+        "type": "object",
+        "properties": {
+          "gradingPeriodId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "report_card",
+              "progress"
+            ],
+            "default": "report_card"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Only this class (teachers must give one); administrators may omit it for the whole school"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "gradingPeriodId"
+        ]
+      },
+      "PublishReportCardsDto": {
+        "type": "object",
+        "properties": {
+          "gradingPeriodId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "report_card",
+              "progress"
+            ],
+            "default": "report_card"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "gradingPeriodId"
+        ]
+      },
+      "CommentDto": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment"
+        ]
       }
     }
   }

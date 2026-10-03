@@ -39,6 +39,11 @@ import {
   validDays,
   within,
 } from './school-rules';
+import {
+  parseGpaScale,
+  parseGradingScale,
+  validateGradingScale,
+} from '../gradebook/gradebook-rules';
 
 const day = (s: string) => new Date(`${s}T00:00:00Z`);
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
@@ -109,6 +114,8 @@ export class SchoolService {
         gradeLevels: true,
         attendanceDeadlineTime: true,
         timezone: true,
+        gradingScale: true,
+        gpaScale: true,
       },
     });
     if (!org)
@@ -141,6 +148,8 @@ export class SchoolService {
       gradeLevels: parseGradeLevels(org.gradeLevels),
       attendanceDeadlineTime: org.attendanceDeadlineTime,
       timezone: org.timezone,
+      gradingScale: parseGradingScale(org.gradingScale),
+      gpaScale: parseGpaScale(org.gpaScale),
       years: years.map(toYear),
       bellSchedules: schedules.map(toSchedule),
       attendanceCodes: codes.map(toCode),
@@ -177,6 +186,33 @@ export class SchoolService {
         });
       }
       data.timezone = dto.timezone;
+    }
+    if (dto.gradingScale) {
+      const scale = dto.gradingScale.map((c) => ({
+        letter: c.letter.trim().toUpperCase(),
+        min: c.min,
+      }));
+      const problem = validateGradingScale(scale);
+      if (problem)
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail: problem,
+        });
+      data.gradingScale = JSON.stringify(
+        [...scale].sort((a, b) => b.min - a.min),
+      );
+    }
+    if (dto.gpaScale) {
+      const scale = dto.gpaScale.map((c) => ({
+        letter: c.letter.trim().toUpperCase(),
+        points: c.points,
+      }));
+      if (new Set(scale.map((c) => c.letter)).size !== scale.length)
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail: 'Each letter may appear once in the GPA scale.',
+        });
+      data.gpaScale = JSON.stringify(scale);
     }
     await this.prisma.organization.update({
       where: { id: organizationId },

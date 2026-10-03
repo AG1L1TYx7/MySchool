@@ -6,6 +6,7 @@ import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CODE_CATEGORIES, DAY_LETTERS, GRADE_LEVELS, TERM_TYPES, gradeLabel, type AcademicYear, type BellSchedule, type SchoolStructure, type Term } from '@/lib/school';
+import type { ProficiencyScale } from '@/lib/gradebook';
 import { label } from '@/lib/students';
 
 type Busy = { error?: string; ok?: string; busy?: boolean };
@@ -59,6 +60,7 @@ export function SchoolStructureSettings({ organizationId }: { organizationId: st
       <Years years={data.years} manage={manage} busy={state.busy} base={base} run={run} />
       <BellSchedules schedules={data.bellSchedules} manage={manage} busy={state.busy} base={base} run={run} />
       <Codes data={data} manage={manage} busy={state.busy} base={base} run={run} />
+      <Scales data={data} manage={manage} busy={state.busy} organizationId={organizationId} run={run} base={base} />
     </div>
   );
 }
@@ -443,6 +445,125 @@ function Codes({ data, manage, busy, base, run }: { data: SchoolStructure; manag
           <div className="flex items-end">
             <Button type="submit" loading={busy} disabled={!form.code || !form.label}>
               Add code
+            </Button>
+          </div>
+        </form>
+      )}
+    </Card>
+  );
+}
+
+function Scales({ data, manage, busy, organizationId, base, run }: { data: SchoolStructure; manage: boolean; busy?: boolean; organizationId: string; base: string; run: Runner }) {
+  const [letters, setLetters] = useState(data.gradingScale.map((c) => ({ letter: c.letter, min: String(c.min), points: String(data.gpaScale.find((g) => g.letter === c.letter)?.points ?? '') })));
+  const [scales, setScales] = useState<ProficiencyScale[]>([]);
+  const [scaleForm, setScaleForm] = useState({ name: '', levels: 'Beginning:0, Developing:60, Proficient:80, Advanced:95' });
+  useEffect(() => {
+    setLetters(data.gradingScale.map((c) => ({ letter: c.letter, min: String(c.min), points: String(data.gpaScale.find((g) => g.letter === c.letter)?.points ?? '') })));
+  }, [data]);
+  const loadScales = useCallback(() => {
+    api<{ data: ProficiencyScale[] }>(`/organizations/${organizationId}/proficiency-scales`)
+      .then((r) => setScales(r.data))
+      .catch(() => setScales([]));
+  }, [organizationId]);
+  useEffect(() => {
+    loadScales();
+  }, [loadScales]);
+  const saveLetters = () =>
+    run(() => api(`${base}/settings`, { method: 'PUT', body: { gradingScale: letters.filter((l) => l.letter).map((l) => ({ letter: l.letter, min: Number(l.min) })), gpaScale: letters.filter((l) => l.letter && l.points !== '').map((l) => ({ letter: l.letter, points: Number(l.points) })) } }), 'Grading scale saved.');
+  const parseLevels = (text: string) =>
+    text.split(',').map((part, i) => {
+      const [label, min] = part.split(':').map((x) => x.trim());
+      return { level: i + 1, label, minPercent: Number(min || 0) };
+    });
+  return (
+    <Card title="Letter grades, GPA and proficiency levels" description="The district scale every class uses for letters and GPA points, and the proficiency scales standards-based classes can pick.">
+      <table className="min-w-full text-sm">
+        <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="py-2 pr-4">Letter</th>
+            <th className="py-2 pr-4">From %</th>
+            <th className="py-2 pr-4">GPA points</th>
+            {manage && (
+              <th className="py-2">
+                <span className="sr-only">Actions</span>
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {letters.map((l, i) => (
+            <tr key={i}>
+              <td className="py-1 pr-4">
+                <input aria-label={`Letter ${i + 1}`} disabled={!manage} className="w-16 rounded-md border-0 py-1 text-sm ring-1 ring-inset ring-slate-300" value={l.letter} onChange={(e) => setLetters(letters.map((x, j) => (j === i ? { ...x, letter: e.target.value.toUpperCase() } : x)))} />
+              </td>
+              <td className="py-1 pr-4">
+                <input aria-label={`${l.letter || "Letter"} from percent`} type="number" min="0" max="100" disabled={!manage} className="w-20 rounded-md border-0 py-1 text-sm ring-1 ring-inset ring-slate-300" value={l.min} onChange={(e) => setLetters(letters.map((x, j) => (j === i ? { ...x, min: e.target.value } : x)))} />
+              </td>
+              <td className="py-1 pr-4">
+                <input aria-label={`${l.letter || "Letter"} GPA points`} type="number" min="0" max="10" step="0.1" disabled={!manage} className="w-20 rounded-md border-0 py-1 text-sm ring-1 ring-inset ring-slate-300" value={l.points} onChange={(e) => setLetters(letters.map((x, j) => (j === i ? { ...x, points: e.target.value } : x)))} />
+              </td>
+              {manage && (
+                <td className="py-1 text-right">
+                  <button type="button" className="text-xs text-slate-500 hover:text-red-700" onClick={() => setLetters(letters.filter((_, j) => j !== i))}>
+                    Remove
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {manage && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setLetters([...letters, { letter: '', min: '0', points: '' }])}>
+            Add letter
+          </Button>
+          <Button loading={busy} onClick={() => void saveLetters()}>
+            Save scale
+          </Button>
+        </div>
+      )}
+      <h3 className="mt-6 text-sm font-semibold text-slate-900">Proficiency scales</h3>
+      <ul className="mt-2 divide-y divide-slate-100 text-sm">
+        {scales.map((sc) => (
+          <li key={sc.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <span>
+              <span className="font-medium text-slate-800">{sc.name}</span>
+              {sc.isDefault && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">Default</span>}
+              <span className="ml-2 text-xs text-slate-500">{sc.levels.map((l) => `${l.level} ${l.label} (${l.minPercent}%+)`).join(' · ')}</span>
+            </span>
+            {manage && (
+              <span className="flex gap-2">
+                {!sc.isDefault && (
+                  <button type="button" className="text-xs text-brand-700 hover:underline" disabled={busy} onClick={() => void run(() => api(`/organizations/${organizationId}/proficiency-scales/${sc.id}`, { method: 'PATCH', body: { isDefault: true } }), `${sc.name} is the default scale.`).then(loadScales)}>
+                    Make default
+                  </button>
+                )}
+                <button type="button" className="text-xs text-slate-500 hover:text-red-700" disabled={busy} onClick={() => void run(() => api(`/organizations/${organizationId}/proficiency-scales/${sc.id}`, { method: 'DELETE' }), 'Scale removed.').then(loadScales)}>
+                  Remove
+                </button>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {manage && (
+        <form
+          className="mt-3 grid gap-3 md:grid-cols-3"
+          noValidate
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            void run(() => api(`/organizations/${organizationId}/proficiency-scales`, { method: 'POST', body: { name: scaleForm.name, levels: parseLevels(scaleForm.levels) } }), 'Proficiency scale added.').then(() => {
+              setScaleForm({ name: '', levels: 'Beginning:0, Developing:60, Proficient:80, Advanced:95' });
+              loadScales();
+            });
+          }}
+        >
+          <Input label="New scale name" placeholder="Three levels" value={scaleForm.name} onChange={(e) => setScaleForm({ ...scaleForm, name: e.target.value })} />
+          <Input label="Levels (label:from %, lowest first)" value={scaleForm.levels} onChange={(e) => setScaleForm({ ...scaleForm, levels: e.target.value })} hint="Example: Not yet:0, Approaching:60, Meets:80, Exceeds:95" />
+          <div className="flex items-end">
+            <Button type="submit" variant="secondary" loading={busy} disabled={!scaleForm.name}>
+              Add scale
             </Button>
           </div>
         </form>

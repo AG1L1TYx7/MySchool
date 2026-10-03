@@ -3,22 +3,14 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  Res,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiProduces,
-  ApiTags,
-} from '@nestjs/swagger';
-import type { Response } from 'express';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   RequireAnyFeature,
   RequireFeature,
@@ -209,43 +201,6 @@ export class GradesController {
   })
   list(@Query() q: ListGradesQuery, @CurrentUser() actor: AuthenticatedUser) {
     return this.assignments.listGrades(q, actor);
-  }
-}
-
-@ApiTags('Grades')
-@ApiBearerAuth('bearer')
-@Controller('classes')
-export class GradebookController {
-  constructor(private readonly assignments: AssignmentsService) {}
-
-  @Get(':id/gradebook')
-  @RequireFeature('grades.view.all')
-  @ApiOperation({
-    summary: 'Gradebook matrix with weighted totals, letters and averages',
-  })
-  gradebook(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    return this.assignments.gradebook(id, actor);
-  }
-
-  @Get(':id/gradebook/export')
-  @RequireFeature('grades.export')
-  @Header('Content-Type', 'text/csv; charset=utf-8')
-  @ApiProduces('text/csv')
-  @ApiOperation({ summary: 'Gradebook as CSV' })
-  async exportCsv(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() actor: AuthenticatedUser,
-    @Res() res: Response,
-  ): Promise<void> {
-    const csv = await this.assignments.gradebookCsv(id, actor);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="gradebook-${id}.csv"`,
-    );
-    res.send(csv);
   }
 }
 

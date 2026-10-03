@@ -26,6 +26,7 @@ import {
   resolveOrganizationId,
 } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
+import { StandardsService } from '../standards/standards.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { suggestCourseCode, uniqueCourseCode } from './course-code';
 import {
@@ -77,6 +78,12 @@ export interface PublicLesson {
   sortOrder: number;
   durationMinutes: number | null;
   isPublished: boolean;
+  standards: Array<{
+    id: string;
+    code: string;
+    description: string;
+    setCode: string;
+  }>;
 }
 
 export interface PublicModule {
@@ -116,6 +123,7 @@ export class CoursesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly events: EventEmitter2,
+    private readonly standards: StandardsService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -176,6 +184,7 @@ export class CoursesService {
           lessons: {
             where: staff ? {} : { isPublished: true },
             orderBy: { sortOrder: 'asc' },
+            include: LESSON_STANDARDS,
           },
         },
       }),
@@ -361,7 +370,9 @@ export class CoursesService {
     const modules = await this.prisma.module.findMany({
       where: { courseId: id },
       orderBy: { sortOrder: 'asc' },
-      include: { lessons: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        lessons: { orderBy: { sortOrder: 'asc' }, include: LESSON_STANDARDS },
+      },
     });
     const prerequisites = await this.prisma.coursePrerequisite.findMany({
       where: { courseId: id },
@@ -577,7 +588,9 @@ export class CoursesService {
         estimatedMinutes: dto.estimatedMinutes,
         isPublished: dto.isPublished,
       },
-      include: { lessons: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        lessons: { orderBy: { sortOrder: 'asc' }, include: LESSON_STANDARDS },
+      },
     });
     await this.audit.record({
       userId: actor.id,
@@ -649,7 +662,18 @@ export class CoursesService {
         durationMinutes: dto.durationMinutes,
         isPublished: dto.isPublished ?? true,
         sortOrder: (last._max.sortOrder ?? -1) + 1,
+        standards: dto.standardIds
+          ? {
+              create: (
+                await this.standards.assertVisible(
+                  dto.standardIds,
+                  course.organizationId,
+                )
+              ).map((standardId) => ({ standardId })),
+            }
+          : undefined,
       },
+      include: LESSON_STANDARDS,
     });
     await this.audit.record({
       userId: actor.id,
@@ -678,7 +702,19 @@ export class CoursesService {
         contentUrl: dto.contentUrl,
         durationMinutes: dto.durationMinutes,
         isPublished: dto.isPublished,
+        standards: dto.standardIds
+          ? {
+              deleteMany: {},
+              create: (
+                await this.standards.assertVisible(
+                  dto.standardIds,
+                  course.organizationId,
+                )
+              ).map((standardId) => ({ standardId })),
+            }
+          : undefined,
       },
+      include: LESSON_STANDARDS,
     });
     await this.audit.record({
       userId: actor.id,
@@ -936,7 +972,31 @@ function statusToDb(v: CourseStatusApi | undefined): CourseStatus | undefined {
 function lessonTypeToDb(v: LessonTypeApi | undefined): LessonType | undefined {
   return v ? (v.toUpperCase() as LessonType) : undefined;
 }
-function toPublicLesson(l: Lesson): PublicLesson {
+const LESSON_STANDARDS = {
+  standards: {
+    include: {
+      standard: {
+        select: {
+          id: true,
+          code: true,
+          description: true,
+          set: { select: { code: true } },
+        },
+      },
+    },
+  },
+} as const;
+type LessonWithStandards = Lesson & {
+  standards?: Array<{
+    standard: {
+      id: string;
+      code: string;
+      description: string;
+      set: { code: string };
+    };
+  }>;
+};
+function toPublicLesson(l: LessonWithStandards): PublicLesson {
   return {
     id: l.id,
     moduleId: l.moduleId,
@@ -949,9 +1009,18 @@ function toPublicLesson(l: Lesson): PublicLesson {
     sortOrder: l.sortOrder,
     durationMinutes: l.durationMinutes,
     isPublished: l.isPublished,
+    standards: (l.standards ?? []).map((s) => ({
+      id: s.standard.id,
+      code: s.standard.code,
+      description: s.standard.description,
+      setCode: s.standard.set.code,
+    })),
   };
 }
-function toPublicModule(m: Module, lessons: Lesson[]): PublicModule {
+function toPublicModule(
+  m: Module,
+  lessons: LessonWithStandards[],
+): PublicModule {
   return {
     id: m.id,
     courseId: m.courseId,

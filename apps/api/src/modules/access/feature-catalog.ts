@@ -128,6 +128,31 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('grades.view.all', 'View all grades', 'Grades', STAFF),
   f('grades.edit', 'Edit grades', 'Grades', STAFF),
   f('grades.export', 'Export gradebook', 'Grades', STAFF),
+  f(
+    'standards.view',
+    'Browse academic standards',
+    'Grades',
+    STAFF_AND_ASSISTANT,
+  ),
+  f('standards.manage', 'Create and import standard sets', 'Grades', STAFF),
+  f('report-cards.view.own', 'View own report cards', 'Grades', ['STUDENT']),
+  f('report-cards.view.child', "View a child's report cards", 'Grades', [
+    'PARENT',
+  ]),
+  f(
+    'report-cards.view.all',
+    'View report cards',
+    'Grades',
+    STAFF_AND_ASSISTANT,
+  ),
+  f(
+    'report-cards.manage',
+    'Generate report cards and progress reports',
+    'Grades',
+    STAFF,
+  ),
+  f('report-cards.comment', 'Comment on report cards', 'Grades', STAFF),
+  f('report-cards.publish', 'Publish report cards', 'Grades', ADMINS),
 
   // Attendance
   f('attendance.view.own', 'View own attendance', 'Attendance', ['STUDENT']),

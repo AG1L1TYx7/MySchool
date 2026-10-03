@@ -222,6 +222,30 @@ DELETE /classes/{id}/enrollments/{studentId}
 GET    /students/{id}/classes
 ```
 
+### Grading, standards and report cards (Release 2 slice 11)
+```
+GET    /classes/{id}/grading                     gradingMode points|standards, proficiencyScaleId, scale, latePolicy, syllabus, categories[], weightWarning; members and staff
+PUT    /classes/{id}/grading                     gradingMode, proficiencyScaleId, latePolicy, syllabus; grades.edit and canManage
+POST   /classes/{id}/grading/categories          name, weight (percent), dropLowest, sortOrder; 409 grading.category_exists
+PATCH  /classes/{id}/grading/categories/{catId}  DELETE too; assignments keep their label and count by points
+GET    /classes/{id}/gradebook                   mode categories|points, categories[], assignments[] (categoryId, isExtraCredit), rows[] { cells { score, percentage, mark graded|missing|excused|incomplete|none, dropped, extraCredit }, categories[] { percentage }, percentage, letter, missing }, standards { levels, standards[], rows[] } for standards-based classes
+GET    /classes/{id}/gradebook/export            CSV with category columns; M, EX and I for marks
+PUT    /assignments/{id}/marks/{studentId}       mark missing|excused|incomplete or null to clear, note; assignments.grade
+GET    /organizations/{id}/proficiency-scales    POST/PATCH/DELETE under organizations.structure; levels[] { level, label, minPercent }; a default is created on first read
+GET    /standards/sets                           shared sets plus my district's; standards.view
+POST   /standards/sets                           code, name, subject, jurisdiction, sourceUri, version, organizationId (super admin omits it for a shared set); standards.manage
+POST   /standards/sets/import                    multipart "file": a 1EdTech CASE JSON package; code; -> set with imported and skipped counts
+POST   /standards/sets/{id}/standards            code, description, gradeLevels, parentCode, sortOrder
+DELETE /standards/sets/{id}                      409 school.in_use while assignments are tagged
+GET    /standards                                setId, gradeLevel, search, page
+POST   /report-cards/generate                    gradingPeriodId, kind report_card|progress, classId (required for teachers) -> drafts from the current gradebooks (published cards untouched); report-cards.manage
+GET    /report-cards                             studentId, gradingPeriodId, classId, status, kind; students and parents see published ones; teachers their classes
+GET    /report-cards/{id}                        lines[] { className, percentage, letter, gpaPoints, categories[], standards[], comment, canComment }, gpa, attendance, canPublish
+GET    /report-cards/{id}/pdf                    application/pdf
+PATCH  /report-cards/{id}/lines/{lineId}         comment (class teacher, while draft; 409 report-cards.published after)
+POST   /report-cards/{id}/publish                administrators, or the teacher of a one-class card; notifies the student and guardians; updates Students.GPA
+POST   /report-cards/publish                     gradingPeriodId, kind -> every draft in the school; report-cards.publish
+```
 ### Assignments, submissions, grades
 ```
 GET    /assignments                   classId, type, status, dueBefore, dueAfter, search; students and parents see
@@ -236,7 +260,7 @@ POST   /assignments/{id}/close
 GET    /assignments/{id}/submissions  every enrolled student with latest submission and grade (class teachers)
 POST   /assignments/{id}/submissions  textContent, fileIds[] (own uploads) -> attempt number; late flag; window and attempt limits enforced
 GET    /submissions/{id}              the student, their guardians, or staff managing the class
-POST   /submissions/{id}/grade        score (raw), feedback, rubricScores[], waiveLatePenalty -> grade with percentage and letter;
+POST   /submissions/{id}/grade        score (raw), feedback, rubricScores[], waiveLatePenalty, standardScores[] { standardId, level } -> grade with percentage, letter and standardScores;
                                       late penalty applied from the assignment; ClassEnrollments.currentGrade refreshed
 GET    /grades                        studentId, classId, assignmentId; grades.view.all | grades.view.own | grades.view.child
 GET    /classes/{id}/gradebook        weighted points matrix, per-student totals and letters, class and per-assignment averages

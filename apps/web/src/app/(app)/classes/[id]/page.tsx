@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { ClassPolicies, GradingSettings } from '@/components/grading-settings';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -89,7 +90,9 @@ export default function ClassPage() {
         )}
       </nav>
 
+      <ClassPolicies classId={id} />
       {klass.canManage && can('classes.edit') && <DetailsForm klass={klass} onSaved={load} />}
+      {klass.canManage && can('grades.edit') && <GradingSettings classId={id} organizationId={klass.organizationId} />}
       {can('classes.teachers.manage') && <Teachers klass={klass} onChange={load} />}
       {klass.canManage && can('classes.roster.manage') && <Roster klass={klass} onChange={load} />}
     </div>

@@ -5,10 +5,12 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { H5pPlayer } from '@/components/h5p-player';
 import { Celebration, ProgressBar, SkeletonRows } from '@/components/motion';
-import { Alert, Button, Card, Input } from '@/components/ui';
+import { StandardChips } from '@/components/standards-picker';
+import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, download, errorMessage, upload } from '@/lib/api';
 import { fmtDate, type Assignment, type FileMeta, type Grade, type Submission, type SubmissionRow } from '@/lib/academics';
 import { useAuth } from '@/lib/auth';
+import { MARK_LABELS, MARK_TONES, TEACHER_MARKS, type ClassGrading } from '@/lib/gradebook';
 import { label } from '@/lib/students';
 
 export default function AssignmentPage() {
@@ -58,9 +60,17 @@ export default function AssignmentPage() {
             {a.allowLateUntil ? ` · late until ${fmtDate(a.allowLateUntil)}` : ''}
             {a.latePenaltyPercent ? ` · ${a.latePenaltyPercent}% late penalty` : ''}
             {a.maxAttempts ? ` · ${a.maxAttempts} attempt${a.maxAttempts === 1 ? '' : 's'}` : ''}
+            {a.category ? ` · ${a.category}` : ''}
+            {a.isExtraCredit ? ' · extra credit' : ''}
             {' · '}
             <span className={a.status === 'published' ? 'text-green-700' : 'text-slate-600'}>{label(a.status)}</span>
+            {a.myMark && <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${MARK_TONES[a.myMark]}`}>{MARK_LABELS[a.myMark]}</span>}
           </p>
+          {a.standards.length > 0 && (
+            <div className="mt-2">
+              <StandardChips standards={a.standards} />
+            </div>
+          )}
         </div>
         {a.canManage && (
           <div className="flex gap-2">
@@ -234,6 +244,15 @@ function GradeBadge({ g }: { g: Grade }) {
       <div className="mt-2">
         <ProgressBar value={g.percentage} label="Score" tone={g.percentage >= 90 ? 'green' : g.percentage >= 60 ? 'brand' : 'amber'} />
       </div>
+      {g.standardScores.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-1 text-xs">
+          {g.standardScores.map((s) => (
+            <li key={s.standardId} className="rounded-full bg-white px-2 py-0.5 ring-1 ring-inset ring-green-200">
+              {s.level} · {s.label}
+            </li>
+          ))}
+        </ul>
+      )}
       {g.feedback && <p className="mt-1 whitespace-pre-wrap">{g.feedback}</p>}
     </div>
   );
@@ -243,6 +262,20 @@ function TeacherSubmissions({ assignment }: { assignment: Assignment }) {
   const [rows, setRows] = useState<SubmissionRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<string | null>(null);
+  const [grading, setGrading] = useState<ClassGrading | null>(null);
+  useEffect(() => {
+    api<ClassGrading>(`/classes/${assignment.classId}/grading`)
+      .then(setGrading)
+      .catch(() => setGrading(null));
+  }, [assignment.classId]);
+  async function setMark(studentId: string, mark: string) {
+    try {
+      await api(`/assignments/${assignment.id}/marks/${studentId}`, { method: 'PUT', body: { mark: mark || null } });
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
   const load = useCallback(async () => {
     try {
       setRows((await api<{ data: SubmissionRow[] }>(`/assignments/${assignment.id}/submissions`)).data);
@@ -272,14 +305,24 @@ function TeacherSubmissions({ assignment }: { assignment: Assignment }) {
                 </Link>
                 <span className="ml-2 font-mono text-xs text-slate-500">{r.student.studentNumber}</span>
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className={`rounded-full px-2 py-0.5 ${MARK_TONES[r.mark]}`}>{MARK_LABELS[r.mark]}</span>
                 {r.submission ? `${label(r.submission.status)} · attempt ${r.submission.attemptNumber} · ${fmtDate(r.submission.submittedAt)}${r.submission.isLate ? ' · late' : ''}` : 'No submission'}
                 {r.grade ? ` · ${r.grade.score}/${r.grade.maxPoints}` : ''}
+                <select aria-label={`Mark for ${r.student.firstName} ${r.student.lastName}`} className="rounded-md border-0 py-0.5 text-xs ring-1 ring-inset ring-slate-300" value={TEACHER_MARKS.includes(r.mark as (typeof TEACHER_MARKS)[number]) ? r.mark : ''} onChange={(e) => void setMark(r.student.id, e.target.value)}>
+                  <option value="">Set a mark…</option>
+                  {TEACHER_MARKS.map((m) => (
+                    <option key={m} value={m}>
+                      {MARK_LABELS[m]}
+                    </option>
+                  ))}
+                </select>
               </span>
             </div>
             {r.submission && (
               <GradeForm
                 assignment={assignment}
+                grading={grading}
                 submission={r.submission}
                 grade={r.grade}
                 onGraded={async () => {
@@ -296,8 +339,11 @@ function TeacherSubmissions({ assignment }: { assignment: Assignment }) {
   );
 }
 
-function GradeForm({ assignment, submission, grade, onGraded }: { assignment: Assignment; submission: Submission; grade: Grade | null; onGraded: () => Promise<void> }) {
+function GradeForm({ assignment, grading, submission, grade, onGraded }: { assignment: Assignment; grading: ClassGrading | null; submission: Submission; grade: Grade | null; onGraded: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
+  const standardsMode = grading?.gradingMode === 'standards' && assignment.standards.length > 0;
+  const levels = grading?.scale?.levels ?? [];
+  const [levelByStandard, setLevelByStandard] = useState<Record<string, string>>(() => Object.fromEntries((grade?.standardScores ?? []).map((s) => [s.standardId, String(s.level)])));
   const [score, setScore] = useState(grade ? String(grade.score) : '');
   const [feedback, setFeedback] = useState(grade?.feedback ?? '');
   const [rubric, setRubric] = useState<Record<string, string>>(() => Object.fromEntries((grade?.rubricScores ?? []).map((r) => [r.criterionId, String(r.points)])));
@@ -312,7 +358,7 @@ function GradeForm({ assignment, submission, grade, onGraded }: { assignment: As
     try {
       await api(`/submissions/${submission.id}/grade`, {
         method: 'POST',
-        body: { score: Number(score), feedback: feedback || undefined, waiveLatePenalty: waive, rubricScores: criteria.length ? criteria.map((c) => ({ criterionId: c.id, points: Number(rubric[c.id] ?? 0) })) : undefined },
+        body: { score: Number(score), feedback: feedback || undefined, waiveLatePenalty: waive, rubricScores: criteria.length ? criteria.map((c) => ({ criterionId: c.id, points: Number(rubric[c.id] ?? 0) })) : undefined, standardScores: standardsMode ? assignment.standards.filter((s) => levelByStandard[s.id]).map((s) => ({ standardId: s.id, level: Number(levelByStandard[s.id]) })) : undefined },
       });
       setState({});
       setOpen(false);
@@ -358,6 +404,21 @@ function GradeForm({ assignment, submission, grade, onGraded }: { assignment: As
               </div>
             )}
             <Input label={`Score (out of ${assignment.maxPoints})`} type="number" min="0" max={assignment.maxPoints} step="0.5" value={score} onChange={(e) => setScore(e.target.value)} />
+            {standardsMode && (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-slate-700">Level per standard (leave blank to derive from the score)</legend>
+                {assignment.standards.map((s) => (
+                  <Select key={s.id} label={s.code} value={levelByStandard[s.id] ?? ''} onChange={(e) => setLevelByStandard((m) => ({ ...m, [s.id]: e.target.value }))}>
+                    <option value="">From score</option>
+                    {levels.map((l) => (
+                      <option key={l.level} value={l.level}>
+                        {l.level} · {l.label}
+                      </option>
+                    ))}
+                  </Select>
+                ))}
+              </fieldset>
+            )}
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700">Feedback</span>
               <textarea className="block w-full rounded-md border-0 px-3 py-2 text-sm shadow-sm ring-1 ring-inset ring-slate-300" rows={3} value={feedback} onChange={(e) => setFeedback(e.target.value)} />

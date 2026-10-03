@@ -13,11 +13,11 @@ import type {
   AssignmentType,
   Grade,
   Prisma,
+  StandardScore,
   SubmissionType,
 } from '../../generated/prisma/client';
 import { PagedResponse } from '../../common/dto/paged-response.dto';
 import { domainEvent } from '../../common/events/domain-event';
-import { toCsv } from '../../common/utils/csv';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ROLE_LEVEL } from '../access/roles';
@@ -26,6 +26,17 @@ import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { canManage } from '../classes/classes.service';
 import { FilesService, type PublicFile } from '../files/files.service';
+import {
+  deriveMark,
+  levelFor,
+  parseLevels,
+  type Mark,
+} from '../gradebook/gradebook-rules';
+import { GradebookService } from '../gradebook/gradebook.service';
+import {
+  StandardsService,
+  type PublicStandard,
+} from '../standards/standards.service';
 import { parseDate } from '../students/students.mapper';
 import {
   CreateAssignmentDto,
@@ -39,7 +50,6 @@ import {
 } from './dto/assignments.dto';
 import {
   applyLatePenalty,
-  buildGradebook,
   letterGrade,
   percentageOf,
   submissionWindow,
@@ -63,6 +73,10 @@ export interface PublicAssignment {
   type: AssignmentTypeApi;
   submissionType: SubmissionTypeApi;
   category: string | null;
+  categoryId: string | null;
+  isExtraCredit: boolean;
+  gradingPeriodId: string | null;
+  standards: PublicStandard[];
   maxPoints: number;
   weight: number;
   availableFrom: Date | null;
@@ -125,6 +139,7 @@ export interface PublicGrade {
     comment?: string;
   }> | null;
   latePenaltyApplied: number | null;
+  standardScores: Array<{ standardId: string; level: number; label: string }>;
   gradedAt: Date;
   assignment?: {
     id: string;
@@ -149,7 +164,21 @@ type AssignmentRow = Assignment & {
     organizationId: string;
     course: { title: string };
     teachers: Array<{ teacherId: string }>;
+    gradingMode: string;
+    proficiencyScaleId: string | null;
   };
+  standards: Array<{
+    standard: {
+      id: string;
+      setId: string;
+      parentId: string | null;
+      code: string;
+      description: string;
+      gradeLevels: string | null;
+      sortOrder: number;
+      set: { code: string };
+    };
+  }>;
   rubric: { id: string; title: string; criteria: string } | null;
   h5pContent: {
     id: string;
@@ -171,6 +200,8 @@ export class AssignmentsService {
     private readonly rubrics: RubricsService,
     private readonly audit: AuditService,
     private readonly events: EventEmitter2,
+    private readonly gradebook: GradebookService,
+    private readonly standards: StandardsService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -193,6 +224,7 @@ export class AssignmentsService {
           maxPoints: number;
           percentage: number;
         } | null;
+        myMark?: Mark;
       }
     >
   > {
@@ -234,12 +266,15 @@ export class AssignmentsService {
     if (isLearnerSide(actor) && rows.length) {
       const studentIds = await this.ownStudentIds(actor);
       const ids = rows.map((r) => r.id);
-      const [subs, grades] = await Promise.all([
+      const [subs, grades, marks] = await Promise.all([
         this.prisma.assignmentSubmission.findMany({
           where: { assignmentId: { in: ids }, studentId: { in: studentIds } },
           orderBy: { attemptNumber: 'desc' },
         }),
         this.prisma.grade.findMany({
+          where: { assignmentId: { in: ids }, studentId: { in: studentIds } },
+        }),
+        this.prisma.assignmentMark.findMany({
           where: { assignmentId: { in: ids }, studentId: { in: studentIds } },
         }),
       ]);
@@ -261,6 +296,13 @@ export class AssignmentsService {
                 percentage: Number(g.percentage),
               }
             : null,
+          myMark: deriveMark({
+            override: marks.find((m) => m.assignmentId === a.id)?.mark ?? null,
+            hasGrade: !!g,
+            submitted: !!s,
+            late: s?.isLate ?? false,
+            dueAt: a.dueAt,
+          }),
         });
       }
     }
@@ -270,10 +312,14 @@ export class AssignmentsService {
   async get(
     id: string,
     actor: AuthenticatedUser,
-  ): Promise<PublicAssignment & { mySubmissions?: PublicSubmission[] }> {
+  ): Promise<
+    PublicAssignment & { mySubmissions?: PublicSubmission[]; myMark?: Mark }
+  > {
     const row = await this.find(id, actor);
-    const result: PublicAssignment & { mySubmissions?: PublicSubmission[] } =
-      toPublic(row, actor);
+    const result: PublicAssignment & {
+      mySubmissions?: PublicSubmission[];
+      myMark?: Mark;
+    } = toPublic(row, actor);
     if (isLearnerSide(actor)) {
       const studentIds = await this.ownStudentIds(actor);
       const subs = await this.prisma.assignmentSubmission.findMany({
@@ -282,6 +328,16 @@ export class AssignmentsService {
         include: this.submissionInclude,
       });
       result.mySubmissions = subs.map(toPublicSubmission);
+      const mark = await this.prisma.assignmentMark.findFirst({
+        where: { assignmentId: id, studentId: { in: studentIds } },
+      });
+      result.myMark = deriveMark({
+        override: mark?.mark ?? null,
+        hasGrade: subs.some((x) => x.grade),
+        submitted: subs.length > 0,
+        late: subs[0]?.isLate ?? false,
+        dueAt: row.dueAt,
+      });
     }
     return result;
   }
@@ -293,6 +349,7 @@ export class AssignmentsService {
     const klass = await this.manageableClass(dto.classId, actor);
     if (dto.rubricId) await this.rubrics.find(dto.rubricId, actor);
     if (dto.h5pContentId) await this.assertContent(dto.h5pContentId, actor);
+    const extra = await this.structureFor(klass.id, klass.organizationId, dto);
     const dates = this.datesFrom(dto);
     const row = await this.prisma.assignment.create({
       data: {
@@ -308,7 +365,13 @@ export class AssignmentsService {
         submissionType:
           (dto.submissionType?.toUpperCase() as SubmissionType | undefined) ??
           'ONLINE',
-        category: dto.category,
+        category: extra.category ?? dto.category,
+        categoryId: extra.categoryId ?? null,
+        isExtraCredit: dto.isExtraCredit ?? false,
+        gradingPeriodId: extra.gradingPeriodId ?? null,
+        standards: extra.standardIds
+          ? { create: extra.standardIds.map((standardId) => ({ standardId })) }
+          : undefined,
         maxPoints: dto.maxPoints ?? 100,
         weight: dto.weight ?? 1,
         ...dates,
@@ -354,6 +417,11 @@ export class AssignmentsService {
       });
     if (dto.rubricId) await this.rubrics.find(dto.rubricId, actor);
     if (dto.h5pContentId) await this.assertContent(dto.h5pContentId, actor);
+    const extra = await this.structureFor(
+      existing.classId,
+      existing.organizationId,
+      dto,
+    );
     const row = await this.prisma.assignment.update({
       where: { id },
       data: {
@@ -364,7 +432,16 @@ export class AssignmentsService {
         submissionType: dto.submissionType
           ? (dto.submissionType.toUpperCase() as SubmissionType)
           : undefined,
-        category: dto.category,
+        category: extra.category ?? dto.category,
+        categoryId: extra.categoryId,
+        isExtraCredit: dto.isExtraCredit,
+        gradingPeriodId: extra.gradingPeriodId,
+        standards: extra.standardIds
+          ? {
+              deleteMany: {},
+              create: extra.standardIds.map((standardId) => ({ standardId })),
+            }
+          : undefined,
         maxPoints: dto.maxPoints,
         weight: dto.weight,
         ...this.datesFrom(dto),
@@ -465,10 +542,12 @@ export class AssignmentsService {
       student: PublicSubmission['student'];
       submission: PublicSubmission | null;
       grade: PublicGrade | null;
+      mark: Mark;
+      markNote: string | null;
     }>
   > {
     const assignment = await this.findManageable(assignmentId, actor);
-    const [enrolled, subs, grades] = await Promise.all([
+    const [enrolled, subs, grades, marks] = await Promise.all([
       this.prisma.classEnrollment.findMany({
         where: {
           classId: assignment.classId,
@@ -491,15 +570,28 @@ export class AssignmentsService {
         orderBy: { attemptNumber: 'desc' },
         include: this.submissionInclude,
       }),
-      this.prisma.grade.findMany({ where: { assignmentId } }),
+      this.prisma.grade.findMany({
+        where: { assignmentId },
+        include: { standardScores: true },
+      }),
+      this.prisma.assignmentMark.findMany({ where: { assignmentId } }),
     ]);
     return enrolled.map((e) => {
       const latest = subs.find((s) => s.studentId === e.studentId);
       const grade = grades.find((g) => g.studentId === e.studentId);
+      const override = marks.find((m) => m.studentId === e.studentId);
       return {
         student: e.student,
         submission: latest ? toPublicSubmission(latest) : null,
         grade: grade ? toPublicGrade(grade) : null,
+        mark: deriveMark({
+          override: override?.mark ?? null,
+          hasGrade: !!grade,
+          submitted: !!latest,
+          late: latest?.isLate ?? false,
+          dueAt: assignment.dueAt,
+        }),
+        markNote: override?.note ?? null,
       };
     });
   }
@@ -724,7 +816,12 @@ export class AssignmentsService {
       latePenaltyApplied: penalised.penaltyApplied,
       gradedAt: new Date(),
     };
-    const grade = await this.prisma.grade.upsert({
+    const standardScores = await this.standardScoresFor(
+      submission.assignment,
+      percentage,
+      dto.standardScores,
+    );
+    const saved = await this.prisma.grade.upsert({
       where: {
         assignmentId_studentId: {
           assignmentId: submission.assignmentId,
@@ -738,6 +835,21 @@ export class AssignmentsService {
         ...data,
       },
       update: data,
+    });
+    await this.prisma.standardScore.deleteMany({
+      where: { gradeId: saved.id },
+    });
+    if (standardScores.length)
+      await this.prisma.standardScore.createMany({
+        data: standardScores.map((s) => ({
+          id: newId(),
+          gradeId: saved.id,
+          ...s,
+        })),
+      });
+    const grade = await this.prisma.grade.findUniqueOrThrow({
+      where: { id: saved.id },
+      include: { standardScores: true },
     });
     await this.prisma.assignmentSubmission.update({
       where: { id: submissionId },
@@ -1048,91 +1160,6 @@ export class AssignmentsService {
     );
   }
 
-  async gradebook(classId: string, actor: AuthenticatedUser) {
-    const klass = await this.manageableClass(classId, actor, true);
-    const [enrolled, assignments, grades] = await Promise.all([
-      this.prisma.classEnrollment.findMany({
-        where: { classId, status: { in: ['ENROLLED', 'COMPLETED'] } },
-        include: {
-          student: {
-            select: {
-              id: true,
-              studentNumber: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-        orderBy: { student: { lastName: 'asc' } },
-      }),
-      this.prisma.assignment.findMany({
-        where: {
-          classId,
-          deletedAt: null,
-          status: { in: ['PUBLISHED', 'CLOSED'] },
-        },
-        orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }],
-      }),
-      this.prisma.grade.findMany({
-        where: { assignment: { classId, deletedAt: null } },
-      }),
-    ]);
-    const book = buildGradebook(
-      enrolled.map((e) => e.student),
-      assignments.map((a) => ({
-        id: a.id,
-        title: a.title,
-        category: a.category,
-        maxPoints: Number(a.maxPoints),
-        weight: Number(a.weight),
-        dueAt: a.dueAt,
-        status: a.status.toLowerCase(),
-      })),
-      grades.map((g) => ({
-        assignmentId: g.assignmentId,
-        studentId: g.studentId,
-        score: Number(g.score),
-        maxPoints: Number(g.maxPoints),
-      })),
-    );
-    return { classId, className: klass.name, ...book };
-  }
-
-  async gradebookCsv(
-    classId: string,
-    actor: AuthenticatedUser,
-  ): Promise<string> {
-    const book = await this.gradebook(classId, actor);
-    const header = [
-      'studentNumber',
-      'lastName',
-      'firstName',
-      ...book.assignments.map((a) => `${a.title} (${a.maxPoints})`),
-      'weightedScore',
-      'weightedMax',
-      'percentage',
-      'letter',
-    ];
-    const rows = book.rows.map((r) => [
-      r.student.studentNumber,
-      r.student.lastName,
-      r.student.firstName,
-      ...book.assignments.map((a) => r.cells[a.id]?.score ?? ''),
-      r.weightedScore,
-      r.weightedMax,
-      r.percentage ?? '',
-      r.letter ?? '',
-    ]);
-    await this.audit.record({
-      userId: actor.id,
-      organizationId: actor.organizationId,
-      action: 'grades.export',
-      entityType: 'Class',
-      entityId: classId,
-    });
-    return toCsv([header, ...rows]);
-  }
-
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
@@ -1145,7 +1172,12 @@ export class AssignmentsService {
         organizationId: true,
         course: { select: { title: true } },
         teachers: { select: { teacherId: true } },
+        gradingMode: true,
+        proficiencyScaleId: true,
       },
+    },
+    standards: {
+      include: { standard: { include: { set: { select: { code: true } } } } },
     },
     rubric: { select: { id: true, title: true, criteria: true } },
     h5pContent: {
@@ -1292,42 +1324,117 @@ export class AssignmentsService {
     classId: string,
     studentId: string,
   ): Promise<void> {
-    const [assignments, grades] = await Promise.all([
-      this.prisma.assignment.findMany({
-        where: {
-          classId,
-          deletedAt: null,
-          status: { in: ['PUBLISHED', 'CLOSED'] },
-        },
-        select: { id: true, maxPoints: true, weight: true },
-      }),
-      this.prisma.grade.findMany({
-        where: { studentId, assignment: { classId, deletedAt: null } },
-        select: { assignmentId: true, score: true, maxPoints: true },
-      }),
-    ]);
-    const book = buildGradebook(
-      [{ id: studentId, studentNumber: '', firstName: '', lastName: '' }],
-      assignments.map((a) => ({
-        id: a.id,
-        title: '',
-        category: null,
-        maxPoints: Number(a.maxPoints),
-        weight: Number(a.weight),
-        dueAt: null,
-        status: 'published',
-      })),
-      grades.map((g) => ({
-        assignmentId: g.assignmentId,
-        studentId,
-        score: Number(g.score),
-        maxPoints: Number(g.maxPoints),
-      })),
-    );
-    await this.prisma.classEnrollment.updateMany({
-      where: { classId, studentId },
-      data: { currentGrade: book.rows[0]?.percentage ?? null },
-    });
+    await this.gradebook.refreshCurrentGrade(classId, studentId);
+  }
+
+  /** Category, grading period and standards for a create or update, validated against the class and school. */
+  private async structureFor(
+    classId: string,
+    organizationId: string,
+    dto: Partial<CreateAssignmentDto>,
+  ): Promise<{
+    category?: string;
+    categoryId?: string | null;
+    gradingPeriodId?: string | null;
+    standardIds?: string[];
+  }> {
+    const out: {
+      category?: string;
+      categoryId?: string | null;
+      gradingPeriodId?: string | null;
+      standardIds?: string[];
+    } = {};
+    if (dto.categoryId !== undefined) {
+      if (dto.categoryId === null) out.categoryId = null;
+      else {
+        const cat = await this.prisma.gradeCategory.findFirst({
+          where: { id: dto.categoryId, classId },
+        });
+        if (!cat)
+          throw new BadRequestException({
+            code: 'request.invalid',
+            detail: 'Unknown grade category for this class.',
+          });
+        out.categoryId = cat.id;
+        out.category = cat.name;
+      }
+    } else if (dto.category) {
+      const cat = await this.prisma.gradeCategory.findFirst({
+        where: { classId, name: dto.category.trim() },
+      });
+      if (cat) out.categoryId = cat.id;
+    }
+    if (dto.gradingPeriodId !== undefined) {
+      if (dto.gradingPeriodId === null) out.gradingPeriodId = null;
+      else {
+        const gp = await this.prisma.gradingPeriod.findFirst({
+          where: {
+            id: dto.gradingPeriodId,
+            term: { academicYear: { organizationId } },
+          },
+        });
+        if (!gp)
+          throw new BadRequestException({
+            code: 'request.invalid',
+            detail: 'Unknown grading period for this school.',
+          });
+        out.gradingPeriodId = gp.id;
+      }
+    }
+    if (dto.standardIds !== undefined)
+      out.standardIds = await this.standards.assertVisible(
+        dto.standardIds,
+        organizationId,
+      );
+    return out;
+  }
+
+  /**
+   * Standards-based classes record a level per tagged standard: the levels the teacher gave, or the level the
+   * percentage maps to on the class scale when none were given. Points-based classes keep nothing here.
+   */
+  private async standardScoresFor(
+    assignment: AssignmentRow,
+    percentage: number,
+    given: Array<{ standardId: string; level: number }> | undefined,
+  ): Promise<Array<{ standardId: string; level: number; label: string }>> {
+    const tagged = assignment.standards.map((s) => s.standard.id);
+    if (assignment.class.gradingMode !== 'STANDARDS' && !given?.length)
+      return [];
+    const scale = assignment.class.proficiencyScaleId
+      ? await this.prisma.proficiencyScale.findUnique({
+          where: { id: assignment.class.proficiencyScaleId },
+        })
+      : await this.prisma.proficiencyScale.findFirst({
+          where: { organizationId: assignment.organizationId, isDefault: true },
+        });
+    const levels = parseLevels(scale?.levels ?? null);
+    if (given?.length) {
+      return given.map((g) => {
+        if (!tagged.includes(g.standardId))
+          throw new BadRequestException({
+            code: 'request.invalid',
+            detail: 'That standard is not tagged on this assignment.',
+          });
+        const level = levels.find((l) => l.level === g.level);
+        if (!level)
+          throw new BadRequestException({
+            code: 'request.invalid',
+            detail: `Level ${g.level} is not on the class proficiency scale.`,
+          });
+        return {
+          standardId: g.standardId,
+          level: level.level,
+          label: level.label,
+        };
+      });
+    }
+    const derived = levelFor(percentage, levels);
+    return tagged.map((standardId) => ({
+      standardId,
+      level: derived.level,
+      label: derived.label,
+    }));
   }
 }
 
@@ -1352,6 +1459,21 @@ function toPublic(
     type: a.type.toLowerCase() as AssignmentTypeApi,
     submissionType: a.submissionType.toLowerCase() as SubmissionTypeApi,
     category: a.category,
+    categoryId: a.categoryId,
+    isExtraCredit: a.isExtraCredit,
+    gradingPeriodId: a.gradingPeriodId,
+    standards: a.standards.map((s) => ({
+      id: s.standard.id,
+      setId: s.standard.setId,
+      setCode: s.standard.set.code,
+      parentId: s.standard.parentId,
+      code: s.standard.code,
+      description: s.standard.description,
+      gradeLevels: s.standard.gradeLevels
+        ? s.standard.gradeLevels.split(',').filter(Boolean)
+        : [],
+      sortOrder: s.standard.sortOrder,
+    })),
     maxPoints: Number(a.maxPoints),
     weight: Number(a.weight),
     availableFrom: a.availableFrom,
@@ -1401,7 +1523,7 @@ type SubmissionRow = AssignmentSubmission & {
       createdAt: Date;
     };
   }>;
-  grade: Grade | null;
+  grade: (Grade & { standardScores?: StandardScore[] }) | null;
 };
 
 function toPublicSubmission(s: SubmissionRow): PublicSubmission {
@@ -1428,7 +1550,9 @@ function toPublicSubmission(s: SubmissionRow): PublicSubmission {
   };
 }
 
-function toPublicGrade(g: Grade): PublicGrade {
+function toPublicGrade(
+  g: Grade & { standardScores?: StandardScore[] },
+): PublicGrade {
   let rubricScores: PublicGrade['rubricScores'] = null;
   if (g.rubricScores) {
     try {
@@ -1450,6 +1574,11 @@ function toPublicGrade(g: Grade): PublicGrade {
     feedback: g.feedback,
     rubricScores,
     latePenaltyApplied: g.latePenaltyApplied,
+    standardScores: (g.standardScores ?? []).map((s) => ({
+      standardId: s.standardId,
+      level: s.level,
+      label: s.label,
+    })),
     gradedAt: g.gradedAt,
   };
 }

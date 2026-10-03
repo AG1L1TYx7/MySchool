@@ -83,9 +83,9 @@ Route paths in this catalog describe the previous implementation; the target rou
 
 ## 8. Grades and gradebook
 
-**Capabilities.** Grades per student and assignment with percentage, letter and comments; class summary and distribution; category weighting; history; export to CSV and Excel; report cards through Reports.
-**Entities.** `Grades`.
-**Routes.** `/api/Grade` (5).
+**Capabilities.** Grades per student and assignment with percentage, letter and comments; weighted categories per class with drop-lowest and extra credit; Google Classroom style marks (Assigned, Missing, Turned in, Returned, Excused, Late, Incomplete); district letter and GPA scales; standards-based grading per class with proficiency scales and a level per tagged standard; standards tagging on lessons and assignments from shared and district sets imported from 1EdTech CASE; report cards and progress reports per grading period with teacher comments, attendance, GPA, publication to students and parents and a PDF; class summary and distribution; export to CSV.
+**Entities.** `Grades`, `GradeCategories`, `AssignmentMarks`, `StandardSets`, `Standards`, `AssignmentStandards`, `LessonStandards`, `ProficiencyScales`, `StandardScores`, `ReportCards`, `ReportCardLines`.
+**Routes.** `/api/v1/classes/{id}/grading`, `/gradebook`, `/assignments/{id}/marks`, `/standards`, `/report-cards`, `/organizations/{id}/proficiency-scales`.
 **Status.** Real.
 
 ## 9. Announcements

@@ -5,8 +5,10 @@ import {
   ModulesController,
 } from './courses.controller';
 import { CoursesService } from './courses.service';
+import { StandardsModule } from '../standards/standards.module';
 
 @Module({
+  imports: [StandardsModule],
   controllers: [CoursesController, ModulesController, LessonsController],
   providers: [CoursesService],
   exports: [CoursesService],

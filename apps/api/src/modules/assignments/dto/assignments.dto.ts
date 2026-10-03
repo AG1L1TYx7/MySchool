@@ -144,6 +144,37 @@ export class CreateAssignmentDto {
   @IsOptional()
   @IsUUID()
   h5pContentId?: string;
+  @ApiProperty({
+    required: false,
+    format: 'uuid',
+    description: 'A grade category of the class; sets the category label',
+  })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+  @ApiProperty({
+    required: false,
+    default: false,
+    description: 'Adds to the score without adding to the possible points',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isExtraCredit?: boolean;
+  @ApiProperty({ required: false, format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  gradingPeriodId?: string;
+  @ApiProperty({
+    required: false,
+    type: [String],
+    format: 'uuid',
+    description: 'Standards this work assesses',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID(undefined, { each: true })
+  standardIds?: string[];
 }
 
 export class UpdateAssignmentDto extends PartialType(CreateAssignmentDto) {}
@@ -177,6 +208,19 @@ export class RubricScoreDto {
   comment?: string;
 }
 
+export class StandardScoreDto {
+  @ApiProperty({ format: 'uuid' }) @IsUUID() standardId!: string;
+  @ApiProperty({
+    example: 3,
+    description: 'A level of the class proficiency scale',
+  })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  level!: number;
+}
+
 export class GradeSubmissionDto {
   @ApiProperty({ description: 'Raw score before any late penalty' })
   @Type(() => Number)
@@ -204,6 +248,18 @@ export class GradeSubmissionDto {
   @IsOptional()
   @IsBoolean()
   waiveLatePenalty?: boolean;
+  @ApiProperty({
+    required: false,
+    type: [StandardScoreDto],
+    description:
+      'Standards-based classes: the level reached per standard; derived from the percentage when omitted',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => StandardScoreDto)
+  standardScores?: StandardScoreDto[];
 }
 
 export class ListGradesQuery extends PagedQueryDto {
