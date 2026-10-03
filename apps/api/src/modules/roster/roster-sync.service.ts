@@ -27,6 +27,14 @@ export interface SyncResult {
   errors: SyncError[];
 }
 
+/** Deadlocks and lock waits (Prisma P2034, MariaDB 1213 and 1205) are worth a retry; anything else is not. */
+export function isTransient(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const code = (err as { code?: string }).code;
+  if (code === 'P2034') return true;
+  return /deadlock|lock wait timeout/i.test(err.message);
+}
+
 class DryRunRollback extends Error {
   constructor(public readonly result: SyncResult) {
     super('dry run');
@@ -61,24 +69,32 @@ export class RosterSyncService {
     snapshot: RosterSnapshot,
     options: { dryRun: boolean; schoolExternalId?: string | null },
   ): Promise<SyncResult> {
-    try {
-      return await this.prisma.$transaction(
-        async (tx) => {
-          const result = await this.run(
-            tx,
-            organizationId,
-            source,
-            snapshot,
-            options.schoolExternalId ?? null,
-          );
-          if (options.dryRun) throw new DryRunRollback(result);
-          return result;
-        },
-        { timeout: 20 * 60_000, maxWait: 15_000 },
-      );
-    } catch (err) {
-      if (err instanceof DryRunRollback) return err.result;
-      throw err;
+    // A nightly sync shares the database with the school day; a deadlock or lock wait against
+    // another writer is retried a few times before the run is reported as failed.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const result = await this.run(
+              tx,
+              organizationId,
+              source,
+              snapshot,
+              options.schoolExternalId ?? null,
+            );
+            if (options.dryRun) throw new DryRunRollback(result);
+            return result;
+          },
+          { timeout: 20 * 60_000, maxWait: 15_000 },
+        );
+      } catch (err) {
+        if (err instanceof DryRunRollback) return err.result;
+        if (attempt < 3 && isTransient(err)) {
+          await new Promise((r) => setTimeout(r, 250 * attempt));
+          continue;
+        }
+        throw err;
+      }
     }
   }
 
