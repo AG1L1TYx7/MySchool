@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { forwardRef, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
 
 function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -35,10 +35,14 @@ export function Button({ variant = 'primary', loading, className, children, disa
 type InputProps = InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; error?: string };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ label, hint, error, id, className, ...rest }, ref) {
-  const inputId = id ?? rest.name ?? label.toLowerCase().replace(/\s+/g, '-');
+  // Ids come from React so the same label on one page (Starts, Ends, Code) never yields duplicate ids.
+  const reactId = useId();
+  const inputId = id ?? rest.name ?? reactId;
   return (
-    <label className="block" htmlFor={inputId}>
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+    <div className="block">
+      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-slate-700">
+        {label}
+      </label>
       <input
         ref={ref}
         id={inputId}
@@ -51,17 +55,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ l
         {...rest}
       />
       {error ? <span className="mt-1 block text-xs text-red-600">{error}</span> : hint ? <span className="mt-1 block text-xs text-slate-500">{hint}</span> : null}
-    </label>
+    </div>
   );
 });
 
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & { label: string; children: ReactNode };
 
 export function Select({ label, id, className, children, ...rest }: SelectProps) {
-  const selectId = id ?? rest.name ?? label.toLowerCase().replace(/\s+/g, '-');
+  const reactId = useId();
+  const selectId = id ?? rest.name ?? reactId;
   return (
-    <label className="block" htmlFor={selectId}>
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+    <div className="block">
+      <label htmlFor={selectId} className="mb-1 block text-sm font-medium text-slate-700">
+        {label}
+      </label>
       <select
         id={selectId}
         className={cx('block w-full rounded-md border-0 px-3 py-2 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-brand-500 sm:text-sm', className)}
@@ -69,7 +76,7 @@ export function Select({ label, id, className, children, ...rest }: SelectProps)
       >
         {children}
       </select>
-    </label>
+    </div>
   );
 }
 

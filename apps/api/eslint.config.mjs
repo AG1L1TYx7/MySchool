@@ -23,6 +23,8 @@ export default tseslint.config(
       },
       sourceType: 'commonjs',
       parserOptions: {
+        // The editor's ESLint server caches this TypeScript program. After `prisma generate` adds models,
+        // restart it (ESLint: Restart ESLint Server) or save this file, or new Prisma types show as unresolved.
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
