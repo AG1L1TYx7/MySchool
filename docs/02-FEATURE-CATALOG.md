@@ -66,7 +66,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 ## 6. Attendance
 
 **Purpose.** Daily presence per class.
-**Capabilities.** Mark one or many students (Present, Absent, Late, Excused, Tardy, LeftEarly) with notes; edit; per-class and per-student summaries by date range; daily report job; pattern detection feeds analytics and parent notifications.
+**Capabilities.** Mark one or many students with the school's attendance codes (default P, T, AE, AU, R, FT, S; each code has a category and whether it counts as present) per period or for the day, with notes; the plain statuses (Present, Absent, Late, Excused, Tardy, LeftEarly) remain for schools without codes; edit; per-class and per-student summaries by date range; office status per day (classes meeting that day that have and have not taken attendance) with a daily deadline alert to principals and teachers; average daily attendance and chronic absenteeism CSV exports; pattern detection feeds analytics and parent notifications.
 **Entities.** `Attendances`.
 **Routes.** `/api/Attendance` (5). Job: daily-attendance-report.
 **Status.** Real.
@@ -122,7 +122,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Capabilities.** Events with attendees, recurrence, reminders, RSVP; user calendar settings; class and organisation calendars; conference scheduling.
 **Entities.** `CalendarEvents`, `CalendarEventAttendees`, `UserCalendarSettings`.
 **Routes.** `/api/Calendar` (25).
-**Status.** Partial. Meeting links were fabricated and event notifications not sent; target returns 501 for link generation until a provider adapter exists.
+**Status.** Real since Release 2 slice 10 (reduced scope): school-wide and class events (day off, early release, school event, class event), published assignment due dates and term boundaries merged into one feed per user, and a private iCal subscription per user. Attendees, recurrence, RSVP and conference scheduling are not built; meeting links stay 501 until a provider adapter exists.
 
 ## 14. Gamification
 

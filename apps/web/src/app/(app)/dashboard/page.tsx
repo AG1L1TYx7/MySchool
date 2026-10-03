@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { ROLE_LABELS, useAuth } from '@/lib/auth';
 import type { Announcement } from '@/lib/communication';
 import type { ClassItem } from '@/lib/curriculum';
+import { todayIso, type TakenStatus } from '@/lib/school';
 import { label } from '@/lib/students';
 
 interface WeekAssignment {
@@ -74,6 +75,40 @@ function ThisWeek() {
             <p className="text-slate-600">Everything due soon is in. Keep the streak going tomorrow.</p>
           )}
         </div>
+      </div>
+    </Card>
+  );
+}
+
+/** For the office and teachers: classes meeting today that have not taken attendance yet (docs/13 section 5). */
+function AttendanceOwed() {
+  const { user, can } = useAuth();
+  const [status, setStatus] = useState<TakenStatus | null>(null);
+  const orgId = user?.organizationId;
+  const allowed = can('attendance.view') && !!orgId;
+  useEffect(() => {
+    if (!allowed) return;
+    api<TakenStatus>(`/organizations/${orgId}/attendance/status?date=${todayIso()}`)
+      .then(setStatus)
+      .catch(() => setStatus(null));
+  }, [allowed, orgId]);
+  if (!allowed || !status || status.taken.length + status.missing.length === 0) return null;
+  const done = status.missing.length === 0;
+  return (
+    <Card title="Attendance today" description={done ? 'Every class that meets today has taken attendance.' : `${status.missing.length} class${status.missing.length === 1 ? '' : 'es'} still owe attendance${status.deadline ? ` (due by ${status.deadline})` : ''}.`} actions={<Link href="/attendance/today" className="text-sm text-brand-700 hover:underline">Office view</Link>}>
+      <div className="flex flex-wrap items-center gap-6">
+        <ProgressRing value={status.taken.length} max={status.taken.length + status.missing.length} label="Classes done" suffix="" tone={done ? 'green' : 'amber'} />
+        <ul className="min-w-0 flex-1 space-y-1 text-sm">
+          {status.missing.slice(0, 4).map((c) => (
+            <li key={c.classId}>
+              <Link href={`/classes/${c.classId}/attendance`} className="font-medium text-slate-900 hover:underline">
+                {c.name}
+              </Link>
+              <span className="text-slate-500">{c.period ? ` · period ${c.period}` : ''}</span>
+            </li>
+          ))}
+          {status.missing.length > 4 && <li className="text-slate-500">and {status.missing.length - 4} more</li>}
+        </ul>
       </div>
     </Card>
   );
@@ -158,6 +193,7 @@ export default function DashboardPage() {
       )}
 
       <ThisWeek />
+      <AttendanceOwed />
       <LatestAnnouncements />
       <MyClasses />
 
@@ -172,14 +208,27 @@ export default function DashboardPage() {
             ))}
           </ul>
         </Card>
-        <Card title="Coming next" description="Release 1 builds out these areas slice by slice.">
-          <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-700">
-            <li>Courses, modules and lessons</li>
-            <li>Classes, rosters and attendance</li>
-            <li>Assignments, submissions and grading</li>
-            <li>AI tutor and content generation</li>
-            <li>Messaging, announcements and notifications</li>
-          </ol>
+        <Card title="Around the school" description="Quick links for the week.">
+          <ul className="space-y-1 text-sm">
+            <li>
+              <Link href="/calendar" className="text-brand-700 underline">
+                School calendar
+              </Link>
+              <span className="text-slate-500"> · days off, events, due dates and term boundaries</span>
+            </li>
+            <li>
+              <Link href="/announcements" className="text-brand-700 underline">
+                Announcements
+              </Link>
+              <span className="text-slate-500"> · from the school and your classes</span>
+            </li>
+            <li>
+              <Link href="/messages" className="text-brand-700 underline">
+                Messages
+              </Link>
+              <span className="text-slate-500"> · reach teachers and the office</span>
+            </li>
+          </ul>
         </Card>
       </div>
     </div>

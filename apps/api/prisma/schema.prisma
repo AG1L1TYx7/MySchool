@@ -232,6 +232,31 @@ enum IdentityProvider {
   CLASSLINK
 }
 
+enum TermType {
+  SEMESTER
+  TRIMESTER
+  QUARTER
+  TERM
+}
+
+enum AttendanceCategory {
+  PRESENT
+  TARDY
+  EXCUSED
+  UNEXCUSED
+  REMOTE
+  OTHER
+}
+
+enum CalendarEventType {
+  DAY_OFF
+  EARLY_RELEASE
+  TERM_START
+  TERM_END
+  SCHOOL_EVENT
+  CLASS_EVENT
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -257,6 +282,8 @@ model Organization {
   ssoProviders        String?   @map("SsoProviders") @db.VarChar(200)
   ssoAllowedDomains   String?   @map("SsoAllowedDomains") @db.VarChar(500)
   ssoPasswordOptional Boolean   @default(false) @map("SsoPasswordOptional")
+  gradeLevels            String?   @map("GradeLevels") @db.VarChar(100)
+  attendanceDeadlineTime String?   @map("AttendanceDeadlineTime") @db.VarChar(5)
   createdAt         DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt         DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt         DateTime? @map("DeletedAt") @db.DateTime(6)
@@ -274,6 +301,10 @@ model Organization {
   announcements Announcement[]
   conversations Conversation[]
   rosterSources RosterSource[]
+  academicYears   AcademicYear[]
+  bellSchedules   BellSchedule[]
+  attendanceCodes AttendanceCode[]
+  calendarEvents  CalendarEvent[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -343,6 +374,8 @@ model User {
   messagesSent        Message[]
   identities          UserIdentity[]
   rosterRuns          RosterSyncRun[]
+  calendarEvents      CalendarEvent[]
+  icalToken           String?      @unique @map("IcalToken") @db.VarChar(64)
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -566,6 +599,10 @@ model Class {
   meetingSchedule String?     @map("MeetingSchedule") @db.Text
   maxStudents     Int?        @map("MaxStudents")
   periodLabel     String?     @map("PeriodLabel") @db.VarChar(50)
+  academicYearId  String?     @map("AcademicYearId") @db.Char(36)
+  termId          String?     @map("TermId") @db.Char(36)
+  periodId        String?     @map("PeriodId") @db.Char(36)
+  gradeLevel      String?     @map("GradeLevel") @db.VarChar(16)
   externalId      String?     @map("ExternalId") @db.VarChar(128)
   source          RecordSource @default(MANUAL) @map("Source")
   managedBySis    Boolean     @default(false) @map("ManagedBySis")
@@ -580,6 +617,10 @@ model Class {
   enrollments  ClassEnrollment[]
   assignments  Assignment[]
   attendance   Attendance[]
+  academicYear  AcademicYear?  @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  termRef       Term?          @relation(fields: [termId], references: [id], onDelete: SetNull)
+  period        Period?        @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  calendarEvents CalendarEvent[]
   announcements Announcement[]
   conversations Conversation[]
 
@@ -781,6 +822,8 @@ model Attendance {
   date       DateTime         @map("Date") @db.Date
   status     AttendanceStatus @map("Status")
   notes      String?          @map("Notes") @db.VarChar(500)
+  codeId     String?          @map("CodeId") @db.Char(36)
+  periodId   String?          @map("PeriodId") @db.Char(36)
   markedById String?          @map("MarkedById") @db.Char(36)
   createdAt  DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt  DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
@@ -788,6 +831,8 @@ model Attendance {
   class    Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
   markedBy User?   @relation(fields: [markedById], references: [id], onDelete: SetNull)
+  code     AttendanceCode? @relation(fields: [codeId], references: [id], onDelete: SetNull)
+  period   Period?         @relation(fields: [periodId], references: [id], onDelete: SetNull)
 
   @@unique([classId, studentId, date])
   @@index([studentId, date])
@@ -1148,6 +1193,132 @@ model RosterSyncError {
 
   @@index([runId])
   @@map("RosterSyncErrors")
+}
+
+// ---------------------------------------------------------------------------
+// School structure and calendar (docs/13 sections 3 and 5). Release 2 slice 10.
+// ---------------------------------------------------------------------------
+
+model AcademicYear {
+  id             String   @id @map("Id") @db.Char(36)
+  organizationId String   @map("OrganizationId") @db.Char(36)
+  name           String   @map("Name") @db.VarChar(50)
+  startDate      DateTime @map("StartDate") @db.Date
+  endDate        DateTime @map("EndDate") @db.Date
+  isCurrent      Boolean  @default(false) @map("IsCurrent")
+  externalId     String?  @map("ExternalId") @db.VarChar(128)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  terms        Term[]
+  classes      Class[]
+
+  @@unique([organizationId, name])
+  @@map("AcademicYears")
+}
+
+model Term {
+  id             String   @id @map("Id") @db.Char(36)
+  academicYearId String   @map("AcademicYearId") @db.Char(36)
+  name           String   @map("Name") @db.VarChar(50)
+  type           TermType @default(SEMESTER) @map("Type")
+  startDate      DateTime @map("StartDate") @db.Date
+  endDate        DateTime @map("EndDate") @db.Date
+  sortOrder      Int      @default(0) @map("SortOrder")
+  externalId     String?  @map("ExternalId") @db.VarChar(128)
+
+  academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  gradingPeriods GradingPeriod[]
+  classes        Class[]
+
+  @@unique([academicYearId, name])
+  @@map("Terms")
+}
+
+model GradingPeriod {
+  id        String   @id @map("Id") @db.Char(36)
+  termId    String   @map("TermId") @db.Char(36)
+  name      String   @map("Name") @db.VarChar(50)
+  startDate DateTime @map("StartDate") @db.Date
+  endDate   DateTime @map("EndDate") @db.Date
+  sortOrder Int      @default(0) @map("SortOrder")
+
+  term Term @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  @@unique([termId, name])
+  @@map("GradingPeriods")
+}
+
+model BellSchedule {
+  id             String   @id @map("Id") @db.Char(36)
+  organizationId String   @map("OrganizationId") @db.Char(36)
+  name           String   @map("Name") @db.VarChar(80)
+  isDefault      Boolean  @default(false) @map("IsDefault")
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  periods      Period[]
+
+  @@unique([organizationId, name])
+  @@map("BellSchedules")
+}
+
+model Period {
+  id             String @id @map("Id") @db.Char(36)
+  bellScheduleId String @map("BellScheduleId") @db.Char(36)
+  name           String @map("Name") @db.VarChar(20)
+  startTime      String @map("StartTime") @db.VarChar(5)
+  endTime        String @map("EndTime") @db.VarChar(5)
+  days           String @default("MTWRF") @map("Days") @db.VarChar(7)
+  sortOrder      Int    @default(0) @map("SortOrder")
+
+  bellSchedule BellSchedule @relation(fields: [bellScheduleId], references: [id], onDelete: Cascade)
+  classes      Class[]
+  attendance   Attendance[]
+
+  @@unique([bellScheduleId, name])
+  @@map("Periods")
+}
+
+model AttendanceCode {
+  id              String             @id @map("Id") @db.Char(36)
+  organizationId  String             @map("OrganizationId") @db.Char(36)
+  code            String             @map("Code") @db.VarChar(10)
+  label           String             @map("Label") @db.VarChar(60)
+  category        AttendanceCategory @map("Category")
+  countsAsPresent Boolean            @default(false) @map("CountsAsPresent")
+  isActive        Boolean            @default(true) @map("IsActive")
+  sortOrder       Int                @default(0) @map("SortOrder")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  attendance   Attendance[]
+
+  @@unique([organizationId, code])
+  @@map("AttendanceCodes")
+}
+
+model CalendarEvent {
+  id             String            @id @map("Id") @db.Char(36)
+  organizationId String            @map("OrganizationId") @db.Char(36)
+  classId        String?           @map("ClassId") @db.Char(36)
+  type           CalendarEventType @default(SCHOOL_EVENT) @map("Type")
+  title          String            @map("Title") @db.VarChar(200)
+  description    String?           @map("Description") @db.Text
+  startsAt       DateTime          @map("StartsAt") @db.DateTime(6)
+  endsAt         DateTime?         @map("EndsAt") @db.DateTime(6)
+  allDay         Boolean           @default(true) @map("AllDay")
+  createdById    String?           @map("CreatedById") @db.Char(36)
+  createdAt      DateTime          @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime          @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class        Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, startsAt])
+  @@index([classId, startsAt])
+  @@map("CalendarEvents")
 }
 
 // ---------------------------------------------------------------------------

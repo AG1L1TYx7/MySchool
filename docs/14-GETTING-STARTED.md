@@ -118,6 +118,10 @@ Sign-in buttons appear on the login page when the API has credentials for a prov
 
 Rostering: on the same page, connect the district's OneRoster API, ClassLink or Clever source, press Preview to see what would change, then Sync now; or import a OneRoster CSV bundle exported from the SIS. Synced people and classes are read-only in SmartSchool and refresh nightly.
 
+## 4b. School year, bell schedule and attendance codes
+
+As a principal, open the organisation page and scroll to School structure: tick the grades the school serves, set the time attendance is due each day, add the school year with its terms and grading periods, add a bell schedule with its periods, and adjust the attendance codes (the seven defaults cover present, tardy, excused, unexcused, remote, field trip and suspended). Classes then pick a term, a period and a grade level; the attendance sheet shows the codes and the period. The office view at /attendance/today lists classes that still owe attendance and downloads the average daily attendance and chronic absenteeism CSVs. Everyone has a calendar at /calendar with a private subscription link for phones and Google Calendar.
+
 ## 5. Backups
 
 ```bash

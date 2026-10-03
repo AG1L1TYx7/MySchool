@@ -4311,6 +4311,250 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/attendance/status": {
+      "get": {
+        "operationId": "AttendanceReportsController_status_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Which classes meeting on a date have taken attendance, and which have not",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/attendance/export": {
+      "get": {
+        "operationId": "AttendanceReportsController_export_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "CSV: average daily attendance per student (type=ada) or the chronic absenteeism list (type=chronic)",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list_api/v1",
+        "parameters": [
+          {
+            "name": "unreadOnly",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "announcement",
+                "assignment",
+                "grade",
+                "message",
+                "attendance",
+                "system",
+                "ai"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My notifications (unreadOnly, category, page)",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/summary": {
+      "get": {
+        "operationId": "NotificationsController_summary_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unread count by category and the latest few (for the bell)",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/preferences": {
+      "get": {
+        "operationId": "NotificationsController_preferences_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      },
+      "put": {
+        "operationId": "NotificationsController_setPreferences_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPreferencesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Per-category in-app and email switches",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationsController_markAll_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "post": {
+        "operationId": "NotificationsController_markRead_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
     "/api/v1/h5p/libraries": {
       "get": {
         "operationId": "H5pController_libraries_api/v1",
@@ -5011,192 +5255,6 @@
         ]
       }
     },
-    "/api/v1/notifications": {
-      "get": {
-        "operationId": "NotificationsController_list_api/v1",
-        "parameters": [
-          {
-            "name": "unreadOnly",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "category",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "announcement",
-                "assignment",
-                "grade",
-                "message",
-                "attendance",
-                "system",
-                "ai"
-              ]
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "default": 1,
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/Object"
-                }
-              ]
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "default": 20,
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/Object"
-                }
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "My notifications (unreadOnly, category, page)",
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/summary": {
-      "get": {
-        "operationId": "NotificationsController_summary_api/v1",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Unread count by category and the latest few (for the bell)",
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/preferences": {
-      "get": {
-        "operationId": "NotificationsController_preferences_api/v1",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      },
-      "put": {
-        "operationId": "NotificationsController_setPreferences_api/v1",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetPreferencesDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Per-category in-app and email switches",
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/read-all": {
-      "post": {
-        "operationId": "NotificationsController_markAll_api/v1",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/{id}/read": {
-      "post": {
-        "operationId": "NotificationsController_markRead_api/v1",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
     "/api/v1/announcements": {
       "get": {
         "operationId": "AnnouncementsController_list_api/v1",
@@ -5863,6 +5921,1318 @@
         ],
         "tags": [
           "Messaging"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/roster/sources": {
+      "get": {
+        "operationId": "RosterController_listSources_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Rostering"
+        ]
+      },
+      "post": {
+        "operationId": "RosterController_createSource_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRosterSourceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Connect a OneRoster API, ClassLink or Clever source (secrets stored encrypted)",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/roster/sources/{id}": {
+      "patch": {
+        "operationId": "RosterController_updateSource_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRosterSourceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Rostering"
+        ]
+      },
+      "delete": {
+        "operationId": "RosterController_removeSource_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/roster/sources/{id}/run": {
+      "post": {
+        "operationId": "RosterController_runSource_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSourceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sync now (dryRun to preview); poll the run",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/roster/import": {
+      "post": {
+        "operationId": "RosterController_importCsv_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dryRun",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Import a OneRoster 1.1 CSV bundle: a zip or the CSV files in field \"files\"; ?dryRun=true previews",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/roster/runs": {
+      "get": {
+        "operationId": "RosterController_listRuns_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/roster/runs/{id}": {
+      "get": {
+        "operationId": "RosterController_getRun_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A run with its counts and up to 200 errors",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/roster/sso": {
+      "get": {
+        "operationId": "RosterController_getSso_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Rostering"
+        ]
+      },
+      "put": {
+        "operationId": "RosterController_setSso_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Which sign-in providers this organisation accepts, for which email domains",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/auth/sso/providers": {
+      "get": {
+        "operationId": "SsoController_providers_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Sign-in providers configured on this server",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sso/{provider}/start": {
+      "get": {
+        "operationId": "SsoController_start_api/v1",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Begin sign-in with a provider (redirects)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sso/{provider}/callback": {
+      "get": {
+        "operationId": "SsoController_callback_api/v1",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Provider return URL; sets the session cookie and redirects into the app",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure": {
+      "get": {
+        "operationId": "SchoolController_structure_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Years, terms, grading periods, bell schedules, attendance codes, grade levels, deadline",
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/settings": {
+      "put": {
+        "operationId": "SchoolController_settings_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/years": {
+      "post": {
+        "operationId": "SchoolController_createYear_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAcademicYearDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/years/{id}": {
+      "patch": {
+        "operationId": "SchoolController_updateYear_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAcademicYearDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      },
+      "delete": {
+        "operationId": "SchoolController_removeYear_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/years/{yearId}/terms": {
+      "post": {
+        "operationId": "SchoolController_createTerm_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "yearId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTermDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/terms/{id}": {
+      "patch": {
+        "operationId": "SchoolController_updateTerm_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTermDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      },
+      "delete": {
+        "operationId": "SchoolController_removeTerm_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/terms/{termId}/grading-periods": {
+      "post": {
+        "operationId": "SchoolController_createGradingPeriod_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "termId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGradingPeriodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/grading-periods/{id}": {
+      "delete": {
+        "operationId": "SchoolController_removeGradingPeriod_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/bell-schedules": {
+      "post": {
+        "operationId": "SchoolController_createBellSchedule_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBellScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/bell-schedules/{id}": {
+      "delete": {
+        "operationId": "SchoolController_removeBellSchedule_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/bell-schedules/{scheduleId}/periods": {
+      "post": {
+        "operationId": "SchoolController_createPeriod_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePeriodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/periods/{id}": {
+      "patch": {
+        "operationId": "SchoolController_updatePeriod_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePeriodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      },
+      "delete": {
+        "operationId": "SchoolController_removePeriod_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/attendance-codes": {
+      "get": {
+        "operationId": "SchoolController_codes_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attendance codes (the standard set is created on first use)",
+        "tags": [
+          "School structure"
+        ]
+      },
+      "post": {
+        "operationId": "SchoolController_createCode_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttendanceCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/structure/attendance-codes/{id}": {
+      "patch": {
+        "operationId": "SchoolController_updateCode_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAttendanceCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "School structure"
+        ]
+      }
+    },
+    "/api/v1/calendar": {
+      "get": {
+        "operationId": "CalendarController_feed_api/v1",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "classId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My calendar between two dates: school and class events, assignment due dates, term boundaries",
+        "tags": [
+          "Calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/events": {
+      "post": {
+        "operationId": "CalendarController_create_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add an event (teachers: for a class they teach; administrators: school-wide)",
+        "tags": [
+          "Calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/events/{id}": {
+      "patch": {
+        "operationId": "CalendarController_update_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Calendar"
+        ]
+      },
+      "delete": {
+        "operationId": "CalendarController_remove_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/subscription": {
+      "get": {
+        "operationId": "CalendarController_subscription_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My private iCal subscription URL (rotate=true issues a new one)",
+        "tags": [
+          "Calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/ical/{token}.ics": {
+      "get": {
+        "operationId": "CalendarFeedController_ical_api/v1",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CalendarFeed"
         ]
       }
     },
@@ -6901,9 +8271,28 @@
             "type": "string",
             "example": "A"
           },
+          "academicYearId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "termId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Term from the school structure; fills the term label"
+          },
+          "periodId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Period of the bell schedule"
+          },
+          "gradeLevel": {
+            "type": "string",
+            "example": "7"
+          },
           "term": {
             "type": "string",
-            "example": "2026-Fall"
+            "example": "2026-Fall",
+            "description": "Free-text term label when no termId is given"
           },
           "startDate": {
             "type": "string",
@@ -6947,8 +8336,7 @@
         },
         "required": [
           "courseId",
-          "name",
-          "term"
+          "name"
         ]
       },
       "UpdateClassDto": {
@@ -6966,9 +8354,28 @@
             "type": "string",
             "example": "A"
           },
+          "academicYearId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "termId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Term from the school structure; fills the term label"
+          },
+          "periodId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Period of the bell schedule"
+          },
+          "gradeLevel": {
+            "type": "string",
+            "example": "7"
+          },
           "term": {
             "type": "string",
-            "example": "2026-Fall"
+            "example": "2026-Fall",
+            "description": "Free-text term label when no termId is given"
           },
           "startDate": {
             "type": "string",
@@ -7383,6 +8790,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "periodId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "studentId": {
             "type": "string",
             "format": "uuid"
@@ -7400,7 +8811,13 @@
               "excused",
               "tardy",
               "left_early"
-            ]
+            ],
+            "description": "Legacy status; prefer codeId"
+          },
+          "codeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An attendance code of the organisation"
           },
           "notes": {
             "type": "string"
@@ -7409,8 +8826,7 @@
         "required": [
           "classId",
           "studentId",
-          "date",
-          "status"
+          "date"
         ]
       },
       "BulkRecordDto": {
@@ -7429,21 +8845,30 @@
               "excused",
               "tardy",
               "left_early"
-            ]
+            ],
+            "description": "Legacy status; prefer codeId"
+          },
+          "codeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An attendance code of the organisation"
           },
           "notes": {
             "type": "string"
           }
         },
         "required": [
-          "studentId",
-          "status"
+          "studentId"
         ]
       },
       "BulkAttendanceDto": {
         "type": "object",
         "properties": {
           "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "periodId": {
             "type": "string",
             "format": "uuid"
           },
@@ -7467,6 +8892,10 @@
       "UpdateAttendanceDto": {
         "type": "object",
         "properties": {
+          "codeId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -7485,6 +8914,48 @@
             "type": "string"
           }
         }
+      },
+      "PreferenceDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "announcement",
+              "assignment",
+              "grade",
+              "message",
+              "attendance",
+              "system",
+              "ai"
+            ]
+          },
+          "inApp": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "category",
+          "inApp",
+          "email"
+        ]
+      },
+      "SetPreferencesDto": {
+        "type": "object",
+        "properties": {
+          "preferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreferenceDto"
+            }
+          }
+        },
+        "required": [
+          "preferences"
+        ]
       },
       "CreateH5pContentDto": {
         "type": "object",
@@ -7727,48 +9198,6 @@
           "feedback"
         ]
       },
-      "PreferenceDto": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string",
-            "enum": [
-              "announcement",
-              "assignment",
-              "grade",
-              "message",
-              "attendance",
-              "system",
-              "ai"
-            ]
-          },
-          "inApp": {
-            "type": "boolean"
-          },
-          "email": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "category",
-          "inApp",
-          "email"
-        ]
-      },
-      "SetPreferencesDto": {
-        "type": "object",
-        "properties": {
-          "preferences": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PreferenceDto"
-            }
-          }
-        },
-        "required": [
-          "preferences"
-        ]
-      },
       "CreateAnnouncementDto": {
         "type": "object",
         "properties": {
@@ -7917,6 +9346,490 @@
         "required": [
           "content"
         ]
+      },
+      "CreateRosterSourceDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "oneroster_api",
+              "clever",
+              "classlink"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "description": "Provider settings: OneRoster and ClassLink { baseUrl, tokenUrl, clientId, clientSecret, schoolExternalId? }; Clever { districtToken, schoolExternalId? }. Secrets are stored encrypted and never returned."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "provider",
+          "name",
+          "config"
+        ]
+      },
+      "UpdateRosterSourceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RunSourceDto": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "default": false,
+            "description": "Compute the changes without writing them"
+          }
+        }
+      },
+      "SsoSettingsDto": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "google",
+                "microsoft",
+                "clever",
+                "classlink"
+              ]
+            }
+          },
+          "allowedDomains": {
+            "description": "Email domains allowed to sign in with these providers; empty means any rostered address",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "passwordOptional": {
+            "type": "boolean",
+            "description": "Rostered accounts may sign in without a SmartSchool password"
+          }
+        },
+        "required": [
+          "providers",
+          "allowedDomains",
+          "passwordOptional"
+        ]
+      },
+      "SchoolSettingsDto": {
+        "type": "object",
+        "properties": {
+          "gradeLevels": {
+            "example": [
+              "6",
+              "7",
+              "8"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "attendanceDeadlineTime": {
+            "type": "string",
+            "example": "10:00",
+            "description": "Daily attendance deadline in the school timezone; empty disables alerts"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "America/Chicago"
+          }
+        },
+        "required": [
+          "gradeLevels"
+        ]
+      },
+      "CreateAcademicYearDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "2026-2027"
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-08-15"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2027-06-05"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "UpdateAcademicYearDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "2026-2027"
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-08-15"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2027-06-05"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateTermDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Fall 2026"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "semester",
+              "trimester",
+              "quarter",
+              "term"
+            ],
+            "default": "semester"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "UpdateTermDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Fall 2026"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "semester",
+              "trimester",
+              "quarter",
+              "term"
+            ],
+            "default": "semester"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        }
+      },
+      "CreateGradingPeriodDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Q1"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "CreateBellScheduleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Regular day"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreatePeriodDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "3"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "09:50"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "10:40"
+          },
+          "days": {
+            "type": "string",
+            "example": "MTWRF",
+            "description": "M T W R(Thu) F S U(Sun)"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "startTime",
+          "endTime",
+          "days"
+        ]
+      },
+      "UpdatePeriodDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "3"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "09:50"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "10:40"
+          },
+          "days": {
+            "type": "string",
+            "example": "MTWRF",
+            "description": "M T W R(Thu) F S U(Sun)"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        }
+      },
+      "AttendanceCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "AE"
+          },
+          "label": {
+            "type": "string",
+            "example": "Absent, excused"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "present",
+              "tardy",
+              "excused",
+              "unexcused",
+              "remote",
+              "other"
+            ]
+          },
+          "countsAsPresent": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "category",
+          "countsAsPresent"
+        ]
+      },
+      "UpdateAttendanceCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "AE"
+          },
+          "label": {
+            "type": "string",
+            "example": "Absent, excused"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "present",
+              "tardy",
+              "excused",
+              "unexcused",
+              "remote",
+              "other"
+            ]
+          },
+          "countsAsPresent": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        }
+      },
+      "CreateEventDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "day_off",
+              "early_release",
+              "term_start",
+              "term_end",
+              "school_event",
+              "class_event"
+            ],
+            "default": "school_event"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allDay": {
+            "type": "boolean",
+            "default": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A class event; omit for a school-wide one"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "District accounts choose the organisation"
+          }
+        },
+        "required": [
+          "title",
+          "type",
+          "startsAt"
+        ]
+      },
+      "UpdateEventDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "day_off",
+              "early_release",
+              "term_start",
+              "term_end",
+              "school_event",
+              "class_event"
+            ],
+            "default": "school_event"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allDay": {
+            "type": "boolean",
+            "default": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A class event; omit for a school-wide one"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "District accounts choose the organisation"
+          }
+        }
       }
     }
   }

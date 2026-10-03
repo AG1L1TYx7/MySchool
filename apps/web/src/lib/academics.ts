@@ -108,6 +108,8 @@ export interface AttendanceRecord {
   student?: { id: string; studentNumber: string; firstName: string; lastName: string };
   date: string;
   status: string;
+  code: { id: string; code: string; label: string; category: string; countsAsPresent: boolean } | null;
+  period: { id: string; name: string } | null;
   notes: string | null;
 }
 

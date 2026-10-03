@@ -188,7 +188,7 @@ function Confetti() {
 }
 
 /** Pill selector whose highlight slides between options (attendance statuses, filters). */
-export function PillGroup<T extends string>({ options, value, onChange, labels, name }: { options: readonly T[]; value: T; onChange: (v: T) => void; labels?: (v: T) => string; name: string }) {
+export function PillGroup<T extends string>({ options, value, onChange, labels, titles, name }: { options: readonly T[]; value: T; onChange: (v: T) => void; labels?: (v: T) => string; titles?: (v: T) => string; name: string }) {
   const prefersReduced = useReducedMotion();
   return (
     <div role="radiogroup" aria-label={name} className="flex flex-wrap gap-1">
@@ -200,6 +200,8 @@ export function PillGroup<T extends string>({ options, value, onChange, labels, 
             type="button"
             role="radio"
             aria-checked={active}
+            title={titles ? titles(o) : undefined}
+            aria-label={titles ? titles(o) : undefined}
             onClick={() => onChange(o)}
             className={`relative rounded-full px-2.5 py-0.5 text-xs ring-1 ring-inset transition-colors duration-150 ${active ? 'text-white ring-brand-600' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'}`}
           >

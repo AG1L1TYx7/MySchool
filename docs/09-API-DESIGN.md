@@ -104,6 +104,29 @@ PUT    /organizations/{id}/roster/sso
 
 Synced records carry `externalId`, `source` and `managedBySis`; edits to managed fields answer `409 record.managed`. Enabled API sources sync nightly at 02:30 server time. Feature: `organizations.roster` (principal and district roles).
 
+### School structure and calendar (Release 2 slice 10)
+```
+GET    /organizations/{id}/structure                    gradeLevels, attendanceDeadlineTime, timezone, years[terms[gradingPeriods]], bellSchedules[periods], attendanceCodes; classes.view
+PUT    /organizations/{id}/structure/settings           gradeLevels[], attendanceDeadlineTime (HH:MM or empty), timezone; organizations.structure (all writes below too)
+POST   /organizations/{id}/structure/years              name, startDate, endDate, isCurrent
+PATCH  /organizations/{id}/structure/years/{yearId}     DELETE refuses 409 school.in_use while classes use its terms
+POST   /organizations/{id}/structure/years/{yearId}/terms           name, type semester|trimester|quarter|term, startDate, endDate (inside the year), sortOrder
+PATCH  /organizations/{id}/structure/terms/{termId}     DELETE 409 school.in_use while classes use it
+POST   /organizations/{id}/structure/terms/{termId}/grading-periods  name, startDate, endDate (inside the term)
+DELETE /organizations/{id}/structure/grading-periods/{gpId}
+POST   /organizations/{id}/structure/bell-schedules     name, isDefault
+DELETE /organizations/{id}/structure/bell-schedules/{scheduleId}
+POST   /organizations/{id}/structure/bell-schedules/{scheduleId}/periods  name, startTime, endTime (HH:MM, start before end), days (letters MTWRFSU), sortOrder
+PATCH  /organizations/{id}/structure/periods/{periodId} DELETE 409 school.in_use while classes meet in it
+GET    /organizations/{id}/structure/attendance-codes   classes.view
+POST   /organizations/{id}/structure/attendance-codes   code, label, category present|tardy|excused|unexcused|remote|other, countsAsPresent, isActive, sortOrder; 409 school.code_exists
+PATCH  /organizations/{id}/structure/attendance-codes/{codeId}
+GET    /calendar                      from, to (at most 400 days), classId; events, published due dates and term boundaries for my classes; calendar.view
+POST   /calendar/events               title, type day_off|early_release|school_event|class_event, startsAt, endsAt, allDay, description, classId (class events: a class I teach; school-wide: administrators); calendar.manage
+PATCH  /calendar/events/{id}          DELETE too; the creator or an administrator
+GET    /calendar/subscription         rotate=true issues a new token -> { path: /api/v1/calendar/ical/{token}.ics }
+GET    /calendar/ical/{token}.ics     public by token, text/calendar, 30 per minute
+```
 ### Users, roles, permissions
 ```
 GET    /users                         admin list with search, role, status filters
@@ -186,7 +209,7 @@ PUT    /courses/{id}/prerequisites    array of course ids
 ```
 GET    /classes                       term, courseId, teacherId, status, search; students and parents see only their own
 GET    /classes/mine                  classes I teach or attend (parents: my children attend)
-POST   /classes                       courseId, name, term, dates, room, maxStudents, teacherId (primary)
+POST   /classes                       courseId, name, termId (or a term label), academicYearId, periodId, gradeLevel, dates, room, maxStudents, teacherId (primary)
 GET    /classes/{id}
 PATCH  /classes/{id}
 DELETE /classes/{id}
@@ -224,9 +247,11 @@ GET    /rubrics, POST /rubrics, GET/PATCH/DELETE /rubrics/{id}   criteria[] { id
 ### Attendance
 ```
 GET    /attendance                    classId, studentId, date, from, to; attendance.view | attendance.view.own | attendance.view.child
-POST   /attendance                    classId, studentId, date, status, notes (upsert)
-POST   /attendance/bulk               classId, date, records[] { studentId, status, notes }
-PATCH  /attendance/{id}               status, notes
+POST   /attendance                    classId, studentId, date, codeId or status, periodId, notes (upsert; the code's category sets the status)
+POST   /attendance/bulk               classId, date, periodId, records[] { studentId, codeId or status, notes }
+PATCH  /attendance/{id}               codeId or status, notes
+GET    /organizations/{id}/attendance/status   date -> classes meeting that day: taken[], missing[], deadline; attendance.view
+GET    /organizations/{id}/attendance/export   from, to, type ada|chronic -> CSV per student (days enrolled, present, absent, rate, chronically absent); attendance.report
 GET    /classes/{id}/attendance/summary        from, to -> per-student counts and rates, class rate, days recorded
 GET    /students/{id}/attendance/summary       from, to -> overall and per-class counts
 ```

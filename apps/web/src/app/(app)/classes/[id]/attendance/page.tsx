@@ -5,11 +5,12 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { PillGroup, ProgressBar, SkeletonRows } from '@/components/motion';
 import { NotForYou } from '@/components/not-for-you';
-import { Alert, Button, Card, Input } from '@/components/ui';
+import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { ATTENDANCE_STATUSES, type AttendanceCounts, type AttendanceRecord } from '@/lib/academics';
 import type { ClassItem, Enrollment } from '@/lib/curriculum';
+import { periodLabel, type AttendanceCode, type SchoolStructure } from '@/lib/school';
 import { label } from '@/lib/students';
 
 interface Summary {
@@ -27,6 +28,9 @@ export default function AttendancePage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [roster, setRoster] = useState<Enrollment[]>([]);
   const [marks, setMarks] = useState<Record<string, { status: string; notes: string }>>({});
+  const [codes, setCodes] = useState<AttendanceCode[]>([]);
+  const [periods, setPeriods] = useState<SchoolStructure['bellSchedules']>([]);
+  const [periodId, setPeriodId] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [state, setState] = useState<{ error?: string; ok?: string; busy?: boolean }>({});
 
@@ -39,12 +43,17 @@ export default function AttendancePage() {
         api<Summary>(`/classes/${id}/attendance/summary`),
       ]);
       setKlass(k);
+      const structure = await api<SchoolStructure>(`/organizations/${k.organizationId}/structure`).catch(() => null);
+      const active = (structure?.attendanceCodes ?? []).filter((c) => c.isActive);
+      setCodes(active);
+      setPeriods(structure?.bellSchedules ?? []);
+      setPeriodId((p) => p || existing.data[0]?.period?.id || k.periodId || '');
       const enrolled = r.data.filter((e) => e.status === 'enrolled');
       setRoster(enrolled);
       const next: Record<string, { status: string; notes: string }> = {};
       for (const e of enrolled) {
         const rec = existing.data.find((x) => x.studentId === e.studentId);
-        next[e.studentId] = { status: rec?.status ?? 'present', notes: rec?.notes ?? '' };
+        next[e.studentId] = { status: rec?.code?.id ?? rec?.status ?? (active[0]?.id ?? 'present'), notes: rec?.notes ?? '' };
       }
       setMarks(next);
       setSummary(s);
@@ -56,10 +65,16 @@ export default function AttendancePage() {
     if (allowed) void load();
   }, [load, allowed]);
 
+  // A mark is either a district code (by id) or, when the school has no codes, a plain status.
+  const pick = (v: string) => (codes.some((c) => c.id === v) ? { codeId: v } : { status: v || 'present' });
+  const options = codes.length ? codes.map((c) => c.id) : [...ATTENDANCE_STATUSES];
+  const optionLabel = (v: string) => codes.find((c) => c.id === v)?.code ?? label(v);
+  const optionTitle = (v: string) => codes.find((c) => c.id === v)?.label ?? label(v);
+
   async function save() {
     setState({ busy: true });
     try {
-      const r = await api<{ saved: number }>('/attendance/bulk', { method: 'POST', body: { classId: id, date, records: roster.map((e) => ({ studentId: e.studentId, status: marks[e.studentId]?.status ?? 'present', notes: marks[e.studentId]?.notes || undefined })) } });
+      const r = await api<{ saved: number }>('/attendance/bulk', { method: 'POST', body: { classId: id, date, periodId: periodId || undefined, records: roster.map((e) => ({ studentId: e.studentId, ...pick(marks[e.studentId]?.status ?? ''), notes: marks[e.studentId]?.notes || undefined })) } });
       setState({ ok: `Saved ${r.saved} records for ${date}.` });
       await load();
     } catch (err) {
@@ -85,8 +100,27 @@ export default function AttendancePage() {
 
       {klass.canManage && (
         <Card title="Take attendance">
-          <div className="mb-4 max-w-xs">
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
             <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            {periods.some((b) => b.periods.length > 0) && (
+              <Select label="Period" value={periodId} onChange={(e) => setPeriodId(e.target.value)}>
+                <option value="">Whole day</option>
+                {periods.map((b) => (
+                  <optgroup key={b.id} label={b.name}>
+                    {b.periods.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {periodLabel(p)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </Select>
+            )}
+            {codes.length > 0 && (
+              <p className="self-end pb-2 text-xs text-slate-500" aria-label="Attendance code key">
+                {codes.map((c) => `${c.code} = ${c.label}`).join(' · ')}
+              </p>
+            )}
           </div>
           <ul className="divide-y divide-slate-100">
             {roster.map((e) => (
@@ -96,9 +130,10 @@ export default function AttendancePage() {
                 </span>
                 <PillGroup
                   name={`attendance-${e.studentId}`}
-                  options={ATTENDANCE_STATUSES}
-                  value={(marks[e.studentId]?.status ?? 'present') as (typeof ATTENDANCE_STATUSES)[number]}
-                  labels={label}
+                  options={options}
+                  value={marks[e.studentId]?.status ?? options[0]}
+                  labels={optionLabel}
+                  titles={optionTitle}
                   onChange={(s) => setMarks((m) => ({ ...m, [e.studentId]: { status: s, notes: m[e.studentId]?.notes ?? '' } }))}
                 />
                 <input className="min-w-[160px] flex-1 rounded-md border-0 px-2 py-1 text-xs ring-1 ring-inset ring-slate-300" placeholder="Note" value={marks[e.studentId]?.notes ?? ''} onChange={(ev) => setMarks((m) => ({ ...m, [e.studentId]: { status: m[e.studentId]?.status ?? 'present', notes: ev.target.value } }))} />

@@ -22,6 +22,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { RosterModule } from './modules/roster/roster.module';
 import { SsoModule } from './modules/sso/sso.module';
+import { SchoolModule } from './modules/school/school.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 import { H5pModule } from './modules/h5p/h5p.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -104,6 +106,8 @@ import { UsersModule } from './modules/users/users.module';
     MessagingModule,
     RosterModule,
     SsoModule,
+    SchoolModule,
+    CalendarModule,
     HealthModule,
     MetricsModule,
   ],

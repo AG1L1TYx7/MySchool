@@ -7,6 +7,7 @@ import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CLASS_STATUSES, ENROLLMENT_STATUSES, type ClassItem, type Enrollment } from '@/lib/curriculum';
+import { gradeLabel, periodLabel, type SchoolStructure } from '@/lib/school';
 import { label, type Paged, type Student } from '@/lib/students';
 
 interface Teacher {
@@ -96,7 +97,13 @@ export default function ClassPage() {
 }
 
 function DetailsForm({ klass, onSaved }: { klass: ClassItem; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ name: klass.name, section: klass.section ?? '', term: klass.term, startDate: klass.startDate ?? '', endDate: klass.endDate ?? '', room: klass.room ?? '', meetingSchedule: klass.meetingSchedule ?? '', maxStudents: klass.maxStudents ? String(klass.maxStudents) : '', status: klass.status });
+  const [structure, setStructure] = useState<SchoolStructure | null>(null);
+  useEffect(() => {
+    api<SchoolStructure>(`/organizations/${klass.organizationId}/structure`)
+      .then(setStructure)
+      .catch(() => setStructure(null));
+  }, [klass.organizationId]);
+  const [form, setForm] = useState({ name: klass.name, section: klass.section ?? '', term: klass.term, termId: klass.termId ?? '', periodId: klass.periodId ?? '', gradeLevel: klass.gradeLevel ?? '', startDate: klass.startDate ?? '', endDate: klass.endDate ?? '', room: klass.room ?? '', meetingSchedule: klass.meetingSchedule ?? '', maxStudents: klass.maxStudents ? String(klass.maxStudents) : '', status: klass.status });
   const [state, setState] = useState<{ error?: string; ok?: boolean; busy?: boolean }>({});
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
   async function save(e: FormEvent) {
@@ -104,7 +111,7 @@ function DetailsForm({ klass, onSaved }: { klass: ClassItem; onSaved: () => Prom
     setState({ busy: true });
     try {
       const body: Record<string, unknown> = { name: form.name, term: form.term, status: form.status };
-      for (const k of ['section', 'startDate', 'endDate', 'room', 'meetingSchedule'] as const) if (form[k]) body[k] = form[k];
+      for (const k of ['section', 'termId', 'periodId', 'gradeLevel', 'startDate', 'endDate', 'room', 'meetingSchedule'] as const) if (form[k]) body[k] = form[k];
       if (form.maxStudents) body.maxStudents = Number(form.maxStudents);
       await api(`/classes/${klass.id}`, { method: 'PATCH', body });
       setState({ ok: true });
@@ -130,7 +137,42 @@ function DetailsForm({ klass, onSaved }: { klass: ClassItem; onSaved: () => Prom
           <Input label="Name" value={form.name} onChange={set('name')} />
         </div>
         <Input label="Section" value={form.section} onChange={set('section')} />
-        <Input label="Term" value={form.term} onChange={set('term')} />
+        {structure && structure.years.length > 0 ? (
+          <Select label="Term" value={form.termId} onChange={(e) => setForm((f) => ({ ...f, termId: e.target.value, term: structure.years.flatMap((y) => y.terms).find((t) => t.id === e.target.value)?.name ?? f.term }))}>
+            <option value="">{form.term || 'Choose a term'}</option>
+            {structure.years.map((y) => (
+              <optgroup key={y.id} label={y.name}>
+                {y.terms.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Select>
+        ) : (
+          <Input label="Term" value={form.term} onChange={set('term')} />
+        )}
+        <Select label="Period" value={form.periodId} onChange={set('periodId')}>
+          <option value="">No period</option>
+          {(structure?.bellSchedules ?? []).map((b) => (
+            <optgroup key={b.id} label={b.name}>
+              {b.periods.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {periodLabel(p)}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </Select>
+        <Select label="Grade level" value={form.gradeLevel} onChange={set('gradeLevel')}>
+          <option value="">Mixed or not set</option>
+          {(structure?.gradeLevels ?? []).map((g) => (
+            <option key={g} value={g}>
+              {gradeLabel(g)}
+            </option>
+          ))}
+        </Select>
         <Input label="Start date" type="date" value={form.startDate} onChange={set('startDate')} />
         <Input label="End date" type="date" value={form.endDate} onChange={set('endDate')} />
         <Input label="Room" value={form.room} onChange={set('room')} />

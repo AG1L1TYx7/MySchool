@@ -754,6 +754,164 @@ async function seedH5pLibraries(): Promise<void> {
   console.log(`h5p libraries: ${H5P_LIBRARIES.length} present`);
 }
 
+/** School year, terms, grading periods, a bell schedule, attendance codes and grade levels for the demo school. */
+async function seedStructure(organizationId: string): Promise<void> {
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: {
+      gradeLevels: '6,7,8',
+      timezone: 'America/Chicago',
+      attendanceDeadlineTime: '10:00',
+    },
+  });
+  const year = await prisma.academicYear.upsert({
+    where: { organizationId_name: { organizationId, name: '2026-2027' } },
+    update: { isCurrent: true },
+    create: {
+      id: uuidv7(),
+      organizationId,
+      name: '2026-2027',
+      startDate: new Date('2026-08-15T00:00:00Z'),
+      endDate: new Date('2027-06-05T00:00:00Z'),
+      isCurrent: true,
+    },
+  });
+  const terms = [
+    {
+      name: 'Fall 2026',
+      start: '2026-08-15',
+      end: '2026-12-20',
+      periods: [
+        ['Q1', '2026-08-15', '2026-10-10'],
+        ['Q2', '2026-10-11', '2026-12-20'],
+      ],
+    },
+    {
+      name: 'Spring 2027',
+      start: '2027-01-05',
+      end: '2027-06-05',
+      periods: [
+        ['Q3', '2027-01-05', '2027-03-13'],
+        ['Q4', '2027-03-14', '2027-06-05'],
+      ],
+    },
+  ];
+  const termIds: string[] = [];
+  for (const [i, t] of terms.entries()) {
+    const term = await prisma.term.upsert({
+      where: { academicYearId_name: { academicYearId: year.id, name: t.name } },
+      update: {},
+      create: {
+        id: uuidv7(),
+        academicYearId: year.id,
+        name: t.name,
+        type: 'SEMESTER',
+        startDate: new Date(`${t.start}T00:00:00Z`),
+        endDate: new Date(`${t.end}T00:00:00Z`),
+        sortOrder: i,
+      },
+    });
+    termIds.push(term.id);
+    for (const [j, [name, start, end]] of t.periods.entries()) {
+      await prisma.gradingPeriod.upsert({
+        where: { termId_name: { termId: term.id, name } },
+        update: {},
+        create: {
+          id: uuidv7(),
+          termId: term.id,
+          name,
+          startDate: new Date(`${start}T00:00:00Z`),
+          endDate: new Date(`${end}T00:00:00Z`),
+          sortOrder: j,
+        },
+      });
+    }
+  }
+  const schedule = await prisma.bellSchedule.upsert({
+    where: { organizationId_name: { organizationId, name: 'Regular day' } },
+    update: { isDefault: true },
+    create: {
+      id: uuidv7(),
+      organizationId,
+      name: 'Regular day',
+      isDefault: true,
+    },
+  });
+  const times = [
+    ['08:00', '08:50'],
+    ['08:55', '09:45'],
+    ['09:50', '10:40'],
+    ['10:45', '11:35'],
+    ['12:15', '13:05'],
+    ['13:10', '14:00'],
+    ['14:05', '14:55'],
+  ];
+  const periodIds: string[] = [];
+  for (const [i, [startTime, endTime]] of times.entries()) {
+    const period = await prisma.period.upsert({
+      where: {
+        bellScheduleId_name: {
+          bellScheduleId: schedule.id,
+          name: String(i + 1),
+        },
+      },
+      update: {},
+      create: {
+        id: uuidv7(),
+        bellScheduleId: schedule.id,
+        name: String(i + 1),
+        startTime,
+        endTime,
+        days: 'MTWRF',
+        sortOrder: i,
+      },
+    });
+    periodIds.push(period.id);
+  }
+  const codes = [
+    ['P', 'Present', 'PRESENT', true],
+    ['T', 'Tardy', 'TARDY', true],
+    ['AE', 'Absent, excused', 'EXCUSED', false],
+    ['AU', 'Absent, unexcused', 'UNEXCUSED', false],
+    ['R', 'Remote', 'REMOTE', true],
+    ['FT', 'Field trip', 'OTHER', true],
+    ['S', 'Suspended', 'UNEXCUSED', false],
+  ] as const;
+  for (const [i, [code, label, category, countsAsPresent]] of codes.entries()) {
+    await prisma.attendanceCode.upsert({
+      where: { organizationId_code: { organizationId, code } },
+      update: {},
+      create: {
+        id: uuidv7(),
+        organizationId,
+        code,
+        label,
+        category,
+        countsAsPresent,
+        sortOrder: i,
+      },
+    });
+  }
+  const classes = await prisma.class.findMany({
+    where: { organizationId, deletedAt: null },
+    orderBy: { name: 'asc' },
+  });
+  for (const [i, klass] of classes.entries()) {
+    await prisma.class.update({
+      where: { id: klass.id },
+      data: {
+        academicYearId: year.id,
+        termId: termIds[0],
+        periodId: periodIds[i % periodIds.length],
+        gradeLevel: klass.gradeLevel ?? '7',
+      },
+    });
+  }
+  console.log(
+    `structure: year 2026-2027 with ${terms.length} terms, ${times.length} periods, ${codes.length} attendance codes`,
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedH5pLibraries();
@@ -762,6 +920,7 @@ async function main(): Promise<void> {
   await seedUsers(orgId);
   await seedStudents(orgId);
   await seedCurriculum(orgId);
+  await seedStructure(orgId);
   await seedAcademics(orgId);
 }
 

@@ -51,11 +51,28 @@ export class SummaryQuery {
 
 export class MarkAttendanceDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID() classId!: string;
+  @ApiProperty({ required: false, format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  periodId?: string;
   @ApiProperty({ format: 'uuid' }) @IsUUID() studentId!: string;
   @ApiProperty({ example: '2026-10-01' }) @Matches(DATE) date!: string;
-  @ApiProperty({ enum: ATTENDANCE_STATUSES })
+  @ApiProperty({
+    required: false,
+    enum: ATTENDANCE_STATUSES,
+    description: 'Legacy status; prefer codeId',
+  })
+  @IsOptional()
   @IsIn(ATTENDANCE_STATUSES)
-  status!: AttendanceStatusApi;
+  status?: AttendanceStatusApi;
+  @ApiProperty({
+    required: false,
+    format: 'uuid',
+    description: 'An attendance code of the organisation',
+  })
+  @IsOptional()
+  @IsUUID()
+  codeId?: string;
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -65,9 +82,22 @@ export class MarkAttendanceDto {
 
 export class BulkRecordDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID() studentId!: string;
-  @ApiProperty({ enum: ATTENDANCE_STATUSES })
+  @ApiProperty({
+    required: false,
+    enum: ATTENDANCE_STATUSES,
+    description: 'Legacy status; prefer codeId',
+  })
+  @IsOptional()
   @IsIn(ATTENDANCE_STATUSES)
-  status!: AttendanceStatusApi;
+  status?: AttendanceStatusApi;
+  @ApiProperty({
+    required: false,
+    format: 'uuid',
+    description: 'An attendance code of the organisation',
+  })
+  @IsOptional()
+  @IsUUID()
+  codeId?: string;
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -77,6 +107,10 @@ export class BulkRecordDto {
 
 export class BulkAttendanceDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID() classId!: string;
+  @ApiProperty({ required: false, format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  periodId?: string;
   @ApiProperty({ example: '2026-10-01' }) @Matches(DATE) date!: string;
   @ApiProperty({ type: [BulkRecordDto] })
   @IsArray()
@@ -88,6 +122,10 @@ export class BulkAttendanceDto {
 }
 
 export class UpdateAttendanceDto {
+  @ApiProperty({ required: false, format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  codeId?: string;
   @ApiProperty({ required: false, enum: ATTENDANCE_STATUSES })
   @IsOptional()
   @IsIn(ATTENDANCE_STATUSES)

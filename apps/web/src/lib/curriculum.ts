@@ -52,11 +52,17 @@ export interface CourseDetail extends Course {
 
 export interface ClassItem {
   id: string;
+  organizationId: string;
   courseId: string;
   course: { id: string; courseCode: string; title: string; subject: string | null; gradeLevel: string | null };
   name: string;
   section: string | null;
   term: string;
+  academicYearId: string | null;
+  termId: string | null;
+  periodId: string | null;
+  period: { id: string; name: string; startTime: string; endTime: string; days: string } | null;
+  gradeLevel: string | null;
   startDate: string | null;
   endDate: string | null;
   room: string | null;

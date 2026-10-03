@@ -55,6 +55,17 @@ export interface PublicClass {
   name: string;
   section: string | null;
   term: string;
+  academicYearId: string | null;
+  termId: string | null;
+  periodId: string | null;
+  period: {
+    id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+    days: string;
+  } | null;
+  gradeLevel: string | null;
   startDate: string | null;
   endDate: string | null;
   room: string | null;
@@ -111,6 +122,13 @@ const TEACHING_ROLES: readonly Role[] = [
 ];
 
 type ClassRow = Class & {
+  period?: {
+    id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+    days: string;
+  } | null;
   course: {
     id: string;
     courseCode: string;
@@ -262,6 +280,7 @@ export class ClassesService {
     actor: AuthenticatedUser,
   ): Promise<PublicClass> {
     const organizationId = resolveOrganizationId(actor, dto.organizationId);
+    const structure = await this.structureFor(organizationId, dto);
     const course = await this.prisma.course.findFirst({
       where: { id: dto.courseId, organizationId, deletedAt: null },
       select: { id: true },
@@ -281,7 +300,11 @@ export class ClassesService {
         courseId: dto.courseId,
         name: dto.name.trim(),
         section: dto.section,
-        term: dto.term.trim(),
+        term: structure.term ?? '',
+        academicYearId: structure.academicYearId,
+        termId: structure.termId,
+        periodId: structure.periodId,
+        gradeLevel: dto.gradeLevel ?? null,
         ...dates,
         room: dto.room,
         meetingSchedule: dto.meetingSchedule,
@@ -304,7 +327,7 @@ export class ClassesService {
       action: 'classes.create',
       entityType: 'Class',
       entityId: id,
-      details: { courseId: dto.courseId, term: dto.term },
+      details: { courseId: dto.courseId, term: structure.term },
     });
     return this.get(id, actor);
   }
@@ -315,6 +338,11 @@ export class ClassesService {
     actor: AuthenticatedUser,
   ): Promise<PublicClass> {
     const existing = await this.findManageable(id, actor);
+    const structure = await this.structureFor(
+      existing.organizationId,
+      dto,
+      existing,
+    );
     if (
       existing.managedBySis &&
       (dto.name !== undefined ||
@@ -348,7 +376,11 @@ export class ClassesService {
         courseId: dto.courseId,
         name: dto.name?.trim(),
         section: dto.section,
-        term: dto.term?.trim(),
+        term: structure.term,
+        academicYearId: structure.academicYearId,
+        termId: structure.termId,
+        periodId: structure.periodId,
+        gradeLevel: dto.gradeLevel,
         ...this.datesFrom(dto),
         room: dto.room,
         meetingSchedule: dto.meetingSchedule,
@@ -626,6 +658,15 @@ export class ClassesService {
       orderBy: { isPrimary: 'desc' as const },
     },
     _count: { select: { enrollments: true } },
+    period: {
+      select: {
+        id: true,
+        name: true,
+        startTime: true,
+        endTime: true,
+        days: true,
+      },
+    },
   } satisfies Prisma.ClassInclude;
 
   /** Students and parents only see classes they (or their children) are on. */
@@ -663,6 +704,73 @@ export class ClassesService {
   }
 
   /** Administrators manage any class in their organisation; teachers only classes they are assigned to. */
+  /** Resolves year, term and period ids against the school structure; the term label follows the term. */
+  private async structureFor(
+    organizationId: string,
+    dto: {
+      academicYearId?: string;
+      termId?: string;
+      periodId?: string;
+      term?: string;
+    },
+    existing?: {
+      term: string;
+      academicYearId: string | null;
+      termId: string | null;
+      periodId: string | null;
+    },
+  ): Promise<{
+    term: string | undefined;
+    academicYearId: string | null | undefined;
+    termId: string | null | undefined;
+    periodId: string | null | undefined;
+  }> {
+    let academicYearId: string | null | undefined = dto.academicYearId;
+    let termLabel: string | undefined = dto.term?.trim();
+    if (dto.termId) {
+      const term = await this.prisma.term.findFirst({
+        where: { id: dto.termId, academicYear: { organizationId } },
+      });
+      if (!term)
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail: 'Unknown term for this school.',
+        });
+      academicYearId = term.academicYearId;
+      termLabel = termLabel ?? term.name;
+    } else if (dto.academicYearId) {
+      const year = await this.prisma.academicYear.findFirst({
+        where: { id: dto.academicYearId, organizationId },
+      });
+      if (!year)
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail: 'Unknown academic year for this school.',
+        });
+    }
+    if (dto.periodId) {
+      const period = await this.prisma.period.findFirst({
+        where: { id: dto.periodId, bellSchedule: { organizationId } },
+      });
+      if (!period)
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail: 'Unknown period for this school.',
+        });
+    }
+    if (!existing && !termLabel)
+      throw new BadRequestException({
+        code: 'request.invalid',
+        detail: 'Give a term (termId or a term label).',
+      });
+    return {
+      term: termLabel ?? (existing ? undefined : termLabel),
+      academicYearId: academicYearId ?? (existing ? undefined : null),
+      termId: dto.termId ?? (existing ? undefined : null),
+      periodId: dto.periodId ?? (existing ? undefined : null),
+    };
+  }
+
   /** Roster readers: whoever manages the class, plus assistants and staff of the same school (attendance, gradebook). */
   private async findReadable(id: string, actor: AuthenticatedUser) {
     const row = await this.prisma.class.findFirst({
@@ -801,6 +909,11 @@ export class ClassesService {
       name: r.name,
       section: r.section,
       term: r.term,
+      academicYearId: r.academicYearId,
+      termId: r.termId,
+      periodId: r.periodId,
+      period: r.period ?? null,
+      gradeLevel: r.gradeLevel,
       startDate: r.startDate ? r.startDate.toISOString().slice(0, 10) : null,
       endDate: r.endDate ? r.endDate.toISOString().slice(0, 10) : null,
       room: r.room,

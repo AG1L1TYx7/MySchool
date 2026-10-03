@@ -74,10 +74,40 @@ export class CreateClassDto {
   @IsString()
   @MaxLength(50)
   section?: string;
-  @ApiProperty({ example: '2026-Fall' })
+  @ApiProperty({ required: false, format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  academicYearId?: string;
+  @ApiProperty({
+    required: false,
+    format: 'uuid',
+    description: 'Term from the school structure; fills the term label',
+  })
+  @IsOptional()
+  @IsUUID()
+  termId?: string;
+  @ApiProperty({
+    required: false,
+    format: 'uuid',
+    description: 'Period of the bell schedule',
+  })
+  @IsOptional()
+  @IsUUID()
+  periodId?: string;
+  @ApiProperty({ required: false, example: '7' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 16)
+  gradeLevel?: string;
+  @ApiProperty({
+    required: false,
+    example: '2026-Fall',
+    description: 'Free-text term label when no termId is given',
+  })
+  @IsOptional()
   @IsString()
   @Length(2, 50)
-  term!: string;
+  term?: string;
   @ApiProperty({ required: false, example: '2026-09-01' })
   @IsOptional()
   @IsDateString()
