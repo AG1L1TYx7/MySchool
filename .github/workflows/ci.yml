@@ -55,7 +55,7 @@ jobs:
       - run: pnpm --filter @smartschool/api test
       - run: pnpm --filter @smartschool/api db:seed
       - run: pnpm --filter @smartschool/api test:e2e
-      - run: pnpm audit --audit-level=high
+      - run: pnpm --dir apps/api audit --prod --audit-level=high
 
   web:
     name: Web client
