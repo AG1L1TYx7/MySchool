@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { FilesModule } from '../files/files.module';
 import { GradebookModule } from '../gradebook/gradebook.module';
 import { StandardsModule } from '../standards/standards.module';
+import { SupportModule } from '../support/support.module';
 import {
   AssignmentsController,
   GradesController,
@@ -12,7 +13,7 @@ import { AssignmentsService } from './assignments.service';
 import { RubricsService } from './rubrics.service';
 
 @Module({
-  imports: [FilesModule, GradebookModule, StandardsModule],
+  imports: [FilesModule, GradebookModule, StandardsModule, SupportModule],
   controllers: [
     AssignmentsController,
     SubmissionsController,

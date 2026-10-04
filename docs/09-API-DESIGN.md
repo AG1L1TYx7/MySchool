@@ -222,6 +222,23 @@ DELETE /classes/{id}/enrollments/{studentId}
 GET    /students/{id}/classes
 ```
 
+### Support and safety (Release 2 slice 12)
+```
+GET    /students/{id}/accommodations        plan iep|section_504|other, extendedTimePercent, readAloud, largeText, reducedMotion, reducedDistraction, notes, dates; the student's own teachers, counselors, administrators and family
+PUT    /students/{id}/accommodations        same fields; support.accommodations.manage (teachers of the student, counselors, administrators); DELETE removes the plan
+GET    /me/accommodations                   the flags a student's screens apply; everyone else gets zeros
+GET    /counselor/caseload                  counselors: their students with open alert counts; administrators pass counselorId; POST { studentId, reason }; DELETE /counselor/caseload/{studentId}
+GET    /students/{id}/counselor-notes       counselors only; POST { body }; PATCH and DELETE /counselor-notes/{id} by the author
+GET    /wellness/alerts                     status, organizationId; counselors and administrators (wellness.alerts)
+PATCH  /wellness/alerts/{id}                status open|acknowledged|resolved, assignedToId (a counselor or principal), resolution
+GET    /students/{id}/behavior              staff see everything; families see what the school rule or the record allows
+POST   /students/{id}/behavior              kind positive|concern|incident, title, description, occurredAt, location, actionTaken, parentVisible; staff and counselors; PATCH and DELETE /behavior/{id} by the reporter or an administrator
+GET    /students/{id}/ai-consent            under13, schoolDefault, status, decidedBy, allowed, reason
+PUT    /students/{id}/ai-consent            status granted|declined, note; a guardian of the student or an administrator
+GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY|NONE, aiConsentDefault SCHOOL|PARENT, studentMessaging; PUT under organizations.structure
+```
+Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
+
 ### Grading, standards and report cards (Release 2 slice 11)
 ```
 GET    /classes/{id}/grading                     gradingMode points|standards, proficiencyScaleId, scale, latePolicy, syllabus, categories[], weightWarning; members and staff

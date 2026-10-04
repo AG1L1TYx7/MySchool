@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { MotionPage } from '@/components/motion';
+import { AccommodationsProvider } from '@/components/accommodations';
 import { NotificationBell } from '@/components/notification-bell';
 import { Button, Logo } from '@/components/ui';
 import { ROLE_LABELS, useAuth } from '@/lib/auth';
@@ -25,6 +26,8 @@ const NAV: Array<{ href: string; label: string; feature: string }> = [
   { href: '/report-cards', label: 'Report cards', feature: 'report-cards.view.own' },
   { href: '/report-cards', label: 'Report cards', feature: 'report-cards.view.child' },
   { href: '/standards', label: 'Standards', feature: 'standards.view' },
+  { href: '/caseload', label: 'My caseload', feature: 'support.notes' },
+  { href: '/wellness', label: 'Wellness', feature: 'wellness.alerts' },
   { href: '/content', label: 'Interactive content', feature: 'h5p.create' },
   { href: '/students', label: 'Students', feature: 'students.view' },
   { href: '/users', label: 'Users', feature: 'users.view' },
@@ -49,6 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <AccommodationsProvider>
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
       <aside aria-label="Sidebar" className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
         <Logo />
@@ -91,5 +95,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
+    </AccommodationsProvider>
   );
 }

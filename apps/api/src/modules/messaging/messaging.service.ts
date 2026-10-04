@@ -166,8 +166,41 @@ export class MessagingService {
     };
     if (!isDistrictRole(actor))
       where.organizationId = actor.organizationId ?? '__none__';
-    if (!isStaffRole(actor.role))
-      where.role = { in: ['TEACHER', 'ASSISTANT', 'PRINCIPAL'] };
+    if (!isStaffRole(actor.role)) {
+      const org =
+        actor.role === 'STUDENT' && actor.organizationId
+          ? await this.prisma.organization.findUnique({
+              where: { id: actor.organizationId },
+              select: { studentMessaging: true },
+            })
+          : null;
+      where.role = { in: ['TEACHER', 'ASSISTANT', 'PRINCIPAL', 'COUNSELOR'] };
+      if (org?.studentMessaging) {
+        where.OR = [
+          { role: { in: ['TEACHER', 'ASSISTANT', 'PRINCIPAL', 'COUNSELOR'] } },
+          {
+            role: 'STUDENT',
+            student: {
+              enrollments: {
+                some: {
+                  status: 'ENROLLED',
+                  class: {
+                    deletedAt: null,
+                    enrollments: {
+                      some: {
+                        status: 'ENROLLED',
+                        student: { userId: actor.id },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ];
+        delete where.role;
+      }
+    }
     if (search)
       where.OR = [
         { firstName: { contains: search } },
@@ -648,7 +681,10 @@ export class MessagingService {
           code: 'authz.forbidden',
           detail: 'You can only message people in your school.',
         });
-      if (!canDirectMessage(actor.role, u.role))
+      if (
+        !canDirectMessage(actor.role, u.role) &&
+        !(await this.classmatesAllowed(actor, u))
+      )
         throw new ForbiddenException({
           code: 'messaging.not_allowed',
           detail:
@@ -656,6 +692,42 @@ export class MessagingService {
         });
     }
     return users;
+  }
+
+  /** Student to student only when the school switched it on and the two share a class. */
+  private async classmatesAllowed(
+    actor: AuthenticatedUser,
+    other: { id: string; role: Role; organizationId: string | null },
+  ): Promise<boolean> {
+    if (
+      actor.role !== 'STUDENT' ||
+      other.role !== 'STUDENT' ||
+      !actor.organizationId
+    )
+      return false;
+    const org = await this.prisma.organization.findUnique({
+      where: { id: actor.organizationId },
+      select: { studentMessaging: true },
+    });
+    if (!org?.studentMessaging) return false;
+    const shared = await this.prisma.class.count({
+      where: {
+        deletedAt: null,
+        AND: [
+          {
+            enrollments: {
+              some: { student: { userId: actor.id }, status: 'ENROLLED' },
+            },
+          },
+          {
+            enrollments: {
+              some: { student: { userId: other.id }, status: 'ENROLLED' },
+            },
+          },
+        ],
+      },
+    });
+    return shared > 0;
   }
 
   private async ensureParticipant(

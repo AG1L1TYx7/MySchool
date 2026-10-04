@@ -9,3 +9,14 @@
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
 }
+
+/* Accommodations applied from a student's IEP or 504 plan (docs/13 section 6). */
+html.a11y-large-text {
+  font-size: 118%;
+}
+html.a11y-focus .focus-hide {
+  display: none;
+}
+html.a11y-focus aside nav a:not([aria-current="page"]) {
+  opacity: 0.8;
+}

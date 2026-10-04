@@ -9,6 +9,7 @@ export const ROLE_LEVEL: Record<Role, number> = {
   STUDENT: 2,
   PARENT: 1,
   ASSISTANT: 1,
+  COUNSELOR: 3,
 };
 
 /** API representation of roles: lowercase strings (docs/09). */
@@ -20,6 +21,7 @@ export const ROLE_API_NAME: Record<Role, string> = {
   STUDENT: 'student',
   PARENT: 'parent',
   ASSISTANT: 'assistant',
+  COUNSELOR: 'counselor',
 };
 
 export function roleFromApi(value: string): Role | undefined {

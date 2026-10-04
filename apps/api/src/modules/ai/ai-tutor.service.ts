@@ -17,6 +17,7 @@ import { AppConfigService } from '../../config/app-config.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ROLE_LEVEL } from '../access/roles';
 import { AuditService } from '../audit/audit.service';
+import { SupportService } from '../support/support.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ageBandFor } from './age-band';
 import {
@@ -77,6 +78,7 @@ export class AiTutorService {
     private readonly ai: AiClient,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
+    private readonly support: SupportService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -96,6 +98,7 @@ export class AiTutorService {
     dto: CreateConversationDto,
     actor: AuthenticatedUser,
   ): Promise<PublicConversation> {
+    await this.support.assertAiAllowedFor(actor);
     const mode = dto.mode ?? 'explain';
     let title = dto.title?.trim();
     if (dto.lessonId) {
@@ -229,13 +232,19 @@ export class AiTutorService {
     try {
       result = await this.ai.tutorChat(envelope);
     } catch (err) {
-      await this.persistAssistant(conversation, envelope.traceId, null);
+      await this.persistAssistant(
+        conversation,
+        envelope.traceId,
+        null,
+        userMessage.content,
+      );
       throw err;
     }
     const assistant = await this.persistAssistant(
       conversation,
       envelope.traceId,
       result,
+      userMessage.content,
     );
     return {
       userMessage: toPublicMessage(userMessage),
@@ -259,7 +268,12 @@ export class AiTutorService {
     try {
       body = await this.ai.tutorChatStream(envelope);
     } catch (err) {
-      await this.persistAssistant(conversation, envelope.traceId, null);
+      await this.persistAssistant(
+        conversation,
+        envelope.traceId,
+        null,
+        userMessage.content,
+      );
       throw err;
     }
     res.status(200);
@@ -303,6 +317,7 @@ export class AiTutorService {
       conversation,
       envelope.traceId,
       result,
+      userMessage.content,
     );
     res.write(
       `event: assistant\ndata: ${JSON.stringify(toPublicMessage(assistant))}\n\n`,
@@ -431,6 +446,7 @@ export class AiTutorService {
     userMessage: AiMessage;
   }> {
     const conversation = await this.find(conversationId, actor);
+    await this.support.assertAiAllowedFor(actor);
     await this.assertQuota(actor);
     const text = content.trim();
     if (!text)
@@ -533,6 +549,7 @@ export class AiTutorService {
     conversation: AiConversation,
     traceId: string,
     result: ResultEnvelope | null,
+    userText = '',
   ): Promise<AiMessage> {
     const status = result
       ? (result.status.toUpperCase() as
@@ -581,6 +598,14 @@ export class AiTutorService {
         entityType: 'AiConversation',
         entityId: conversation.id,
         details: { traceId, categories: result.safety.categories },
+      });
+      await this.support.raiseAlert({
+        organizationId: conversation.organizationId,
+        userId: conversation.userId,
+        conversationId: conversation.id,
+        messageId: row.id,
+        categories: result.safety.categories,
+        text: userText,
       });
     }
     return row;

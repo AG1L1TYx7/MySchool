@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ProgressRing, SkeletonRows } from '@/components/motion';
+import { AccommodationCard, BehaviorCard, ConsentCard } from '@/components/support-cards';
 import { Alert, Card } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { fmtDate, type AttendanceCounts, type Grade } from '@/lib/academics';
@@ -70,6 +71,14 @@ export default function GradesPage() {
             </Card>
           );
         })}
+      {learner &&
+        students.map((s) => (
+          <div key={`support-${s.id}`} className="space-y-6">
+            {user?.role === 'parent' && <AccommodationCard studentId={s.id} />}
+            <ConsentCard studentId={s.id} />
+            <BehaviorCard studentId={s.id} />
+          </div>
+        ))}
       {!learner &&
         [...groups.entries()].map(([name, rows]) => (
           <Card key={name} title={name}>

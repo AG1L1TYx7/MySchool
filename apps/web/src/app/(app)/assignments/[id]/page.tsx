@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { H5pPlayer } from '@/components/h5p-player';
 import { Celebration, ProgressBar, SkeletonRows } from '@/components/motion';
+import { ReadAloud } from '@/components/accommodations';
 import { StandardChips } from '@/components/standards-picker';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, download, errorMessage, upload } from '@/lib/api';
@@ -91,6 +92,7 @@ export default function AssignmentPage() {
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
       {(a.description || a.instructions) && (
         <Card>
+          <ReadAloud text={[a.title, a.description, a.instructions].filter(Boolean).join('. ')} />
           {a.description && <p className="whitespace-pre-wrap text-sm text-slate-800">{a.description}</p>}
           {a.instructions && <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{a.instructions}</p>}
         </Card>

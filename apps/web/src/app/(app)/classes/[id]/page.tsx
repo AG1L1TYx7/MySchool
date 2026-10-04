@@ -78,7 +78,7 @@ export default function ClassPage() {
         <Link href={`/classes/${id}/assignments`} className="rounded-md bg-white px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">
           Assignments
         </Link>
-        {can('grades.view.all') && (klass.canManage || user?.role === 'principal') && (
+        {can('grades.view.all') && (klass.canManage || user?.role === 'principal' || user?.role === 'counselor') && (
           <Link href={`/classes/${id}/gradebook`} className="rounded-md bg-white px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">
             Gradebook
           </Link>

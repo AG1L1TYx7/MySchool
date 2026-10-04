@@ -286,7 +286,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 
 ## 37. Support and safety (new, Release 2)
 
-**Purpose.** Accommodations, counseling and consent. **Capabilities.** IEP and 504 accommodations applied in the product; counselor role with caseloads and private notes; wellness queue fed by tutor escalations; behaviour records with visibility rules; under-13 AI consent with parent opt-out. **Entities.** `Accommodations`, `CounselorCaseloads`, `CounselorNotes`, `WellnessAlerts`, `BehaviorRecords`, `AiConsents`. **Status.** New; see docs/13 sections 6 and 10.
+**Purpose.** Accommodations, counseling and consent. **Capabilities.** IEP and 504 accommodations applied in the product (extended time on due dates, read-aloud, larger text, reduced motion, reduced distraction); counselor role with caseloads and private notes; wellness queue fed by tutor escalations with counselor and principal notification; behaviour records with a school-level family-visibility rule and per-record override; under-13 AI consent with a school default and parent opt-out; student-to-student messaging as a school switch. **Entities.** `Accommodations`, `CounselorCaseloads`, `CounselorNotes`, `WellnessAlerts`, `BehaviorRecords`, `AiConsents`. **Status.** Real since Release 2 slice 12; see docs/13 sections 6 and 10.
 
 ## 35. Platform health
 

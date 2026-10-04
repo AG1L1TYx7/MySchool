@@ -37,6 +37,8 @@ import {
   StandardsService,
   type PublicStandard,
 } from '../standards/standards.service';
+import { extendWindow } from '../support/support-rules';
+import { SupportService } from '../support/support.service';
 import { parseDate } from '../students/students.mapper';
 import {
   CreateAssignmentDto,
@@ -202,6 +204,7 @@ export class AssignmentsService {
     private readonly events: EventEmitter2,
     private readonly gradebook: GradebookService,
     private readonly standards: StandardsService,
+    private readonly support: SupportService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -645,12 +648,16 @@ export class AssignmentsService {
       });
     }
     const now = new Date();
+    const extended = extendWindow(
+      assignment,
+      await this.support.extendedTimePercent(student.id),
+    );
     const window = submissionWindow({
       now,
       status: assignment.status,
       availableFrom: assignment.availableFrom,
-      dueAt: assignment.dueAt,
-      allowLateUntil: assignment.allowLateUntil,
+      dueAt: extended.dueAt,
+      allowLateUntil: extended.allowLateUntil,
     });
     if (!window.accepted)
       throw new BadRequestException({
@@ -958,12 +965,16 @@ export class AssignmentsService {
         detail: 'Assignment not found or it does not use this content.',
       });
     const now = new Date();
+    const extended = extendWindow(
+      assignment,
+      await this.support.extendedTimePercent(student.id),
+    );
     const window = submissionWindow({
       now,
       status: assignment.status,
       availableFrom: assignment.availableFrom,
-      dueAt: assignment.dueAt,
-      allowLateUntil: assignment.allowLateUntil,
+      dueAt: extended.dueAt,
+      allowLateUntil: extended.allowLateUntil,
     });
     if (!window.accepted)
       throw new BadRequestException({

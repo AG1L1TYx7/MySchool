@@ -21,6 +21,7 @@ const ROLES = [
   'student',
   'parent',
   'assistant',
+  'counselor',
 ] as const;
 const STATUSES = ['active', 'inactive', 'locked'] as const;
 const lower = ({ value }: { value: unknown }) =>

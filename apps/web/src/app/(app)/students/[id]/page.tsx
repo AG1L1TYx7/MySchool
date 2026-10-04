@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { StudentForm, payloadFrom, valuesFrom } from '@/components/student-form';
+import { AccommodationCard, BehaviorCard, ConsentCard, CounselorNotesCard } from '@/components/support-cards';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { RELATIONSHIPS, label, type Guardian, type Student } from '@/lib/students';
@@ -92,6 +93,10 @@ export default function StudentDetailPage() {
       </Card>
 
       <Guardians studentId={id} canManage={can('students.guardians.manage')} />
+      {student.canSupport && <AccommodationCard studentId={id} />}
+      {student.canSupport && <ConsentCard studentId={id} />}
+      <BehaviorCard studentId={id} />
+      <CounselorNotesCard studentId={id} />
     </div>
   );
 }

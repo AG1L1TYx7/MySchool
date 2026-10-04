@@ -126,6 +126,10 @@ As a principal, open the organisation page and scroll to School structure: tick 
 
 On the organisation page, set the letter cutoffs and GPA points the district uses and, for standards-based classes, the proficiency levels. Each teacher opens their class and sets the grading mode, the weighted categories (for example Homework 30, Quizzes 30, Tests 40 with the lowest homework dropped), the late work policy and the syllabus; students and parents see the policy and syllabus on the class page. Assignments pick a category, a grading period and the standards they assess; Common Core, NGSS and a Texas sample set are included, and a district imports its own from a CASE file on the Standards page. The gradebook shows marks (Missing counts as zero, Excused is left out), dropped scores and category totals, with a standards view for standards-based classes. At the end of a grading period an administrator generates report cards for the school (or a teacher for one class), teachers add comments, and the office publishes them; students and parents are notified and can download the PDF.
 
+## 4d. Support and safety
+
+Add counselors as users with the Counselor role (the demo has counselor@smartschool.local). On a student's page, their teachers, counselors and administrators record the IEP or 504 plan; the student then gets extended time on due dates, read-aloud buttons, larger text, reduced motion and a quieter layout automatically, and parents can read the plan. Counselors keep private notes there that nobody else sees and manage their caseload at /caseload. When a student says something to the AI tutor that needs a trusted adult, counselors and the principal are notified and work it at /wellness. On the organisation page, set which behaviour records families see, whether the school consents to AI features for students under 13 or asks parents first, and whether students may message classmates. Parents grant or decline AI features on their child's page.
+
 ## 5. Backups
 
 ```bash

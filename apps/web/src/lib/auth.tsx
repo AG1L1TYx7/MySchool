@@ -156,4 +156,5 @@ export const ROLE_LABELS: Record<string, string> = {
   student: 'Student',
   parent: 'Parent',
   assistant: 'Assistant',
+  counselor: 'Counselor',
 };

@@ -21,6 +21,8 @@ export interface Student {
   attendanceRate: number | null;
   createdAt: string;
   updatedAt: string;
+  /** Set on a single record: whether the caller may open the support plan and consent. */
+  canSupport?: boolean;
 }
 
 export interface Guardian {

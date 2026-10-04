@@ -48,7 +48,13 @@ import {
 } from './dto/auth.dto';
 import { cookieMaxAgeMs } from './session-rules';
 
-const LOGIN_LIMIT = { default: { limit: 5, ttl: 60_000 } }; // 5 per minute per IP (docs/01 section 9)
+// 5 per minute per IP (docs/01 section 9); the e2e suite raises it through the environment.
+const LOGIN_LIMIT = {
+  default: {
+    limit: Number(process.env.LOGIN_RATE_LIMIT_PER_MINUTE ?? 5),
+    ttl: 60_000,
+  },
+};
 const RESET_LIMIT = { default: { limit: 3, ttl: 60_000 } };
 // Sign-up forms are retried after validation errors; the captcha covers abuse in production.
 const REGISTER_LIMIT = { default: { limit: 10, ttl: 60_000 } };

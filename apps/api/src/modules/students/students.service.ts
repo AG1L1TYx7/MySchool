@@ -139,8 +139,40 @@ export class StudentsService {
     return rows.map(toPublicStudent);
   }
 
-  async get(id: string, actor: AuthenticatedUser): Promise<PublicStudent> {
-    return toPublicStudent(await this.find(id, actor));
+  async get(
+    id: string,
+    actor: AuthenticatedUser,
+  ): Promise<PublicStudent & { canSupport: boolean }> {
+    const student = await this.find(id, actor);
+    return {
+      ...toPublicStudent(student),
+      canSupport: await this.canSupport(student, actor),
+    };
+  }
+
+  /** Who may open the support plan and consent: the student's own teachers, counselors, administrators and family. */
+  private async canSupport(
+    student: {
+      id: string;
+      userId: string | null;
+      guardians?: Array<{ guardianUserId: string }>;
+    },
+    actor: AuthenticatedUser,
+  ): Promise<boolean> {
+    if (actor.role === 'TEACHER' || actor.role === 'ASSISTANT') {
+      const teaches = await this.prisma.classEnrollment.count({
+        where: {
+          studentId: student.id,
+          status: { in: ['ENROLLED', 'COMPLETED'] },
+          class: {
+            deletedAt: null,
+            teachers: { some: { teacherId: actor.id } },
+          },
+        },
+      });
+      return teaches > 0;
+    }
+    return true;
   }
 
   async exportCsv(

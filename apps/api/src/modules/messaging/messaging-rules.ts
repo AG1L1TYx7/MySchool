@@ -8,6 +8,7 @@ import type { Role } from '../../generated/prisma/client';
 const STAFF: readonly Role[] = [
   'TEACHER',
   'ASSISTANT',
+  'COUNSELOR',
   'PRINCIPAL',
   'SUPERINTENDENT',
   'SUPER_ADMIN',

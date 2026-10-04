@@ -194,10 +194,12 @@ export default function DashboardPage() {
 
       <ThisWeek />
       <AttendanceOwed />
-      <LatestAnnouncements />
+      <div className="focus-hide">
+        <LatestAnnouncements />
+      </div>
       <MyClasses />
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="focus-hide grid gap-6 md:grid-cols-2">
         <Card title="Your access" description="What this account can do, from your role and any individual overrides.">
           <ul className="grid grid-cols-2 gap-2 text-sm">
             {Array.from(categories.entries()).sort().map(([cat, n]) => (

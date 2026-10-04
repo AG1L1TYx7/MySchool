@@ -250,11 +250,17 @@ describe('Communication (e2e)', () => {
       .post('/api/v1/notifications/read-all')
       .set(as('student'))
       .expect(200);
+    // Other suites may deliver new notifications meanwhile, so check the ones we saw rather than the global count.
     const after = await request(server)
-      .get('/api/v1/notifications/summary')
+      .get('/api/v1/notifications?pageSize=50')
       .set(as('student'))
       .expect(200);
-    expect((after.body as { unread: number }).unread).toBe(0);
+    const seen = new Set(rows.map((r) => r.id));
+    expect(
+      (after.body as { data: NotificationBody[] }).data
+        .filter((n) => seen.has(n.id))
+        .every((n) => n.isRead),
+    ).toBe(true);
 
     const prefs = await request(server)
       .put('/api/v1/notifications/preferences')

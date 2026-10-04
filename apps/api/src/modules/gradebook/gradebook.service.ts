@@ -735,7 +735,8 @@ export class GradebookService {
       staffOnly &&
       !canManage(klass, actor) &&
       ROLE_LEVEL[actor.role] < ROLE_LEVEL.PRINCIPAL &&
-      actor.role !== 'ASSISTANT'
+      actor.role !== 'ASSISTANT' &&
+      actor.role !== 'COUNSELOR'
     )
       throw new ForbiddenException({
         code: 'authz.forbidden',

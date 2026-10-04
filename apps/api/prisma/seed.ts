@@ -69,6 +69,12 @@ const DEMO_USERS: Array<{
     lastName: 'Aide',
     role: 'ASSISTANT',
   },
+  {
+    email: 'counselor@smartschool.local',
+    firstName: 'Casey',
+    lastName: 'Counselor',
+    role: 'COUNSELOR',
+  },
 ];
 
 const FLAGS: Array<{ name: string; isEnabled: boolean; description: string }> =
@@ -115,6 +121,10 @@ async function seedFeatures(): Promise<void> {
         create: { id: uuidv7(), role, featureId: feature.id },
       });
     }
+    // Roles the catalogue no longer lists lose the default grant (per-user overrides are separate).
+    await prisma.roleFeature.deleteMany({
+      where: { featureId: feature.id, role: { notIn: [...def.roles] } },
+    });
   }
   console.log(
     `features: ${FEATURE_CATALOG.length} present with default role assignments`,
@@ -1182,6 +1192,72 @@ async function seedGrading(organizationId: string): Promise<void> {
   );
 }
 
+/** Support and safety demo data: an IEP for Emma, a counselor caseload, one positive behaviour note. */
+async function seedSupport(organizationId: string): Promise<void> {
+  const emma = await prisma.student.findFirst({
+    where: { organizationId, studentNumber: 'S2026-000001' },
+  });
+  const counselor = await prisma.user.findUnique({
+    where: { email: 'counselor@smartschool.local' },
+  });
+  const teacher = await prisma.user.findUnique({
+    where: { email: 'teacher@smartschool.local' },
+  });
+  if (!emma || !counselor || !teacher) return;
+  await prisma.accommodation.upsert({
+    where: { studentId: emma.id },
+    update: {},
+    create: {
+      id: uuidv7(),
+      organizationId,
+      studentId: emma.id,
+      plan: 'IEP',
+      extendedTimePercent: 50,
+      readAloud: true,
+      largeText: false,
+      reducedMotion: false,
+      reducedDistraction: false,
+      notes:
+        'Extended time on written work; read-aloud for passages longer than a paragraph.',
+      startDate: new Date('2026-08-15T00:00:00Z'),
+      updatedById: teacher.id,
+    },
+  });
+  await prisma.counselorCaseload.upsert({
+    where: {
+      counselorId_studentId: { counselorId: counselor.id, studentId: emma.id },
+    },
+    update: {},
+    create: {
+      id: uuidv7(),
+      counselorId: counselor.id,
+      studentId: emma.id,
+      reason: 'IEP review each quarter',
+    },
+  });
+  const existing = await prisma.behaviorRecord.findFirst({
+    where: { studentId: emma.id, title: 'Helped a new classmate settle in' },
+  });
+  if (!existing)
+    await prisma.behaviorRecord.create({
+      data: {
+        id: uuidv7(),
+        organizationId,
+        studentId: emma.id,
+        reportedById: teacher.id,
+        kind: 'POSITIVE',
+        title: 'Helped a new classmate settle in',
+        description:
+          'Showed a new student around and shared her notes without being asked.',
+        occurredAt: new Date('2026-09-29T14:30:00Z'),
+        location: 'Room 101',
+      },
+    });
+  console.log(
+    'support: accommodation, caseload and a behaviour note for the demo student',
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedH5pLibraries();
@@ -1193,6 +1269,7 @@ async function main(): Promise<void> {
   await seedStructure(orgId);
   await seedAcademics(orgId);
   await seedGrading(orgId);
+  await seedSupport(orgId);
 }
 
 main()

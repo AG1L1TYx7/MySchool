@@ -64,6 +64,7 @@ export const envSchema = z
     AI_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
     /** Requests per minute per client IP across the API; raise for load tests. */
     RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(100),
+    LOGIN_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(5),
     AI_TUTOR_DAILY_LIMIT: z.coerce.number().int().positive().default(150),
     AI_SERVICE_GENERATION_TIMEOUT_MS: z.coerce
       .number()

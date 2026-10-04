@@ -22,6 +22,7 @@ const ALL: readonly Role[] = [
   'STUDENT',
   'PARENT',
   'ASSISTANT',
+  'COUNSELOR',
 ];
 const ADMINS: readonly Role[] = ['SUPER_ADMIN', 'SUPERINTENDENT', 'PRINCIPAL'];
 const DISTRICT: readonly Role[] = ['SUPER_ADMIN', 'SUPERINTENDENT'];
@@ -32,6 +33,8 @@ const STAFF: readonly Role[] = [
   'TEACHER',
 ];
 const STAFF_AND_ASSISTANT: readonly Role[] = [...STAFF, 'ASSISTANT'];
+const STAFF_AND_COUNSELOR: readonly Role[] = [...STAFF, 'COUNSELOR'];
+const RECORD_READERS: readonly Role[] = [...STAFF_AND_ASSISTANT, 'COUNSELOR'];
 
 function f(
   code: string,
@@ -93,14 +96,19 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   ),
 
   // Students
-  f('students.view', 'View students', 'Students', STAFF_AND_ASSISTANT),
+  f('students.view', 'View students', 'Students', RECORD_READERS),
   f('students.create', 'Create students', 'Students', ADMINS),
   f('students.edit', 'Edit students', 'Students', ADMINS),
   f('students.delete', 'Delete students', 'Students', DISTRICT),
   f('students.import', 'Import students', 'Students', ADMINS),
   f('students.export', 'Export students', 'Students', ADMINS),
   f('students.guardians.manage', 'Manage guardians', 'Students', ADMINS),
-  f('students.progress.view', 'View student progress', 'Students', STAFF),
+  f(
+    'students.progress.view',
+    'View student progress',
+    'Students',
+    STAFF_AND_COUNSELOR,
+  ),
 
   // Courses and classes
   f('courses.view', 'View courses', 'Courses', ALL),
@@ -125,26 +133,16 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('rubrics.manage', 'Create and edit rubrics', 'Assignments', STAFF),
   f('grades.view.own', 'View own grades', 'Grades', ['STUDENT']),
   f('grades.view.child', "View a child's grades", 'Grades', ['PARENT']),
-  f('grades.view.all', 'View all grades', 'Grades', STAFF),
+  f('grades.view.all', 'View all grades', 'Grades', STAFF_AND_COUNSELOR),
   f('grades.edit', 'Edit grades', 'Grades', STAFF),
   f('grades.export', 'Export gradebook', 'Grades', STAFF),
-  f(
-    'standards.view',
-    'Browse academic standards',
-    'Grades',
-    STAFF_AND_ASSISTANT,
-  ),
+  f('standards.view', 'Browse academic standards', 'Grades', RECORD_READERS),
   f('standards.manage', 'Create and import standard sets', 'Grades', STAFF),
   f('report-cards.view.own', 'View own report cards', 'Grades', ['STUDENT']),
   f('report-cards.view.child', "View a child's report cards", 'Grades', [
     'PARENT',
   ]),
-  f(
-    'report-cards.view.all',
-    'View report cards',
-    'Grades',
-    STAFF_AND_ASSISTANT,
-  ),
+  f('report-cards.view.all', 'View report cards', 'Grades', RECORD_READERS),
   f(
     'report-cards.manage',
     'Generate report cards and progress reports',
@@ -159,7 +157,7 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('attendance.view.child', "View a child's attendance", 'Attendance', [
     'PARENT',
   ]),
-  f('attendance.view', 'View attendance', 'Attendance', STAFF_AND_ASSISTANT),
+  f('attendance.view', 'View attendance', 'Attendance', RECORD_READERS),
   f('attendance.mark', 'Mark attendance', 'Attendance', STAFF_AND_ASSISTANT),
   f('attendance.edit', 'Edit attendance', 'Attendance', STAFF),
   f('attendance.report', 'Attendance reports', 'Attendance', STAFF),
@@ -239,7 +237,39 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     'STUDENT',
     'TEACHER',
   ]),
-  f('wellness.alerts', 'Wellbeing alerts', 'Wellbeing', STAFF),
+  f('wellness.alerts', 'Work the wellness queue', 'Wellbeing', [
+    'COUNSELOR',
+    ...ADMINS,
+  ]),
+  f(
+    'support.accommodations.view',
+    'See a student’s accommodations',
+    'Wellbeing',
+    [...RECORD_READERS, 'PARENT'],
+  ),
+  f(
+    'support.accommodations.manage',
+    'Record IEP and 504 accommodations',
+    'Wellbeing',
+    STAFF_AND_COUNSELOR,
+  ),
+  f('support.counselor', 'Counselor caseload', 'Wellbeing', [
+    'COUNSELOR',
+    ...ADMINS,
+  ]),
+  f('support.notes', 'Private counselor notes', 'Wellbeing', ['COUNSELOR']),
+  f('support.behavior.view', 'See behaviour records', 'Wellbeing', ALL),
+  f(
+    'support.behavior.manage',
+    'Record behaviour',
+    'Wellbeing',
+    STAFF_AND_COUNSELOR,
+  ),
+  f('support.consent.view', 'See AI consent status', 'Wellbeing', ALL),
+  f('support.consent.manage', 'Grant or decline AI consent', 'Wellbeing', [
+    'PARENT',
+    ...ADMINS,
+  ]),
   f('calendar.view', 'View calendar', 'Calendar', ALL),
   f('calendar.manage', 'Manage calendar events', 'Calendar', STAFF),
 ];
