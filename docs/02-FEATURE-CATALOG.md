@@ -171,6 +171,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/v1/teacher-ai` (29).
 **AI.** `/api/ai/assessment/grade-essay`, `/api/ai/generate/content`, analytics endpoints.
 **Status.** Real (grade suggestions call the model; unreadable submissions are flagged for manual review).
+**Release 2 (slice 15).** Rebuilt as the teacher assistant: `LessonPlans`, `GradingSuggestions` (review, approve, bulk approve of confident ones), `TeacherDrafts` (parent emails sent as messages, narratives applied to draft report cards, three-level differentiation turned into unpublished lessons), `ClassInsights` (weekly numbers from tutor traces, work, scores and attendance, narrated, with a practice set), `SubstituteAccess` with an expiry, and the weekly planner. Six AI text capabilities ride the content job pipeline; prompts under `apps/ai/prompts`. Export to Google Classroom and Canvas and LTI 1.3 are the next slice.
 
 ## 20. Superintendent AI and district management
 

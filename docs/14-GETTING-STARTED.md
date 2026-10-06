@@ -138,6 +138,10 @@ Parents and students see My family: every linked child with the current grade in
 
 Students earn XP for finishing lessons (the Mark lesson finished button at the end of a lesson), turning work in, turning it in on time, beating their previous score and perfect scores; levels and titles grow with XP, and a streak counts school days in a row with a freeze token covering one missed day. Badges unlock from the same actions, and teachers award Kindness, Helper and Leader badges or extra points with a reason from the class Motivation page, where they also start class quests (a shared goal that everyone's work counts toward). Every Monday each student gets a few personal quests for the week. Students see all of this under My progress and on their dashboard; parents see it on My family. Nobody is ranked against anybody: students never see each other's numbers, and the console lists students alphabetically. The school can turn the whole thing off on the organisation page.
 
+## 4g. Teacher assistant
+
+Teachers open Teacher assistant in the sidebar. Lesson plans: name a topic and a class, get a timed plan built from the course outline, edit it, publish it and put it on a date; it then shows on the Planner. Grading: pick an assignment, press Suggest grades, and the AI scores each text submission against the rubric with quoted evidence and a confidence; approve, change or reject each one, or approve all the confident ones at once; anything the AI is unsure about waits for you. Families: draft an email to a family (in Spanish if the family prefers) from that student's own numbers and send it as a message, or draft a report-card narrative and apply it to the draft report card. Differentiation: adapt a lesson to support, core and extension levels and create them as unpublished lessons. Class insight: build this week's briefing from the tutor's traces, missing work, scores and attendance, then make a practice set on the stuck topic. On a class page, Substitutes gives a colleague the class until a date; access ends by itself.
+
 ## 5. Backups
 
 ```bash

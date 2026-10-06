@@ -65,7 +65,7 @@ export function startAiStub(
               status: 'done',
               progress: 'Done',
               error: null,
-              result: stubResult(envelope.capability as string, spec),
+              result: stubResult(envelope.capability as string, spec, envelope),
             };
         res.writeHead(202, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ jobId: id, status: 'queued' }));
@@ -154,6 +154,7 @@ export function startAiStub(
 function stubResult(
   capability: string,
   spec: { topic: string; count?: number; language?: string },
+  envelope: Record<string, unknown> = {},
 ) {
   const base = {
     model: { provider: 'fake', name: 'fake' },
@@ -180,6 +181,133 @@ function stubResult(
         keyIdeas: ['Idea one', 'Idea two'],
         questionsToAsk: ['What did you find hardest?'],
         tryAtHome: ['Explain it to someone at home.'],
+      },
+    };
+  }
+  if (capability === 'content.lesson_plan') {
+    return {
+      ...base,
+      promptVersion: 'content.lesson_plan@1',
+      draft: {
+        title: `Plan: ${spec.topic}`,
+        objectives: ['Explain the idea', 'Apply it to a new case'],
+        materials: ['whiteboard'],
+        sequence: [
+          {
+            phase: 'Warm-up',
+            minutes: 5,
+            teacherDoes: 'Asks',
+            studentsDo: 'Answer',
+          },
+          {
+            phase: 'Practice',
+            minutes: 40,
+            teacherDoes: 'Guides',
+            studentsDo: 'Work',
+          },
+        ],
+        differentiation: {
+          support: 'Sentence starters',
+          extension: 'Harder set',
+        },
+        exitCheck: [{ question: 'What did we learn?', answer: 'The idea.' }],
+        sourceIds: [],
+      },
+    };
+  }
+  if (capability === 'content.parent_email') {
+    return {
+      ...base,
+      promptVersion: 'content.parent_email@1',
+      draft: {
+        subject:
+          language === 'es'
+            ? `Progreso de ${spec.topic}`
+            : `Progress of ${spec.topic}`,
+        greeting: 'Dear family,',
+        body: ['Here is how things are going.', 'Thank you for your support.'],
+        closing: 'Please reply with any questions.',
+        signature: 'Jane Teacher',
+      },
+    };
+  }
+  if (capability === 'content.narrative') {
+    return {
+      ...base,
+      promptVersion: 'content.narrative@1',
+      draft: {
+        narrative: `${spec.topic} works steadily and turns work in on time. The next step is to use more evidence.`,
+        strengths: ['steady work'],
+        growthAreas: ['evidence'],
+        nextSteps: ['Quote the text once per paragraph.'],
+      },
+    };
+  }
+  if (capability === 'content.differentiation') {
+    const level = (lv: string, grade: string) => ({
+      level: lv,
+      title: `${spec.topic} (${lv})`,
+      readingLevel: grade,
+      text: `A ${lv} version of ${spec.topic} that keeps the same facts and goal for every student.`,
+      keyWords: ['idea', 'example'],
+      questions: [{ prompt: 'What is the main idea?', answer: 'The idea.' }],
+    });
+    return {
+      ...base,
+      promptVersion: 'content.differentiation@1',
+      draft: {
+        levels: [
+          level('support', 'Grade 5'),
+          level('core', 'Grade 7'),
+          level('extension', 'Grade 9'),
+        ],
+      },
+    };
+  }
+  if (capability === 'grading.rubric') {
+    const criteria =
+      (
+        envelope.context as {
+          blocks?: Array<{ id: string; label: string; text: string }>;
+        }
+      )?.blocks
+        ?.find((b) => b.label === 'RUBRIC')
+        ?.text.split('\n')
+        .filter((line) => line.includes('|'))
+        .map((line) => line.split('|').map((x) => x.trim())) ?? [];
+    const rows = criteria.length ? criteria : [['overall', '10']];
+    const list = rows.map(([id, max]) => ({
+      criterionId: id,
+      score: Math.round(Number(max) * 0.8 * 100) / 100,
+      maxPoints: Number(max),
+      evidence: 'quoted text',
+      feedback: 'Good work; add one more example.',
+      confidence: /unsure/i.test(spec.topic) ? 0.4 : 0.9,
+    }));
+    return {
+      ...base,
+      promptVersion: 'grading.rubric@1',
+      draft: {
+        criteria: list,
+        overall: {
+          score: list.reduce((a, c) => a + c.score, 0),
+          maxPoints: list.reduce((a, c) => a + c.maxPoints, 0),
+        },
+        summary: 'Clear and mostly complete.',
+        needsHumanReview: /unsure/i.test(spec.topic),
+        flag: null,
+      },
+    };
+  }
+  if (capability === 'insight.teacher') {
+    return {
+      ...base,
+      promptVersion: 'insight.teacher@1',
+      draft: {
+        headline: 'Missing work is the thing to watch this week.',
+        observations: ['Missing work: see DATA.', 'Average score: see DATA.'],
+        actions: ['Reteach the stuck topic.'],
+        caveats: 'Small sample.',
       },
     };
   }

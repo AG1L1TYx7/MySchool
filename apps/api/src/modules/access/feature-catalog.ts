@@ -292,6 +292,14 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     'Motivation',
     STAFF,
   ),
+  f(
+    'ai.assistant',
+    'Teacher assistant: plans, grading suggestions, emails, narratives, differentiation, insight',
+    'AI',
+    STAFF,
+  ),
+  f('planner.view', 'Weekly planner', 'Teaching', STAFF),
+  f('classes.substitutes', 'Grant substitute access', 'Classes', STAFF),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

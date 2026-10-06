@@ -554,6 +554,8 @@ export const es: Record<MessageKey, string> = {
 
   // Motivation (slice 14)
   'nav.motivation': 'Mi progreso',
+  'nav.assistant': 'Asistente docente',
+  'nav.planner': 'Planificador',
   'category.motivation': 'XP, rachas e insignias',
   'mot.title': 'Mi progreso',
   'mot.subtitle': 'Tus XP, tu racha, tus insignias y tus misiones. Solo tú, tu familia y tus maestros pueden verlo.',

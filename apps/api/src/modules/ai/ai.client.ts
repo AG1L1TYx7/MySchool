@@ -60,7 +60,13 @@ export interface ContentRequest {
     | 'content.quiz'
     | 'content.flashcards'
     | 'content.summary'
-    | 'content.conference';
+    | 'content.conference'
+    | 'content.lesson_plan'
+    | 'content.parent_email'
+    | 'content.narrative'
+    | 'content.differentiation'
+    | 'grading.rubric'
+    | 'insight.teacher';
   organizationId: string | null;
   actor: { userId: string; role: string; ageBand: string };
   request: {
@@ -78,6 +84,15 @@ export interface ContentRequest {
     /** Text jobs: what the finished draft attaches to. */
     lessonId?: string;
     studentId?: string;
+    classId?: string;
+    courseId?: string;
+    submissionId?: string;
+    assignmentId?: string;
+    insightId?: string;
+    /** Teacher-assistant knobs (slice 15). */
+    durationMinutes?: number;
+    purpose?: string;
+    tone?: string;
   };
   context: {
     courseId: string | null;

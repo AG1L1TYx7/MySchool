@@ -8,7 +8,18 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.envelopes import Actor, ContextBlock
 
-ContentCapability = Literal["content.quiz", "content.flashcards", "content.summary", "content.conference"]
+ContentCapability = Literal[
+    "content.quiz",
+    "content.flashcards",
+    "content.summary",
+    "content.conference",
+    "content.lesson_plan",
+    "content.parent_email",
+    "content.narrative",
+    "content.differentiation",
+    "grading.rubric",
+    "insight.teacher",
+]
 QuestionType = Literal["multiple_choice", "true_false", "fill_blank"]
 DEFAULT_QUESTION_TYPES: list[QuestionType] = ["multiple_choice", "true_false"]
 
@@ -26,6 +37,10 @@ class ContentSpec(BaseModel):
     standard: str | None = Field(default=None, max_length=200)
     feedback: str | None = Field(default=None, max_length=2000, description="Teacher guidance when regenerating")
     previousDraft: dict[str, Any] | None = None
+    # Teacher-assistant capabilities (slice 15)
+    durationMinutes: int = Field(default=45, ge=10, le=240)
+    purpose: str = Field(default="share progress", max_length=200)
+    tone: str = Field(default="warm and specific", max_length=100)
 
 
 class ContentContext(BaseModel):
@@ -124,11 +139,130 @@ class ConferenceDraft(BaseModel):
     nextSteps: list[str] = Field(default_factory=list, max_length=4)
 
 
+class PlanPhase(BaseModel):
+    phase: str = Field(min_length=1, max_length=120)
+    minutes: int = Field(ge=1, le=240)
+    teacherDoes: str = Field(min_length=1, max_length=1500)
+    studentsDo: str = Field(min_length=1, max_length=1500)
+
+
+class ExitCheckItem(BaseModel):
+    question: str = Field(min_length=1, max_length=600)
+    answer: str = Field(min_length=1, max_length=600)
+
+
+class PlanDifferentiation(BaseModel):
+    support: str = Field(default="", max_length=1000)
+    extension: str = Field(default="", max_length=1000)
+
+
+class LessonPlanDraft(BaseModel):
+    """A lesson plan a teacher adapts (docs/13 section 8)."""
+
+    title: str = Field(min_length=1, max_length=200)
+    objectives: list[str] = Field(min_length=1, max_length=5)
+    materials: list[str] = Field(default_factory=list, max_length=15)
+    sequence: list[PlanPhase] = Field(min_length=2, max_length=10)
+    differentiation: PlanDifferentiation = Field(default_factory=PlanDifferentiation)
+    exitCheck: list[ExitCheckItem] = Field(default_factory=list, max_length=5)
+    sourceIds: list[str] = Field(default_factory=list)
+
+
+class ParentEmailDraft(BaseModel):
+    subject: str = Field(min_length=1, max_length=200)
+    greeting: str = Field(min_length=1, max_length=300)
+    body: list[str] = Field(min_length=1, max_length=5)
+    closing: str = Field(default="", max_length=600)
+    signature: str = Field(default="", max_length=200)
+
+
+class NarrativeDraft(BaseModel):
+    narrative: str = Field(min_length=20, max_length=1200)
+    strengths: list[str] = Field(default_factory=list, max_length=3)
+    growthAreas: list[str] = Field(default_factory=list, max_length=2)
+    nextSteps: list[str] = Field(default_factory=list, max_length=2)
+
+
+class LevelQuestion(BaseModel):
+    prompt: str = Field(min_length=1, max_length=600)
+    answer: str = Field(min_length=1, max_length=600)
+
+
+class DifferentiatedLevel(BaseModel):
+    level: Literal["support", "core", "extension"]
+    title: str = Field(min_length=1, max_length=200)
+    readingLevel: str = Field(default="", max_length=40)
+    text: str = Field(min_length=20, max_length=6000)
+    keyWords: list[str] = Field(default_factory=list, max_length=12)
+    questions: list[LevelQuestion] = Field(default_factory=list, max_length=6)
+
+
+class DifferentiationDraft(BaseModel):
+    levels: list[DifferentiatedLevel] = Field(min_length=3, max_length=3)
+
+    @model_validator(mode="after")
+    def _three_distinct_levels(self) -> DifferentiationDraft:
+        if {lv.level for lv in self.levels} != {"support", "core", "extension"}:
+            raise ValueError("levels must be support, core and extension")
+        return self
+
+
+class CriterionSuggestion(BaseModel):
+    criterionId: str = Field(min_length=1, max_length=100)
+    score: float = Field(ge=0)
+    maxPoints: float = Field(ge=0)
+    evidence: str = Field(default="", max_length=600)
+    feedback: str = Field(default="", max_length=800)
+    confidence: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _within_max(self) -> CriterionSuggestion:
+        if self.score > self.maxPoints:
+            raise ValueError("score exceeds maxPoints")
+        return self
+
+
+class OverallScore(BaseModel):
+    score: float = Field(ge=0)
+    maxPoints: float = Field(ge=0)
+
+
+class GradingSuggestionDraft(BaseModel):
+    """A grading suggestion a teacher confirms or changes; never a grade by itself."""
+
+    criteria: list[CriterionSuggestion] = Field(min_length=1, max_length=20)
+    overall: OverallScore
+    summary: str = Field(default="", max_length=1200)
+    needsHumanReview: bool = True
+    flag: str | None = Field(default=None, max_length=600)
+
+    @model_validator(mode="after")
+    def _review_when_unsure(self) -> GradingSuggestionDraft:
+        if any(c.confidence < 0.6 for c in self.criteria):
+            self.needsHumanReview = True
+        total = sum(c.score for c in self.criteria)
+        self.overall = OverallScore(score=round(total, 2), maxPoints=round(sum(c.maxPoints for c in self.criteria), 2))
+        return self
+
+
+class InsightDraft(BaseModel):
+    headline: str = Field(min_length=1, max_length=400)
+    observations: list[str] = Field(min_length=1, max_length=6)
+    actions: list[str] = Field(default_factory=list, max_length=4)
+    caveats: str = Field(default="", max_length=400)
+
+
 DRAFT_MODELS: dict[str, type[BaseModel]] = {
     "content.quiz": QuizDraft,
     "content.flashcards": FlashcardsDraft,
     "content.summary": SummaryDraft,
     "content.conference": ConferenceDraft,
+    "content.lesson_plan": LessonPlanDraft,
+    "content.parent_email": ParentEmailDraft,
+    "content.narrative": NarrativeDraft,
+    "content.differentiation": DifferentiationDraft,
+    "grading.rubric": GradingSuggestionDraft,
+    "insight.teacher": InsightDraft,
 }
 
 

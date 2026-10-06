@@ -239,6 +239,22 @@ GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY
 ```
 Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
 
+### Teacher assistant (Release 2 slice 15)
+```
+GET    /assistant/lesson-plans              mine (administrators: the school's); POST { topic, classId?, courseId?, lessonId?, durationMinutes, standard?, language? } -> 202 AI job, resultId is the plan
+GET    /lesson-plans/{id}                   PATCH { title?, content?, status draft|published, scheduledOn?, classId? }; DELETE
+POST   /assistant/grading/assignments/{id}/suggest      one grading job per ungraded text submission (latest attempt); RUBRIC block from the rubric or an overall criterion
+GET    /assistant/grading/assignments/{id}  suggestions with excerpt, criterion scores, evidence, confidence, needsHumanReview, suggestedPoints scaled to the assignment
+POST   /grading-suggestions/{id}/approve    { score?, feedback? } posts the grade through the normal grade route; /reject; POST .../approve-all posts only confident ones
+GET    /assistant/drafts?kind=&studentId=   my drafts; POST /assistant/drafts/parent-email { studentId, purpose, tone?, topic?, language? }, /narrative { studentId, classId }, /narratives { classId }, /differentiation { lessonId } -> 202 jobs
+GET    /drafts/{id}                         PATCH { title?, content?, status? }; DELETE; POST /drafts/{id}/send (message to the guardians); /apply-to-report-card (draft card line comment); /create-lessons (three unpublished lessons)
+GET    /assistant/classes/{id}/insight      latest briefing; POST builds this week's numbers (tutor traces, missing work, scores, attendance, lessons finished) and narrates them -> 202 { insight, job }
+POST   /assistant/insights/{id}/practice-set { topic?, count? } -> the quiz job; PATCH /assistant/insights/{id} { practiceContentId }
+GET    /classes/{id}/substitutes            POST { userId, startsAt, endsAt, note? } (classes.substitutes); DELETE /substitutes/{id}; access becomes a co-teacher row inside the window and is removed when it ends
+GET    /planner?week=YYYY-MM-DD             the teacher's week: due dates, scheduled plans, events, term boundaries (planner.view)
+```
+Rules: every draft is labelled, private to its author, and reaches a student, a family or the gradebook only through an explicit action; grading suggestions with any criterion below 0.6 confidence are never bulk-approved; data blocks carry one student's numbers only. Errors: `403 assistant.already_reviewed`, `403 assistant.no_content`, `403 assistant.already_teacher`, `404 assistant.no_report_card`.
+
 ### Motivation (Release 2 slice 14)
 ```
 GET    /me/motivation                       the signed-in student only: xp, level, title, levelStartXp, nextLevelXp, todayXp, streak { days, longest, alive, freezeTokens }, badges, quests (own progress; class quests add classTotal), recent rewards

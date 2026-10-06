@@ -9479,6 +9479,867 @@
         ]
       }
     },
+    "/api/v1/assistant/lesson-plans": {
+      "get": {
+        "operationId": "AssistantController_plans_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My lesson plans (administrators: the school’s)",
+        "tags": [
+          "Teacher assistant"
+        ]
+      },
+      "post": {
+        "operationId": "AssistantController_generatePlan_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeneratePlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Draft a lesson plan with the AI; poll /ai/jobs/{id}, resultId is the plan",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/lesson-plans/{id}": {
+      "get": {
+        "operationId": "AssistantController_plan_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      },
+      "patch": {
+        "operationId": "AssistantController_updatePlan_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit, schedule or publish a plan",
+        "tags": [
+          "Teacher assistant"
+        ]
+      },
+      "delete": {
+        "operationId": "AssistantController_removePlan_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/grading/assignments/{assignmentId}/suggest": {
+      "post": {
+        "operationId": "AssistantController_suggest_api/v1",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the AI for a suggestion on every ungraded text submission",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/grading/assignments/{assignmentId}": {
+      "get": {
+        "operationId": "AssistantController_suggestions_api/v1",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Suggestions for an assignment, with the submission excerpt and review state",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/grading-suggestions/{id}/approve": {
+      "post": {
+        "operationId": "AssistantController_approve_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveSuggestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Post the suggestion as the grade (optionally changed)",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/grading-suggestions/{id}/reject": {
+      "post": {
+        "operationId": "AssistantController_reject_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/grading/assignments/{assignmentId}/approve-all": {
+      "post": {
+        "operationId": "AssistantController_approveAll_api/v1",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Post every confident suggestion as a grade; flagged ones stay for review",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/drafts": {
+      "get": {
+        "operationId": "AssistantController_drafts_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/drafts/parent-email": {
+      "post": {
+        "operationId": "AssistantController_parentEmail_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/drafts/narrative": {
+      "post": {
+        "operationId": "AssistantController_narrative_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NarrativeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/drafts/narratives": {
+      "post": {
+        "operationId": "AssistantController_narratives_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkNarrativeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/drafts/differentiation": {
+      "post": {
+        "operationId": "AssistantController_differentiation_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DifferentiationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/drafts/{id}": {
+      "get": {
+        "operationId": "AssistantController_draft_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      },
+      "patch": {
+        "operationId": "AssistantController_updateDraft_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDraftDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      },
+      "delete": {
+        "operationId": "AssistantController_removeDraft_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/drafts/{id}/send": {
+      "post": {
+        "operationId": "AssistantController_send_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a parent email draft as a message to the student’s guardians",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/drafts/{id}/apply-to-report-card": {
+      "post": {
+        "operationId": "AssistantController_apply_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Put the narrative on the student’s draft report card line for that class",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/drafts/{id}/create-lessons": {
+      "post": {
+        "operationId": "AssistantController_createLessons_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create three unpublished lessons (support, core, extension) from a differentiation draft",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/classes/{classId}/insight": {
+      "get": {
+        "operationId": "AssistantController_insight_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      },
+      "post": {
+        "operationId": "AssistantController_buildInsight_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Compute this week’s class numbers (tutor traces, work, attendance) and narrate them",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/insights/{id}/practice-set": {
+      "post": {
+        "operationId": "AssistantController_practiceSet_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PracticeSetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate a short quiz on the topic the class is stuck on (an H5P content job)",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/insights/{id}": {
+      "patch": {
+        "operationId": "AssistantController_updateInsight_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInsightDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/substitutes": {
+      "get": {
+        "operationId": "AssistantController_substitutes_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      },
+      "post": {
+        "operationId": "AssistantController_addSubstitute_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubstituteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give a teacher or assistant access to this class until a date",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/substitutes/{id}": {
+      "delete": {
+        "operationId": "AssistantController_removeSubstitute_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/planner": {
+      "get": {
+        "operationId": "AssistantController_planner_api/v1",
+        "parameters": [
+          {
+            "name": "week",
+            "required": false,
+            "in": "query",
+            "description": "Any day in the week wanted",
+            "schema": {
+              "example": "2026-10-05",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The week for my classes: due dates, events, term boundaries and scheduled plans",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -12860,6 +13721,250 @@
             "description": "XP, streaks, badges and quests on or off for the school"
           }
         }
+      },
+      "GeneratePlanDto": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "default": 45,
+            "minimum": 10,
+            "maximum": 240
+          },
+          "standard": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ]
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "UpdatePlanDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "object",
+            "description": "The edited plan body (same shape the AI produced)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ]
+          },
+          "scheduledOn": {
+            "type": "string",
+            "description": "YYYY-MM-DD, or empty to unschedule"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ApproveSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "description": "Override the suggested score (assignment points)"
+          },
+          "feedback": {
+            "type": "string"
+          }
+        }
+      },
+      "ParentEmailDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "purpose": {
+            "type": "string",
+            "example": "share good news about this week"
+          },
+          "tone": {
+            "type": "string",
+            "example": "warm and specific"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ]
+          }
+        },
+        "required": [
+          "studentId",
+          "purpose"
+        ]
+      },
+      "NarrativeDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ]
+          }
+        },
+        "required": [
+          "studentId",
+          "classId"
+        ]
+      },
+      "BulkNarrativeDto": {
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ]
+          }
+        },
+        "required": [
+          "classId"
+        ]
+      },
+      "DifferentiationDto": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ]
+          }
+        },
+        "required": [
+          "lessonId"
+        ]
+      },
+      "UpdateDraftDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "used"
+            ]
+          }
+        }
+      },
+      "PracticeSetDto": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Defaults to the topic the class is stuck on"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 3,
+            "maximum": 15,
+            "default": 5
+          }
+        }
+      },
+      "UpdateInsightDto": {
+        "type": "object",
+        "properties": {
+          "practiceContentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The practice set that was generated for it"
+          }
+        }
+      },
+      "SubstituteDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A teacher or assistant of the school"
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "startsAt",
+          "endsAt"
+        ]
       }
     }
   }

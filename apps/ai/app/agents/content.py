@@ -178,6 +178,9 @@ def placeholders(req: ContentRequest) -> dict[str, str]:
         "language": spec.language,
         "readingLevel": reading_level(spec.gradeLevel),
         "contextBlocks": render_blocks(req.context.blocks),
+        "durationMinutes": str(spec.durationMinutes),
+        "purpose": spec.purpose,
+        "tone": spec.tone,
     }
 
 

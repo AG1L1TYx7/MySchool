@@ -578,6 +578,8 @@ export const en = {
 
   // Motivation (slice 14)
   'nav.motivation': 'My progress',
+  'nav.assistant': 'Teacher assistant',
+  'nav.planner': 'Planner',
   'category.motivation': 'XP, streaks and badges',
   'mot.title': 'My progress',
   'mot.subtitle': 'Your XP, streak, badges and quests. Only you, your family and your teachers can see this.',

@@ -239,3 +239,194 @@ async def test_conference_talking_points_use_only_the_data_block(runtime: Runtim
     assert job["result"]["draft"]["talkingPoints"] and job["result"]["h5p"] is None
     system = runtime.provider.calls[0][0]["content"]
     assert "8 of 9" in system and "DATA" in system
+
+
+# ---------------------------------------------------------------------------
+# Teacher assistant (slice 15): plans, grading suggestions, emails, narratives, differentiation, insight
+# ---------------------------------------------------------------------------
+
+LESSON_PLAN = {
+    "title": "Comparing fractions",
+    "objectives": ["Compare two fractions with the same denominator", "Place fractions on a number line"],
+    "materials": ["fraction strips", "number line handout"],
+    "sequence": [
+        {"phase": "Warm-up", "minutes": 5, "teacherDoes": "Shows 2/5 and 3/5.", "studentsDo": "Vote which is bigger."},
+        {
+            "phase": "Instruction",
+            "minutes": 15,
+            "teacherDoes": "Models with strips.",
+            "studentsDo": "Build the fractions.",
+        },
+        {"phase": "Practice", "minutes": 20, "teacherDoes": "Circulates.", "studentsDo": "Solve six comparisons."},
+        {"phase": "Exit check", "minutes": 5, "teacherDoes": "Collects cards.", "studentsDo": "Answer two questions."},
+    ],
+    "differentiation": {"support": "Pre-cut strips.", "extension": "Unlike denominators."},
+    "exitCheck": [{"question": "Which is bigger, 2/5 or 3/5?", "answer": "3/5"}],
+    "sourceIds": ["C1"],
+}
+
+GRADING = {
+    "criteria": [
+        {
+            "criterionId": "thesis",
+            "score": 4,
+            "maxPoints": 5,
+            "evidence": "In this essay I argue",
+            "feedback": "Clear claim; name the counter-argument.",
+            "confidence": 0.8,
+        },
+        {
+            "criterionId": "evidence",
+            "score": 2,
+            "maxPoints": 5,
+            "evidence": "no evidence",
+            "feedback": "Add two quotations.",
+            "confidence": 0.5,
+        },
+    ],
+    "overall": {"score": 99, "maxPoints": 99},
+    "summary": "A clear claim with thin evidence.",
+    "needsHumanReview": False,
+    "flag": None,
+}
+
+PARENT_EMAIL = {
+    "subject": "Ava's progress in math",
+    "greeting": "Dear Johnson family,",
+    "body": ["Ava turned in 8 of 9 assignments on time this month.", "We will keep practising fractions in class."],
+    "closing": "Please reply if you would like to meet.",
+    "signature": "Ms. Jane Teacher",
+}
+
+NARRATIVE = {
+    "narrative": "Ava works carefully and turned in 8 of 9 assignments on time. Her next step is to use evidence from the text when she explains her thinking.",
+    "strengths": ["careful work", "on time"],
+    "growthAreas": ["using evidence"],
+    "nextSteps": ["Mark one quotation per paragraph."],
+}
+
+DIFFERENTIATION = {
+    "levels": [
+        {
+            "level": "support",
+            "title": "Story parts",
+            "readingLevel": "Grade 5",
+            "text": "A story has a beginning, a middle and an end. " * 3,
+            "keyWords": ["beginning", "middle", "end"],
+            "questions": [{"prompt": "A story starts with the ____.", "answer": "beginning"}],
+        },
+        {
+            "level": "core",
+            "title": "Story structure",
+            "readingLevel": "Grade 7",
+            "text": "Stories move through exposition, rising action, climax, falling action and resolution. " * 2,
+            "keyWords": ["exposition", "climax"],
+            "questions": [{"prompt": "What is the climax?", "answer": "The turning point."}],
+        },
+        {
+            "level": "extension",
+            "title": "Narrative arcs",
+            "readingLevel": "Grade 9",
+            "text": "Writers shape tension across exposition, rising action, climax, falling action and resolution, and some invert the order for effect. "
+            * 2,
+            "keyWords": ["tension", "inversion"],
+            "questions": [
+                {"prompt": "Why might a writer start at the climax?", "answer": "To hook the reader with tension."}
+            ],
+        },
+    ]
+}
+
+INSIGHT = {
+    "headline": "Missing work rose to 6 items this week.",
+    "observations": ["6 missing items (missing work), up from 2.", "Average score 84% (average score)."],
+    "actions": ["Reteach fractions on Tuesday."],
+    "caveats": "Only 12 of 18 students used the tutor.",
+}
+
+
+async def _run(client: AsyncClient, runtime: Runtime, capability: str, reply: dict, trace: str, **spec: object) -> dict:
+    runtime.provider = FakeProvider(scripted_replies=[json.dumps(reply)])
+    req = content_request(capability=capability, traceId=trace)
+    req["request"] = {**req["request"], **spec}
+    res = await client.post("/v1/content/generate", json=req)
+    assert res.status_code == 202, res.text
+    job = await wait_for_job(client, res.json()["jobId"])
+    assert job["status"] == "done", job
+    assert job["result"]["h5p"] is None
+    return job["result"]
+
+
+async def test_lesson_plan_uses_the_duration(runtime: Runtime, client: AsyncClient) -> None:
+    result = await _run(
+        client, runtime, "content.lesson_plan", LESSON_PLAN, "lp1", topic="Fractions", durationMinutes=45
+    )
+    assert result["promptVersion"] == "content.lesson_plan@1"
+    assert sum(p["minutes"] for p in result["draft"]["sequence"]) == 45
+    assert "45-minute lesson" in runtime.provider.calls[0][0]["content"]
+
+
+async def test_grading_suggestion_recomputes_totals_and_flags_low_confidence(
+    runtime: Runtime, client: AsyncClient
+) -> None:
+    result = await _run(client, runtime, "grading.rubric", GRADING, "gr1", topic="Essay 1")
+    draft = result["draft"]
+    assert draft["overall"] == {"score": 6.0, "maxPoints": 10.0}
+    assert draft["needsHumanReview"] is True  # a criterion sits below 0.6 confidence
+    assert "RUBRIC" in runtime.provider.calls[0][0]["content"]
+
+
+async def test_grading_rejects_a_score_above_the_maximum(runtime: Runtime, client: AsyncClient) -> None:
+    bad = {**GRADING, "criteria": [{**GRADING["criteria"][0], "score": 9}]}
+    runtime.provider = FakeProvider(scripted_replies=[json.dumps(bad), json.dumps(bad)])
+    req = content_request(capability="grading.rubric", traceId="gr2")
+    res = await client.post("/v1/content/generate", json=req)
+    job = await wait_for_job(client, res.json()["jobId"])
+    assert job["status"] == "failed" and job["error"]["code"] == "ai.invalid_output"
+
+
+async def test_parent_email_and_narrative_carry_tone_and_language(runtime: Runtime, client: AsyncClient) -> None:
+    email = await _run(
+        client,
+        runtime,
+        "content.parent_email",
+        PARENT_EMAIL,
+        "pe1",
+        topic="math progress",
+        purpose="share good news",
+        tone="warm",
+        language="es",
+    )
+    system = runtime.provider.calls[0][0]["content"]
+    assert "Purpose: share good news" in system and "Tone: warm" in system and "Language: es" in system
+    assert email["draft"]["subject"].startswith("Ava")
+    narrative = await _run(client, runtime, "content.narrative", NARRATIVE, "na1", topic="Ava")
+    assert narrative["draft"]["strengths"] == ["careful work", "on time"]
+
+
+async def test_differentiation_needs_exactly_three_levels(runtime: Runtime, client: AsyncClient) -> None:
+    result = await _run(client, runtime, "content.differentiation", DIFFERENTIATION, "df1", topic="Story structure")
+    assert [lv["level"] for lv in result["draft"]["levels"]] == ["support", "core", "extension"]
+    two = {"levels": DIFFERENTIATION["levels"][:2]}
+    runtime.provider = FakeProvider(scripted_replies=[json.dumps(two), json.dumps(two)])
+    res = await client.post(
+        "/v1/content/generate", json=content_request(capability="content.differentiation", traceId="df2")
+    )
+    job = await wait_for_job(client, res.json()["jobId"])
+    assert job["status"] == "failed"
+
+
+async def test_teacher_insight_narrates_the_data_block(runtime: Runtime, client: AsyncClient) -> None:
+    runtime.provider = FakeProvider(scripted_replies=[json.dumps(INSIGHT)])
+    req = content_request(capability="insight.teacher", traceId="in1")
+    req["context"] = {
+        "courseId": None,
+        "lessonId": None,
+        "blocks": [{"id": "D1", "label": "DATA", "text": "missing work: 6 (was 2); average score: 84%"}],
+    }
+    res = await client.post("/v1/content/generate", json=req)
+    job = await wait_for_job(client, res.json()["jobId"])
+    assert job["status"] == "done", job
+    assert job["result"]["promptVersion"] == "insight.teacher@1"
+    assert len(job["result"]["draft"]["observations"]) == 2
+    assert 'label="DATA"' in runtime.provider.calls[0][0]["content"]

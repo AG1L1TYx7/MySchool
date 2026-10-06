@@ -27,11 +27,28 @@ export type ContentCapability =
   | 'content.quiz'
   | 'content.flashcards'
   | 'content.summary'
-  | 'content.conference';
+  | 'content.conference'
+  | 'content.lesson_plan'
+  | 'content.parent_email'
+  | 'content.narrative'
+  | 'content.differentiation'
+  | 'grading.rubric'
+  | 'insight.teacher';
 const TEXT_CAPABILITIES: readonly ContentCapability[] = [
   'content.summary',
   'content.conference',
+  'content.lesson_plan',
+  'content.parent_email',
+  'content.narrative',
+  'content.differentiation',
+  'grading.rubric',
+  'insight.teacher',
 ];
+const DRAFT_KINDS: Partial<Record<ContentCapability, string>> = {
+  'content.parent_email': 'parent_email',
+  'content.narrative': 'narrative',
+  'content.differentiation': 'differentiation',
+};
 
 export interface PublicJob {
   id: string;
@@ -206,7 +223,10 @@ export class AiContentService {
    * finished draft becomes a lesson summary or a conference note instead of H5P content.
    */
   async startText(
-    capability: 'content.summary' | 'content.conference',
+    capability: Exclude<
+      ContentCapability,
+      'content.quiz' | 'content.flashcards'
+    >,
     spec: {
       topic: string;
       subject: string;
@@ -214,6 +234,15 @@ export class AiContentService {
       language: string;
       lessonId?: string;
       studentId?: string;
+      classId?: string;
+      courseId?: string;
+      submissionId?: string;
+      assignmentId?: string;
+      insightId?: string;
+      durationMinutes?: number;
+      purpose?: string;
+      tone?: string;
+      standard?: string | null;
     },
     context: ContentRequest['context'],
     actor: AuthenticatedUser,
@@ -233,9 +262,17 @@ export class AiContentService {
         subject: spec.subject,
         gradeLevel: spec.gradeLevel,
         language: spec.language,
-        standard: null,
+        standard: spec.standard ?? null,
         lessonId: spec.lessonId,
         studentId: spec.studentId,
+        classId: spec.classId,
+        courseId: spec.courseId,
+        submissionId: spec.submissionId,
+        assignmentId: spec.assignmentId,
+        insightId: spec.insightId,
+        durationMinutes: spec.durationMinutes,
+        purpose: spec.purpose,
+        tone: spec.tone,
       },
       context,
     };
@@ -422,6 +459,102 @@ export class AiContentService {
           promptVersion: r.promptVersion,
           aiJobId: job.id,
         },
+      });
+      return row.id;
+    }
+    if (job.capability === 'content.lesson_plan') {
+      const row = await this.prisma.lessonPlan.create({
+        data: {
+          id: newId(),
+          organizationId: job.organizationId ?? '',
+          authorId: job.userId,
+          classId: spec.classId ?? null,
+          courseId: spec.courseId ?? null,
+          lessonId: spec.lessonId ?? null,
+          title: str('title') || spec.topic,
+          topic: spec.topic,
+          durationMinutes: spec.durationMinutes ?? 45,
+          gradeLevel: spec.gradeLevel || null,
+          subject: spec.subject || null,
+          standardCodes: spec.standard ?? null,
+          content: JSON.stringify(draft),
+          aiModel: model,
+          promptVersion: r.promptVersion,
+          aiJobId: job.id,
+        },
+      });
+      return row.id;
+    }
+    const kind = DRAFT_KINDS[job.capability as ContentCapability];
+    if (kind) {
+      const row = await this.prisma.teacherDraft.create({
+        data: {
+          id: newId(),
+          organizationId: job.organizationId ?? '',
+          authorId: job.userId,
+          kind,
+          studentId: spec.studentId ?? null,
+          lessonId: spec.lessonId ?? null,
+          classId: spec.classId ?? null,
+          language: spec.language,
+          title: str('subject') || str('title') || spec.topic,
+          content: JSON.stringify(draft),
+          aiModel: model,
+          promptVersion: r.promptVersion,
+          aiJobId: job.id,
+        },
+      });
+      return row.id;
+    }
+    if (job.capability === 'insight.teacher' && spec.insightId) {
+      const row = await this.prisma.classInsight.update({
+        where: { id: spec.insightId },
+        data: {
+          narrative: JSON.stringify(draft),
+          aiModel: model,
+          promptVersion: r.promptVersion,
+          aiJobId: job.id,
+        },
+      });
+      return row.id;
+    }
+    if (job.capability === 'grading.rubric' && spec.submissionId) {
+      const submission = await this.prisma.assignmentSubmission.findUnique({
+        where: { id: spec.submissionId },
+        select: { assignmentId: true, studentId: true },
+      });
+      if (!submission) return null;
+      const criteria = Array.isArray(draft.criteria)
+        ? (draft.criteria as Array<{ confidence?: number }>)
+        : [];
+      const overall = (draft.overall ?? {}) as {
+        score?: number;
+        maxPoints?: number;
+      };
+      const confidence = criteria.length
+        ? Math.min(...criteria.map((c) => Number(c.confidence ?? 0)))
+        : 0;
+      const data = {
+        assignmentId: submission.assignmentId,
+        studentId: submission.studentId,
+        requestedById: job.userId,
+        content: JSON.stringify(draft),
+        score: Number(overall.score ?? 0),
+        maxPoints: Number(overall.maxPoints ?? 0),
+        confidence: Math.round(confidence * 100) / 100,
+        needsHumanReview: draft.needsHumanReview !== false,
+        flag: typeof draft.flag === 'string' ? draft.flag : null,
+        status: 'PENDING' as const,
+        reviewedById: null,
+        reviewedAt: null,
+        aiModel: model,
+        promptVersion: r.promptVersion,
+        aiJobId: job.id,
+      };
+      const row = await this.prisma.gradingSuggestion.upsert({
+        where: { submissionId: spec.submissionId },
+        create: { id: newId(), submissionId: spec.submissionId, ...data },
+        update: data,
       });
       return row.id;
     }

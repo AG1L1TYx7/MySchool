@@ -375,6 +375,9 @@ model Organization {
   badges Badge[]
   quests Quest[]
 
+  lessonPlans   LessonPlan[]
+  teacherDrafts TeacherDraft[]
+
   @@index([name])
   @@index([isActive, deletedAt])
   @@map("Organizations")
@@ -455,6 +458,14 @@ model User {
   rewardsGiven  RewardTransaction[]
   badgesGiven   StudentBadge[]
   questsCreated Quest[]
+
+  lessonPlans        LessonPlan[]
+  gradingRequests    GradingSuggestion[] @relation("GradingRequestedBy")
+  gradingReviews     GradingSuggestion[] @relation("GradingReviewedBy")
+  teacherDrafts      TeacherDraft[]
+  classInsights      ClassInsight[]
+  substituteAccess   SubstituteAccess[]  @relation("SubstituteUser")
+  substitutesGranted SubstituteAccess[]  @relation("SubstituteGrantedBy")
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -560,6 +571,9 @@ model Student {
   quests            Quest[]
   questProgress     QuestProgress[]
 
+  gradingSuggestions GradingSuggestion[]
+  teacherDrafts      TeacherDraft[]
+
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
   @@index([organizationId, gradeLevel])
@@ -622,6 +636,8 @@ model Course {
   prerequisites CoursePrerequisite[] @relation("CoursePrerequisites")
   requiredBy    CoursePrerequisite[] @relation("CourseRequiredBy")
 
+  lessonPlans LessonPlan[]
+
   @@unique([organizationId, courseCode])
   @@index([organizationId, status, deletedAt])
   @@index([organizationId, subject, gradeLevel])
@@ -681,6 +697,9 @@ model Lesson {
 
   completions LessonCompletion[]
 
+  lessonPlans   LessonPlan[]
+  teacherDrafts TeacherDraft[]
+
   @@index([moduleId, sortOrder])
   @@map("Lessons")
 }
@@ -731,6 +750,10 @@ model Class {
   conversations    Conversation[]
 
   quests Quest[]
+
+  lessonPlans LessonPlan[]
+  insights    ClassInsight[]
+  substitutes SubstituteAccess[]
 
   @@index([organizationId, term, status, deletedAt])
   @@index([courseId])
@@ -863,6 +886,8 @@ model Assignment {
   marks         AssignmentMark[]
   standards     AssignmentStandard[]
 
+  suggestions GradingSuggestion[]
+
   @@index([classId, status, dueAt])
   @@index([organizationId, deletedAt])
   @@map("Assignments")
@@ -884,6 +909,8 @@ model AssignmentSubmission {
   student    Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   files      SubmissionFile[]
   grade      Grade?
+
+  suggestion GradingSuggestion?
 
   @@unique([assignmentId, studentId, attemptNumber])
   @@index([studentId, submittedAt])
@@ -2030,4 +2057,151 @@ model QuestProgress {
 
   @@unique([questId, studentId])
   @@map("QuestProgress")
+}
+
+// ---------------------------------------------------------------------------
+// Teacher assistant (Release 2 slice 15, docs/13 section 8, docs/02 section 19)
+// ---------------------------------------------------------------------------
+
+enum PlanStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LessonPlan {
+  id              String     @id @map("Id") @db.Char(36)
+  organizationId  String     @map("OrganizationId") @db.Char(36)
+  authorId        String     @map("AuthorId") @db.Char(36)
+  classId         String?    @map("ClassId") @db.Char(36)
+  courseId        String?    @map("CourseId") @db.Char(36)
+  lessonId        String?    @map("LessonId") @db.Char(36)
+  title           String     @map("Title") @db.VarChar(200)
+  topic           String     @map("Topic") @db.VarChar(200)
+  durationMinutes Int        @default(45) @map("DurationMinutes")
+  gradeLevel      String?    @map("GradeLevel") @db.VarChar(16)
+  subject         String?    @map("Subject") @db.VarChar(100)
+  standardCodes   String?    @map("StandardCodes") @db.Text
+  content         String     @map("Content") @db.Text
+  status          PlanStatus @default(DRAFT) @map("Status")
+  scheduledOn     DateTime?  @map("ScheduledOn") @db.Date
+  aiModel         String?    @map("AiModel") @db.VarChar(100)
+  promptVersion   String?    @map("PromptVersion") @db.VarChar(60)
+  aiJobId         String?    @map("AiJobId") @db.Char(36)
+  createdAt       DateTime   @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt       DateTime   @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  class        Class?       @relation(fields: [classId], references: [id], onDelete: SetNull)
+  course       Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, authorId, updatedAt])
+  @@index([classId, scheduledOn])
+  @@map("LessonPlans")
+}
+
+model GradingSuggestion {
+  id               String           @id @map("Id") @db.Char(36)
+  submissionId     String           @unique @map("SubmissionId") @db.Char(36)
+  assignmentId     String           @map("AssignmentId") @db.Char(36)
+  studentId        String           @map("StudentId") @db.Char(36)
+  requestedById    String           @map("RequestedById") @db.Char(36)
+  content          String           @map("Content") @db.Text
+  score            Decimal          @map("Score") @db.Decimal(7, 2)
+  maxPoints        Decimal          @map("MaxPoints") @db.Decimal(7, 2)
+  confidence       Decimal          @map("Confidence") @db.Decimal(3, 2)
+  needsHumanReview Boolean          @default(true) @map("NeedsHumanReview")
+  flag             String?          @map("Flag") @db.Text
+  status           SuggestionStatus @default(PENDING) @map("Status")
+  reviewedById     String?          @map("ReviewedById") @db.Char(36)
+  reviewedAt       DateTime?        @map("ReviewedAt") @db.DateTime(6)
+  aiModel          String?          @map("AiModel") @db.VarChar(100)
+  promptVersion    String?          @map("PromptVersion") @db.VarChar(60)
+  aiJobId          String?          @map("AiJobId") @db.Char(36)
+  createdAt        DateTime         @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt        DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  submission  AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  assignment  Assignment           @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student     Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requestedBy User                 @relation("GradingRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy  User?                @relation("GradingReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([assignmentId, status])
+  @@map("GradingSuggestions")
+}
+
+model TeacherDraft {
+  id             String   @id @map("Id") @db.Char(36)
+  organizationId String   @map("OrganizationId") @db.Char(36)
+  authorId       String   @map("AuthorId") @db.Char(36)
+  kind           String   @map("Kind") @db.VarChar(30)
+  studentId      String?  @map("StudentId") @db.Char(36)
+  lessonId       String?  @map("LessonId") @db.Char(36)
+  classId        String?  @map("ClassId") @db.Char(36)
+  language       String   @default("en") @map("Language") @db.VarChar(16)
+  title          String   @map("Title") @db.VarChar(200)
+  content        String   @map("Content") @db.Text
+  status         String   @default("draft") @map("Status") @db.VarChar(20)
+  aiModel        String?  @map("AiModel") @db.VarChar(100)
+  promptVersion  String?  @map("PromptVersion") @db.VarChar(60)
+  aiJobId        String?  @map("AiJobId") @db.Char(36)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  student      Student?     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([authorId, kind, createdAt])
+  @@index([studentId])
+  @@map("TeacherDrafts")
+}
+
+model ClassInsight {
+  id                String   @id @map("Id") @db.Char(36)
+  classId           String   @map("ClassId") @db.Char(36)
+  weekStart         DateTime @map("WeekStart") @db.Date
+  requestedById     String   @map("RequestedById") @db.Char(36)
+  data              String   @map("Data") @db.Text
+  narrative         String?  @map("Narrative") @db.Text
+  practiceContentId String?  @map("PracticeContentId") @db.Char(36)
+  aiModel           String?  @map("AiModel") @db.VarChar(100)
+  promptVersion     String?  @map("PromptVersion") @db.VarChar(60)
+  aiJobId           String?  @map("AiJobId") @db.Char(36)
+  createdAt         DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt         DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  class       Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  requestedBy User  @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@unique([classId, weekStart])
+  @@map("ClassInsights")
+}
+
+model SubstituteAccess {
+  id          String   @id @map("Id") @db.Char(36)
+  classId     String   @map("ClassId") @db.Char(36)
+  userId      String   @map("UserId") @db.Char(36)
+  createdById String   @map("CreatedById") @db.Char(36)
+  startsAt    DateTime @map("StartsAt") @db.DateTime(6)
+  endsAt      DateTime @map("EndsAt") @db.DateTime(6)
+  note        String?  @map("Note") @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  class     Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user      User  @relation("SubstituteUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User  @relation("SubstituteGrantedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([classId, endsAt])
+  @@index([userId, endsAt])
+  @@map("SubstituteAccess")
 }
