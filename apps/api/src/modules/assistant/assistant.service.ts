@@ -19,6 +19,17 @@ import { MessagingService } from '../messaging/messaging.service';
 import { weekWindow } from '../motivation/motivation-rules';
 import { ReportCardsService } from '../report-cards/report-cards.service';
 import {
+  composeEmail,
+  feedbackFromSuggestion,
+  insightDataLines,
+  rubricBlock,
+  scaledScore,
+  shouldRevokeTeacherRow,
+  topTopics as rankTopics,
+  validSubstituteWindow,
+  type RubricCriterionDef,
+} from './assistant-rules';
+import {
   ApproveSuggestionDto,
   BulkNarrativeDto,
   DifferentiationDto,
@@ -531,14 +542,7 @@ export class AssistantService {
     }>(s.content, {});
     const score =
       dto.score ?? this.scaled(Number(s.score), Number(s.maxPoints), max);
-    const feedback =
-      dto.feedback ??
-      [
-        draft.summary ?? '',
-        ...(draft.criteria ?? []).map((c) => c.feedback ?? ''),
-      ]
-        .filter(Boolean)
-        .join('\n');
+    const feedback = dto.feedback ?? feedbackFromSuggestion(draft);
     const rubricScores =
       s.assignment.rubricId && draft.criteria?.length
         ? draft.criteria.map((c) => ({
@@ -610,27 +614,14 @@ export class AssistantService {
     maxPoints: unknown;
     rubric: { criteria: string } | null;
   }): string {
-    const criteria = parse<
-      Array<{
-        id: string;
-        title: string;
-        description?: string;
-        maxPoints: number;
-      }>
-    >(assignment.rubric?.criteria ?? null, []);
-    if (criteria.length === 0)
-      return `overall | ${Number(assignment.maxPoints)} | Overall quality: completeness, accuracy and clarity`;
-    return criteria
-      .map(
-        (c) =>
-          `${c.id} | ${c.maxPoints} | ${c.title}${c.description ? `: ${c.description}` : ''}`,
-      )
-      .join('\n');
+    return rubricBlock(
+      parse<RubricCriterionDef[]>(assignment.rubric?.criteria ?? null, []),
+      Number(assignment.maxPoints),
+    );
   }
 
   private scaled(score: number, max: number, assignmentMax: number): number {
-    if (!max) return 0;
-    return Math.round((score / max) * assignmentMax * 100) / 100;
+    return scaledScore(score, max, assignmentMax);
   }
 
   private async gradableAssignment(id: string, actor: AuthenticatedUser) {
@@ -867,18 +858,7 @@ export class AssistantService {
       closing?: string;
       signature?: string;
     }>(draft.content, {});
-    const text = [
-      content.subject ? `${content.subject}` : draft.title,
-      '',
-      content.greeting ?? '',
-      '',
-      ...(content.body ?? []).flatMap((p) => [p, '']),
-      content.closing ?? '',
-      content.signature ?? '',
-    ]
-      .join('\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+    const text = composeEmail(content, draft.title);
     const guardians = await this.prisma.studentGuardian.findMany({
       where: { studentId: draft.studentId, receivesNotifications: true },
       select: { guardianUserId: true },
@@ -1282,15 +1262,11 @@ export class AssistantService {
         })
       : [];
     const titleOf = new Map(lessons.map((l) => [l.id, l.title]));
-    const byTopic = new Map<string, number>();
-    for (const c of thisWeek) {
-      const key = c.lessonId ? (titleOf.get(c.lessonId) ?? c.title) : c.title;
-      byTopic.set(key, (byTopic.get(key) ?? 0) + 1);
-    }
-    const topTopics = [...byTopic.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([topic, count]) => ({ topic, conversations: count }));
+    const topTopics = rankTopics(
+      thisWeek.map((c) => ({
+        topic: c.lessonId ? (titleOf.get(c.lessonId) ?? c.title) : c.title,
+      })),
+    );
     let missing = 0;
     const scores: number[] = [];
     for (const a of assignments) {
@@ -1346,22 +1322,7 @@ export class AssistantService {
         : null,
       lessonsCompletedThisWeek: completions,
     };
-    const dataText = [
-      `students enrolled: ${data.students}`,
-      `tutor: ${data.tutor.studentsWhoUsedIt} students used the tutor this week; ${data.tutor.conversationsThisWeek} conversations (last week ${data.tutor.conversationsLastWeek}); ${data.tutor.refusals} refused messages`,
-      ...topTopics.map(
-        (t) => `tutor topic: ${t.topic} (${t.conversations} conversations)`,
-      ),
-      `missing work: ${data.work.missingItems} items across ${data.work.assignmentsDueLast14Days} assignments due in the last 14 days`,
-      `submissions this week: ${submissionsThisWeek}`,
-      `average score on recent assignments: ${data.work.averageScoreRecent === null ? 'none graded' : `${data.work.averageScoreRecent}%`}`,
-      ...lowScoring.map(
-        (a) => `low-scoring assignment: ${a.title} average ${a.average}%`,
-      ),
-      `attendance this week: ${data.attendance.presentRate === null ? 'no records' : `${data.attendance.presentRate}% present over ${attendance.length} records`}`,
-      `class average grade: ${data.classAverage === null ? 'not available' : `${data.classAverage}%`}`,
-      `lessons finished this week: ${completions}`,
-    ].join('\n');
+    const dataText = insightDataLines(data).join('\n');
     const existing = await this.prisma.classInsight.findUnique({
       where: { classId_weekStart: { classId, weekStart: startsAt } },
     });
@@ -1536,10 +1497,7 @@ export class AssistantService {
     const klass = await this.manageableClass(classId, actor);
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
-    if (
-      !(endsAt.getTime() > startsAt.getTime()) ||
-      endsAt.getTime() < Date.now()
-    )
+    if (!validSubstituteWindow(startsAt, endsAt))
       throw new BadRequestException({
         code: 'request.invalid',
         detail: 'The access must end after it starts, in the future.',
@@ -1659,8 +1617,15 @@ export class AssistantService {
     const row = await this.prisma.classTeacher.findUnique({
       where: { classId_teacherId: { classId, teacherId: userId } },
     });
-    if (!row || row.isPrimary) return;
-    if (earliestGrant && row.assignedAt < earliestGrant.timestamp) return;
+    if (
+      !row ||
+      !shouldRevokeTeacherRow({
+        stillActiveAccess: stillActive,
+        row,
+        earliestGrantAt: earliestGrant?.timestamp ?? null,
+      })
+    )
+      return;
     await this.prisma.classTeacher.delete({ where: { id: row.id } });
   }
 

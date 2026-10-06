@@ -21,6 +21,7 @@ import {
   type ContentJobSnapshot,
   type ContentRequest,
 } from './ai.client';
+import { summariseSuggestion } from '../assistant/assistant-rules';
 import { GenerateContentDto, RegenerateDto } from './dto/ai-content.dto';
 
 export type ContentCapability =
@@ -524,26 +525,17 @@ export class AiContentService {
         select: { assignmentId: true, studentId: true },
       });
       if (!submission) return null;
-      const criteria = Array.isArray(draft.criteria)
-        ? (draft.criteria as Array<{ confidence?: number }>)
-        : [];
-      const overall = (draft.overall ?? {}) as {
-        score?: number;
-        maxPoints?: number;
-      };
-      const confidence = criteria.length
-        ? Math.min(...criteria.map((c) => Number(c.confidence ?? 0)))
-        : 0;
+      const summary = summariseSuggestion(draft);
       const data = {
         assignmentId: submission.assignmentId,
         studentId: submission.studentId,
         requestedById: job.userId,
         content: JSON.stringify(draft),
-        score: Number(overall.score ?? 0),
-        maxPoints: Number(overall.maxPoints ?? 0),
-        confidence: Math.round(confidence * 100) / 100,
-        needsHumanReview: draft.needsHumanReview !== false,
-        flag: typeof draft.flag === 'string' ? draft.flag : null,
+        score: summary.score,
+        maxPoints: summary.maxPoints,
+        confidence: summary.confidence,
+        needsHumanReview: summary.needsHumanReview,
+        flag: summary.flag,
         status: 'PENDING' as const,
         reviewedById: null,
         reviewedAt: null,
