@@ -5360,7 +5360,8 @@
                 "message",
                 "attendance",
                 "system",
-                "ai"
+                "ai",
+                "digest"
               ]
             }
           },
@@ -8861,6 +8862,270 @@
         ]
       }
     },
+    "/api/v1/family/home": {
+      "get": {
+        "operationId": "FamilyController_home_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every child of the signed-in parent (or the student): classes and grades, attendance, missing and upcoming work, recent grades",
+        "tags": [
+          "Family"
+        ]
+      }
+    },
+    "/api/v1/family/digest": {
+      "get": {
+        "operationId": "FamilyController_digest_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The weekly digest as it would be emailed, in the parent’s language",
+        "tags": [
+          "Family"
+        ]
+      }
+    },
+    "/api/v1/lessons/{id}/summaries": {
+      "get": {
+        "operationId": "SummariesController_list_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Family-language summaries of a lesson: staff see drafts, families see released ones",
+        "tags": [
+          "Family"
+        ]
+      },
+      "post": {
+        "operationId": "SummariesController_generate_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSummaryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the AI service for a draft summary in a language; poll /ai/jobs/{id}",
+        "tags": [
+          "Family"
+        ]
+      }
+    },
+    "/api/v1/lesson-summaries/{id}": {
+      "patch": {
+        "operationId": "SummariesController_update_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSummaryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit the draft, or release it to families (status released)",
+        "tags": [
+          "Family"
+        ]
+      },
+      "delete": {
+        "operationId": "SummariesController_remove_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Family"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/conference-notes": {
+      "get": {
+        "operationId": "SummariesController_notes_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "AI-drafted talking points for a family conference (the student’s teachers, counselors, administrators)",
+        "tags": [
+          "Family"
+        ]
+      },
+      "post": {
+        "operationId": "SummariesController_generateNotes_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateConferenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Family"
+        ]
+      }
+    },
+    "/api/v1/conference-notes/{id}": {
+      "delete": {
+        "operationId": "SummariesController_removeNote_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Family"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -10945,7 +11210,8 @@
               "message",
               "attendance",
               "system",
-              "ai"
+              "ai",
+              "digest"
             ]
           },
           "inApp": {
@@ -12090,6 +12356,76 @@
         },
         "required": [
           "comment"
+        ]
+      },
+      "GenerateSummaryDto": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "default": "es",
+            "description": "The family's language"
+          }
+        },
+        "required": [
+          "language"
+        ]
+      },
+      "UpdateSummaryDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "keyIdeas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tryAtHome": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "released"
+            ],
+            "description": "released makes it visible to families"
+          }
+        }
+      },
+      "GenerateConferenceDto": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "default": "en"
+          }
+        },
+        "required": [
+          "language"
         ]
       }
     }

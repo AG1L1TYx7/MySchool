@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.envelopes import Actor, ContextBlock
 
-ContentCapability = Literal["content.quiz", "content.flashcards"]
+ContentCapability = Literal["content.quiz", "content.flashcards", "content.summary", "content.conference"]
 QuestionType = Literal["multiple_choice", "true_false", "fill_blank"]
 DEFAULT_QUESTION_TYPES: list[QuestionType] = ["multiple_choice", "true_false"]
 
@@ -101,7 +101,35 @@ class FlashcardsDraft(BaseModel):
     cards: list[Flashcard] = Field(min_length=1, max_length=60)
 
 
-DRAFT_MODELS: dict[str, type[BaseModel]] = {"content.quiz": QuizDraft, "content.flashcards": FlashcardsDraft}
+class SummaryDraft(BaseModel):
+    """A family-language lesson summary a teacher reviews before release (docs/13 section 7)."""
+
+    title: str = Field(min_length=1, max_length=200)
+    language: str = Field(default="en", max_length=16)
+    summary: str = Field(min_length=20, max_length=4000)
+    keyIdeas: list[str] = Field(default_factory=list, max_length=8)
+    questionsToAsk: list[str] = Field(default_factory=list, max_length=6)
+    tryAtHome: list[str] = Field(default_factory=list, max_length=4)
+
+
+class ConferenceDraft(BaseModel):
+    """Talking points for a family conference, built only from the numbers the LMS supplied."""
+
+    language: str = Field(default="en", max_length=16)
+    opening: str = Field(min_length=5, max_length=600)
+    strengths: list[str] = Field(default_factory=list, max_length=6)
+    concerns: list[str] = Field(default_factory=list, max_length=4)
+    talkingPoints: list[str] = Field(min_length=1, max_length=8)
+    questionsForFamily: list[str] = Field(default_factory=list, max_length=4)
+    nextSteps: list[str] = Field(default_factory=list, max_length=4)
+
+
+DRAFT_MODELS: dict[str, type[BaseModel]] = {
+    "content.quiz": QuizDraft,
+    "content.flashcards": FlashcardsDraft,
+    "content.summary": SummaryDraft,
+    "content.conference": ConferenceDraft,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +160,7 @@ class ContentResult(BaseModel):
     promptVersion: str
     model: dict[str, str]
     draft: dict[str, Any]
-    h5p: H5pPackage
+    h5p: H5pPackage | None = None
     validation: Validation
     usage: ContentUsage
     cached: bool = False

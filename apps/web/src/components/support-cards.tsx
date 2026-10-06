@@ -5,15 +5,21 @@ import { MotionItem, MotionList } from '@/components/motion';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { ApiError, api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { CONSENT_REASONS, KIND_LABELS, KIND_TONES, PLAN_LABELS, type Accommodation, type AiConsent, type BehaviorRecord, type CounselorNote } from '@/lib/support';
+import { labelFor, useI18n } from '@/lib/i18n';
+import { KIND_TONES, PLAN_LABELS, type Accommodation, type AiConsent, type BehaviorRecord, type CounselorNote } from '@/lib/support';
 import { fmtDate, toLocalInput, fromLocalInput } from '@/lib/academics';
+import type { MessageKey } from '@/locales/en';
 
 type Busy = { error?: string; ok?: string; busy?: boolean };
 const quiet = (err: unknown) => (err instanceof ApiError && (err.problem.status === 403 || err.problem.status === 404) ? null : errorMessage(err));
 
-/** IEP and 504 accommodations: the student's own teachers, counselors and administrators; parents read. */
+/**
+ * IEP and 504 accommodations: the student's own teachers, counselors and administrators; parents read.
+ * What families see is in their language; the staff editing form stays in English this release.
+ */
 export function AccommodationCard({ studentId }: { studentId: string }) {
   const { can } = useAuth();
+  const t = useI18n().t;
   const manage = can('support.accommodations.manage');
   const [plan, setPlan] = useState<Accommodation | null | undefined>(undefined);
   const [hidden, setHidden] = useState(false);
@@ -46,42 +52,47 @@ export function AccommodationCard({ studentId }: { studentId: string }) {
       setState({ error: errorMessage(err) });
     }
   }
-  const flags = [['readAloud', 'Read aloud'], ['largeText', 'Larger text'], ['reducedMotion', 'Reduced motion'], ['reducedDistraction', 'Reduced distraction']] as const;
+  const flags: ReadonlyArray<readonly ['readAloud' | 'largeText' | 'reducedMotion' | 'reducedDistraction', MessageKey]> = [
+    ['readAloud', 'sup.readAloud'],
+    ['largeText', 'sup.largerText'],
+    ['reducedMotion', 'sup.reducedMotion'],
+    ['reducedDistraction', 'sup.reducedDistraction'],
+  ];
   return (
-    <Card title="Support plan (IEP / 504)" description="Applied in the product: extended time on due dates, read-aloud, larger text, reduced motion and a quieter layout. Seen only by this student's teachers, counselors, administrators and family.">
+    <Card title={t('sup.planTitle')} description={t('sup.planDesc')}>
       {state.error && <Alert>{state.error}</Alert>}
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
       {!manage &&
         (plan ? (
           <dl className="grid gap-2 text-sm md:grid-cols-2">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-slate-500">Plan</dt>
-              <dd className="text-slate-800">{PLAN_LABELS[plan.plan]}</dd>
+              <dt className="text-xs uppercase tracking-wide text-slate-500">{t('sup.plan')}</dt>
+              <dd className="text-slate-800">{labelFor('sup.plan', plan.plan, t)}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-slate-500">Extended time</dt>
-              <dd className="text-slate-800">{plan.extendedTimePercent ? `${plan.extendedTimePercent}% more time` : 'None'}</dd>
+              <dt className="text-xs uppercase tracking-wide text-slate-500">{t('sup.extendedTime')}</dt>
+              <dd className="text-slate-800">{plan.extendedTimePercent ? t('sup.moreTime', { n: plan.extendedTimePercent }) : t('common.none')}</dd>
             </div>
             <div className="md:col-span-2">
-              <dt className="text-xs uppercase tracking-wide text-slate-500">In the product</dt>
-              <dd className="text-slate-800">{flags.filter(([k]) => plan[k]).map(([, l]) => l).join(', ') || 'No display changes'}</dd>
+              <dt className="text-xs uppercase tracking-wide text-slate-500">{t('sup.inProduct')}</dt>
+              <dd className="text-slate-800">{flags.filter(([k]) => plan[k]).map(([, l]) => t(l)).join(', ') || t('sup.noDisplayChanges')}</dd>
             </div>
             {plan.notes && (
               <div className="md:col-span-2">
-                <dt className="text-xs uppercase tracking-wide text-slate-500">Notes</dt>
+                <dt className="text-xs uppercase tracking-wide text-slate-500">{t('sup.notes')}</dt>
                 <dd className="whitespace-pre-wrap text-slate-800">{plan.notes}</dd>
               </div>
             )}
           </dl>
         ) : (
-          <p className="text-sm text-slate-500">No accommodations recorded.</p>
+          <p className="text-sm text-slate-500">{t('sup.noPlan')}</p>
         ))}
       {manage && (
         <form onSubmit={save} className="grid gap-3 md:grid-cols-3" noValidate>
-          <Select label="Plan" value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>
-            {Object.entries(PLAN_LABELS).map(([k, v]) => (
+          <Select label={t('sup.plan')} value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>
+            {Object.keys(PLAN_LABELS).map((k) => (
               <option key={k} value={k}>
-                {v}
+                {labelFor('sup.plan', k, t)}
               </option>
             ))}
           </Select>
@@ -89,7 +100,7 @@ export function AccommodationCard({ studentId }: { studentId: string }) {
           <div className="grid grid-cols-2 gap-1 self-end pb-1 text-sm text-slate-700">
             {flags.map(([k, l]) => (
               <label key={k} className="flex items-center gap-2">
-                <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} /> {l}
+                <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} /> {t(l)}
               </label>
             ))}
           </div>
@@ -120,6 +131,7 @@ export function AccommodationCard({ studentId }: { studentId: string }) {
 /** Behaviour records with the school's family-visibility rule. */
 export function BehaviorCard({ studentId }: { studentId: string }) {
   const { can } = useAuth();
+  const t = useI18n().t;
   const manage = can('support.behavior.manage');
   const [rows, setRows] = useState<BehaviorRecord[] | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -151,15 +163,15 @@ export function BehaviorCard({ studentId }: { studentId: string }) {
     }
   }
   return (
-    <Card title="Behaviour" description={manage ? 'Positive notes and concerns. Families see what the school rule allows unless a record says otherwise.' : 'Notes the school has shared with you.'}>
+    <Card title={t('sup.behaviour')} description={manage ? t('sup.behaviourDescManage') : t('sup.behaviourDescFamily')}>
       {state.error && <Alert>{state.error}</Alert>}
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
-      {rows && rows.length === 0 && <p className="text-sm text-slate-500">Nothing recorded.</p>}
+      {rows && rows.length === 0 && <p className="text-sm text-slate-500">{t('sup.nothingRecorded')}</p>}
       <MotionList className="divide-y divide-slate-100">
         {(rows ?? []).map((r) => (
           <MotionItem key={r.id} className="py-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-xs ${KIND_TONES[r.kind]}`}>{KIND_LABELS[r.kind]}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${KIND_TONES[r.kind]}`}>{labelFor('sup.kind', r.kind, t)}</span>
               <span className="font-medium text-slate-900">{r.title}</span>
               <span className="text-xs text-slate-500">
                 {fmtDate(r.occurredAt)}
@@ -168,14 +180,14 @@ export function BehaviorCard({ studentId }: { studentId: string }) {
               </span>
               {r.canEdit && (
                 <button type="button" className="ml-auto text-xs text-slate-500 hover:text-red-700" onClick={() => void api(`/behavior/${r.id}`, { method: 'DELETE' }).then(load).catch((err) => setState({ error: errorMessage(err) }))}>
-                  Remove
+                  {t('common.remove')}
                 </button>
               )}
             </div>
             {r.description && <p className="mt-1 whitespace-pre-wrap text-slate-700">{r.description}</p>}
             {r.actionTaken && (
               <p className="mt-1 text-slate-600">
-                <span className="font-medium">Action:</span> {r.actionTaken}
+                <span className="font-medium">{t('sup.action')}</span> {r.actionTaken}
               </p>
             )}
           </MotionItem>
@@ -184,9 +196,9 @@ export function BehaviorCard({ studentId }: { studentId: string }) {
       {manage && (
         <form onSubmit={add} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 md:grid-cols-3" noValidate>
           <Select label="Kind" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
-            {Object.entries(KIND_LABELS).map(([k, v]) => (
+            {(['positive', 'concern', 'incident'] as const).map((k) => (
               <option key={k} value={k}>
-                {v}
+                {labelFor('sup.kind', k, t)}
               </option>
             ))}
           </Select>
@@ -220,6 +232,7 @@ export function BehaviorCard({ studentId }: { studentId: string }) {
 /** COPPA consent for AI features: parents decide; administrators can record the school's decision. */
 export function ConsentCard({ studentId }: { studentId: string }) {
   const { can } = useAuth();
+  const { t, tag } = useI18n();
   const manage = can('support.consent.manage');
   const [consent, setConsent] = useState<AiConsent | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -237,23 +250,25 @@ export function ConsentCard({ studentId }: { studentId: string }) {
     void load();
   }, [load]);
   if (hidden || !consent) return null;
-  const decide = (status: 'granted' | 'declined') => void api(`/students/${studentId}/ai-consent`, { method: 'PUT', body: { status } }).then(load).then(() => setState({ ok: status === 'granted' ? 'AI features are on for this student.' : 'AI features are off for this student.' })).catch((err) => setState({ error: errorMessage(err) }));
+  const decide = (status: 'granted' | 'declined') => void api(`/students/${studentId}/ai-consent`, { method: 'PUT', body: { status } }).then(load).then(() => setState({ ok: status === 'granted' ? t('sup.allowed') : t('sup.declined') })).catch((err) => setState({ error: errorMessage(err) }));
+  const reasonKey = `sup.reason.${consent.reason}` as MessageKey;
+  const byKey = `sup.by.${consent.decidedBy ?? ''}` as MessageKey;
   return (
-    <Card title="AI tutor and content: consent" description={consent.under13 ? 'This student is under 13, so AI features follow COPPA consent rules.' : 'This student is 13 or older.'}>
+    <Card title={t('sup.consentTitle')} description={consent.under13 ? t('sup.under13') : t('sup.over13')}>
       {state.error && <Alert>{state.error}</Alert>}
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
       <p className="text-sm text-slate-800">
-        <span className={`mr-2 rounded-full px-2 py-0.5 text-xs ${consent.allowed ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-900'}`}>{consent.allowed ? 'AI features on' : 'AI features off'}</span>
-        {CONSENT_REASONS[consent.reason]}
-        {consent.decidedAt ? ` Decided ${new Date(consent.decidedAt).toLocaleDateString()} by the ${consent.decidedBy}.` : ''}
+        <span className={`mr-2 rounded-full px-2 py-0.5 text-xs ${consent.allowed ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-900'}`}>{consent.allowed ? t('sup.aiOn') : t('sup.aiOff')}</span>
+        {t(reasonKey)}
+        {consent.decidedAt ? ` ${t('sup.decided', { date: new Date(consent.decidedAt).toLocaleDateString(tag), by: t(byKey) })}` : ''}
       </p>
       {manage && consent.under13 && (
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => decide('granted')} disabled={consent.status === 'granted'}>
-            Allow AI features
+            {t('sup.allow')}
           </Button>
           <Button variant="secondary" onClick={() => decide('declined')} disabled={consent.status === 'declined'}>
-            Turn AI features off
+            {t('sup.turnOff')}
           </Button>
         </div>
       )}

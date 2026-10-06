@@ -7,6 +7,7 @@ import { NotForYou } from '@/components/not-for-you';
 import { Alert, Button, Card, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useI18n } from '@/lib/i18n';
 import type { ClassItem } from '@/lib/curriculum';
 import { kindLabel, type ReportCard } from '@/lib/gradebook';
 import type { SchoolStructure } from '@/lib/school';
@@ -15,6 +16,7 @@ import type { Paged } from '@/lib/students';
 /** Report cards and progress reports: staff generate, comment and publish; students and parents read. */
 export default function ReportCardsPage() {
   const { user, can } = useAuth();
+  const { t, n } = useI18n();
   const staff = can('report-cards.view.all');
   const allowed = staff || can('report-cards.view.own') || can('report-cards.view.child');
   const [cards, setCards] = useState<ReportCard[] | null>(null);
@@ -67,8 +69,8 @@ export default function ReportCardsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Report cards</h1>
-        <p className="text-sm text-slate-500">{staff ? 'Grades, comments, attendance and GPA per grading period. Generate drafts, add comments, then publish.' : 'Published report cards and progress reports.'}</p>
+        <h1 className="text-2xl font-semibold">{t('rc.title')}</h1>
+        <p className="text-sm text-slate-500">{staff ? t('rc.staffSubtitle') : t('rc.familySubtitle')}</p>
       </div>
       {state.error && <Alert>{state.error}</Alert>}
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
@@ -115,9 +117,9 @@ export default function ReportCardsPage() {
         </Card>
       )}
 
-      <Card title={staff ? 'Report cards' : 'Yours'} description={cards ? `${cards.length} report card${cards.length === 1 ? '' : 's'}.` : undefined}>
+      <Card title={staff ? t('rc.title') : t('rc.yours')} description={cards ? n('rc.count', cards.length) : undefined}>
         {!cards && <SkeletonRows rows={4} />}
-        {cards && cards.length === 0 && <p className="text-sm text-slate-500">{staff ? 'Nothing generated for these filters yet.' : 'No report cards published yet.'}</p>}
+        {cards && cards.length === 0 && <p className="text-sm text-slate-500">{staff ? t('rc.noneStaff') : t('rc.noneFamily')}</p>}
         <MotionList className="divide-y divide-slate-100">
           {(cards ?? []).map((c) => (
             <MotionItem key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
@@ -126,11 +128,11 @@ export default function ReportCardsPage() {
                   {c.student.lastName}, {c.student.firstName} · {kindLabel(c.kind)} · {c.gradingPeriod.name}
                 </Link>
                 <p className="text-xs text-slate-500">
-                  {c.gradingPeriod.yearName} · {c.gradingPeriod.termName} · {c.lines.length} class{c.lines.length === 1 ? '' : 'es'}
-                  {c.gpa !== null ? ` · GPA ${c.gpa.toFixed(2)}` : ''}
+                  {c.gradingPeriod.yearName} · {c.gradingPeriod.termName} · {n('rc.classes', c.lines.length)}
+                  {c.gpa !== null ? ` · ${t('rc.gpa', { gpa: c.gpa.toFixed(2) })}` : ''}
                 </p>
               </div>
-              <span className={`rounded-full px-2 py-0.5 text-xs ${c.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-900'}`}>{c.status === 'published' ? 'Published' : 'Draft'}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${c.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-900'}`}>{c.status === 'published' ? t('common.published') : t('common.draft')}</span>
             </MotionItem>
           ))}
         </MotionList>

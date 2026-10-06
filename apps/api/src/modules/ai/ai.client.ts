@@ -56,20 +56,28 @@ export interface ResultEnvelope {
 /** Content generation request (AI service /v1/content/generate). */
 export interface ContentRequest {
   traceId: string;
-  capability: 'content.quiz' | 'content.flashcards';
+  capability:
+    | 'content.quiz'
+    | 'content.flashcards'
+    | 'content.summary'
+    | 'content.conference';
   organizationId: string | null;
   actor: { userId: string; role: string; ageBand: string };
   request: {
     topic: string;
     subject: string;
     gradeLevel: string;
-    count: number;
-    difficulty: string;
-    questionTypes: string[];
+    /** Quiz and flashcard jobs only; the AI service rejects a count under 3, so text jobs leave these out. */
+    count?: number;
+    difficulty?: string;
+    questionTypes?: string[];
     language: string;
     standard: string | null;
     feedback?: string;
     previousDraft?: Record<string, unknown>;
+    /** Text jobs: what the finished draft attaches to. */
+    lessonId?: string;
+    studentId?: string;
   };
   context: {
     courseId: string | null;
@@ -91,7 +99,7 @@ export interface ContentJobSnapshot {
       title: string;
       params: Record<string, unknown>;
       maxScore: number;
-    };
+    } | null;
     validation: { valid: boolean; errors: string[] };
     usage: {
       promptTokens: number;

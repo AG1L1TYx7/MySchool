@@ -6,6 +6,7 @@ import { MotionItem, MotionList, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useI18n } from '@/lib/i18n';
 import type { ClassItem } from '@/lib/curriculum';
 import { EVENT_LABELS, EVENT_TYPES, type FeedItem } from '@/lib/school';
 
@@ -30,6 +31,7 @@ const TONE: Record<string, string> = { day_off: 'bg-amber-100 text-amber-900', e
 /** One calendar for everyone: days off, school and class events, due dates and term boundaries (docs/13 section 3). */
 export default function CalendarPage() {
   const { user, can } = useAuth();
+  const { t, n } = useI18n();
   const [month, setMonth] = useState(monthKey(new Date()));
   const [items, setItems] = useState<FeedItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,19 +93,19 @@ export default function CalendarPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Calendar</h1>
-          <p className="text-sm text-slate-500">Days off, school and class events, due dates and term boundaries for {user?.firstName}.</p>
+          <h1 className="text-2xl font-semibold">{t('cal.title')}</h1>
+          <p className="text-sm text-slate-500">{t('cal.subtitle', { name: user?.firstName ?? '' })}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" aria-label="Previous month" onClick={() => setMonth((m) => shift(m, -1))}>
+          <Button variant="secondary" aria-label={t('cal.prev')} onClick={() => setMonth((m) => shift(m, -1))}>
             ‹
           </Button>
           <span className="min-w-[160px] text-center text-sm font-medium text-slate-800">{monthTitle(month)}</span>
-          <Button variant="secondary" aria-label="Next month" onClick={() => setMonth((m) => shift(m, 1))}>
+          <Button variant="secondary" aria-label={t('cal.next')} onClick={() => setMonth((m) => shift(m, 1))}>
             ›
           </Button>
           <Button variant="ghost" onClick={() => setMonth(monthKey(new Date()))}>
-            Today
+            {t('cal.today')}
           </Button>
         </div>
       </div>
@@ -112,9 +114,9 @@ export default function CalendarPage() {
 
       {manage && <AddEvent onAdded={async () => { setOk('Event added.'); await load(); }} onError={setError} />}
 
-      <Card title={monthTitle(month)} description={items ? `${items.length} item${items.length === 1 ? '' : 's'} this month.` : undefined}>
+      <Card title={monthTitle(month)} description={items ? n('cal.items', items.length) : undefined}>
         {items === null && <SkeletonRows rows={4} />}
-        {items && grouped.length === 0 && <p className="text-sm text-slate-500">Nothing on the calendar this month.</p>}
+        {items && grouped.length === 0 && <p className="text-sm text-slate-500">{t('cal.nothing')}</p>}
         <MotionList as="div" className="space-y-4">
           {grouped.map(([day, list]) => (
             <MotionItem as="div" key={day} className="flex gap-4">
@@ -134,13 +136,13 @@ export default function CalendarPage() {
                       <span className="font-medium text-slate-900">{i.title}</span>
                     )}
                     <span className="text-xs text-slate-500">
-                      {i.allDay ? 'All day' : timeOf(i.startsAt)}
-                      {i.endsAt && !i.allDay ? ` to ${timeOf(i.endsAt)}` : ''}
+                      {i.allDay ? t('cal.allDay') : timeOf(i.startsAt)}
+                      {i.endsAt && !i.allDay ? t('cal.to', { time: timeOf(i.endsAt) }) : ''}
                       {i.className ? ` · ${i.className}` : ''}
                     </span>
                     {i.kind === 'event' && i.canEdit && (
                       <button type="button" className="ml-auto text-xs text-slate-500 hover:text-red-700" onClick={() => void remove(i.id)}>
-                        Remove
+                        {t('common.remove')}
                       </button>
                     )}
                   </li>
@@ -151,12 +153,12 @@ export default function CalendarPage() {
         </MotionList>
       </Card>
 
-      <Card title="Subscribe from your phone or Google Calendar" description="A private link that shows this calendar in any calendar app. Anyone with the link can read it, so keep it to yourself.">
+      <Card title={t('cal.subscribe')} description={t('cal.subscribeDesc')}>
         {subscription ? (
           <div className="flex flex-wrap items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-md bg-slate-100 px-3 py-2 text-xs">{subscription}</code>
             <Button variant="secondary" onClick={() => void copy()}>
-              {copied ? 'Copied' : 'Copy link'}
+              {copied ? t('cal.copied') : t('cal.copyLink')}
             </Button>
             <Button
               variant="ghost"

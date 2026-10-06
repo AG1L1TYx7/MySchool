@@ -40,7 +40,17 @@ export function startAiStub(
         : {};
       if (body) calls.push(envelope);
       if (req.url === '/v1/content/generate') {
-        const spec = envelope.request as { topic: string; count: number };
+        const spec = envelope.request as {
+          topic: string;
+          count?: number;
+          language?: string;
+        };
+        // The real service validates the spec (count 3..30 when present): mirror that so contract slips fail here.
+        if (spec.count !== undefined && (spec.count < 3 || spec.count > 30)) {
+          res.writeHead(422, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'count must be between 3 and 30' }));
+          return;
+        }
         const id = `job-${calls.length}`;
         jobs[id] = /fail/i.test(spec.topic)
           ? {
@@ -143,8 +153,51 @@ export function startAiStub(
 
 function stubResult(
   capability: string,
-  spec: { topic: string; count: number },
+  spec: { topic: string; count?: number; language?: string },
 ) {
+  const base = {
+    model: { provider: 'fake', name: 'fake' },
+    h5p: null,
+    validation: { valid: true, errors: [] },
+    usage: { promptTokens: 1, completionTokens: 1, latencyMs: 5, repairs: 0 },
+    cached: false,
+  };
+  const language = spec.language ?? 'en';
+  if (capability === 'content.summary') {
+    return {
+      ...base,
+      promptVersion: 'content.summary@1',
+      draft: {
+        title:
+          language === 'es'
+            ? `Resumen: ${spec.topic}`
+            : `Summary: ${spec.topic}`,
+        language,
+        summary:
+          language === 'es'
+            ? `Hoy la clase trabajó en ${spec.topic}.`
+            : `Today the class worked on ${spec.topic}.`,
+        keyIdeas: ['Idea one', 'Idea two'],
+        questionsToAsk: ['What did you find hardest?'],
+        tryAtHome: ['Explain it to someone at home.'],
+      },
+    };
+  }
+  if (capability === 'content.conference') {
+    return {
+      ...base,
+      promptVersion: 'content.conference@1',
+      draft: {
+        language,
+        opening: 'Thank you for coming in.',
+        strengths: ['Turns work in on time'],
+        concerns: ['One missing essay'],
+        talkingPoints: ['Reading at home'],
+        questionsForFamily: ['How is homework time going?'],
+        nextSteps: ['Check in again in two weeks'],
+      },
+    };
+  }
   const mc = (n: number) => ({
     library: 'H5P.MultiChoice 1.16',
     params: {
@@ -158,7 +211,7 @@ function stubResult(
     metadata: { contentType: 'Multiple Choice', license: 'U', title: `Q${n}` },
   });
   if (capability === 'content.flashcards') {
-    const dialogs = Array.from({ length: spec.count }, (_, i) => ({
+    const dialogs = Array.from({ length: spec.count ?? 10 }, (_, i) => ({
       text: `<p>Front ${i + 1}</p>`,
       answer: `<p>Back ${i + 1}</p>`,
       tips: { front: '', back: '' },
@@ -181,7 +234,9 @@ function stubResult(
       cached: false,
     };
   }
-  const questions = Array.from({ length: spec.count }, (_, i) => mc(i + 1));
+  const questions = Array.from({ length: spec.count ?? 10 }, (_, i) =>
+    mc(i + 1),
+  );
   return {
     promptVersion: 'content.quiz@1',
     model: { provider: 'fake', name: 'fake' },

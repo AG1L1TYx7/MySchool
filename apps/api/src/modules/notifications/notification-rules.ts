@@ -8,6 +8,7 @@ export const CATEGORIES = [
   'ATTENDANCE',
   'SYSTEM',
   'AI',
+  'DIGEST',
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
@@ -19,7 +20,11 @@ export interface Preference {
 
 /** In-app on for everything; email off by default except security and system notices. */
 export function defaultPreference(category: Category): Preference {
-  return { category, inApp: true, email: category === 'SYSTEM' };
+  return {
+    category,
+    inApp: true,
+    email: category === 'SYSTEM' || category === 'DIGEST',
+  };
 }
 
 /** Every category, with stored overrides applied on top of the defaults. */

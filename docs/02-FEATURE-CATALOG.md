@@ -141,6 +141,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/organizations/{organizationId}/ParentPortal` (20) and `/api/v1/organizations/{organizationId}/ParentPortal` (20).
 **AI.** Insight generation calls the AI service.
 **Status.** Real.
+**Release 2 (slice 13).** Rebuilt as the family home: `/family/home` and `/family/digest`, a multi-child switcher, missing-work alerts each school day and a weekly digest email in the guardian's language, a Spanish interface (every family-facing string externalised in `apps/web/src/locales`), family-language lesson summaries (`LessonSummaries`, AI-drafted, teacher-released) and conference talking points for teachers (`ConferenceNotes`, AI-drafted from the student's own records). Staff-only screens stay English until the next language pass.
 
 ## 16. Analytics and reports
 

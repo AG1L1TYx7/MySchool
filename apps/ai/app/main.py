@@ -369,7 +369,7 @@ async def content_generate(req: ContentRequest, runtime: Runtime = Depends(get_r
                 "user": runtime.tracer.pseudonym(req.actor.userId),
                 "status": "ok" if result.validation.valid else "degraded",
                 "usage": result.usage.model_dump(),
-                "items": result.h5p.maxScore,
+                "items": result.h5p.maxScore if result.h5p else 0,
             }
         )
         return result

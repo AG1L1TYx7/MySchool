@@ -19,6 +19,7 @@ from app.content import (
     ContentRequest,
     ContentResult,
     ContentUsage,
+    FlashcardsDraft,
     QuizDraft,
     Validation,
 )
@@ -102,8 +103,15 @@ class ContentAuthor:
             if draft is None:
                 raise InvalidOutput(errors)
 
-        package = quiz_to_h5p(draft) if isinstance(draft, QuizDraft) else flashcards_to_h5p(draft)
-        h5p_errors = validate_h5p(package.library, package.params)
+        # Quizzes and flashcards become H5P packages; summaries and talking points stay text for a human to review.
+        package = None
+        h5p_errors: list[str] = []
+        if isinstance(draft, QuizDraft):
+            package = quiz_to_h5p(draft)
+        elif isinstance(draft, FlashcardsDraft):
+            package = flashcards_to_h5p(draft)
+        if package is not None:
+            h5p_errors = validate_h5p(package.library, package.params)
         usage.latencyMs = int((time.monotonic() - started) * 1000)
         return ContentResult(
             promptVersion=prompt.version_tag,

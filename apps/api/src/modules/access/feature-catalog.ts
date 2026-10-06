@@ -196,6 +196,18 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('ai.content.quiz', 'Generate quizzes', 'AI', STAFF),
   f('ai.content.flashcards', 'Generate flashcards', 'AI', STAFF),
   f('ai.content.lesson', 'Generate lesson plans', 'AI', STAFF),
+  f(
+    'ai.content.summary',
+    'Draft family-language lesson summaries',
+    'AI',
+    STAFF,
+  ),
+  f(
+    'ai.content.conference',
+    'Draft conference talking points',
+    'AI',
+    STAFF_AND_COUNSELOR,
+  ),
   f('ai.grading.suggest', 'AI grading suggestions', 'AI', STAFF),
   f('ai.insights.teacher', 'Teacher insights', 'AI', STAFF),
   f('ai.insights.parent', 'Parent insights', 'AI', ['PARENT']),
@@ -271,6 +283,7 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     ...ADMINS,
   ]),
   f('calendar.view', 'View calendar', 'Calendar', ALL),
+  f('family.view', 'Family home', 'Parent portal', ['PARENT', 'STUDENT']),
   f('calendar.manage', 'Manage calendar events', 'Calendar', STAFF),
 ];
 

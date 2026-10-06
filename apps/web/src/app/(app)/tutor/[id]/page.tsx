@@ -6,8 +6,9 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { Alert, Button } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
+import { labelFor, useI18n, type Translate } from '@/lib/i18n';
 import { fadeRise, spring, useMotionVariants, useReducedMotion } from '@/lib/motion';
-import { MODE_HINTS, MODE_LABELS, streamTutorMessage, type Conversation, type TutorMessage } from '@/lib/tutor';
+import { streamTutorMessage, type Conversation, type TutorMessage } from '@/lib/tutor';
 
 type Detail = Conversation & { messages: TutorMessage[] };
 
@@ -18,6 +19,7 @@ type Detail = Conversation & { messages: TutorMessage[] };
 export default function ConversationPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const t = useI18n().t;
   const [conversation, setConversation] = useState<Detail | null>(null);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<{ user: string; partial: string } | null>(null);
@@ -48,7 +50,7 @@ export default function ConversationPage() {
     setError(null);
     setPending({ user: text, partial: '' });
     try {
-      const { user, assistant } = await streamTutorMessage(id, text, (t) => setPending((p) => (p ? { ...p, partial: p.partial + t } : p)));
+      const { user, assistant } = await streamTutorMessage(id, text, (token) => setPending((p) => (p ? { ...p, partial: p.partial + token } : p)));
       setConversation((c) => (c ? { ...c, messageCount: c.messageCount + 2, messages: [...c.messages, user, assistant] } : c));
     } catch (err) {
       setError(errorMessage(err));
@@ -67,31 +69,31 @@ export default function ConversationPage() {
   }
 
   async function remove() {
-    if (!confirm('Delete this conversation?')) return;
+    if (!confirm(t('tutor.confirmDelete'))) return;
     await api(`/ai/tutor/conversations/${id}`, { method: 'DELETE' });
     router.push('/tutor');
   }
 
-  if (!conversation) return error ? <Alert>{error}</Alert> : <p className="text-sm text-slate-500">Loading…</p>;
+  if (!conversation) return error ? <Alert>{error}</Alert> : <p className="text-sm text-slate-500">{t('common.loading')}</p>;
 
   return (
     <div className="mx-auto flex h-[calc(100vh-7rem)] max-w-3xl flex-col">
       <header className="flex items-start justify-between gap-3 pb-3">
         <div>
           <Link href="/tutor" className="text-xs text-brand-700 hover:underline">
-            ← All conversations
+            {t('tutor.allConversations')}
           </Link>
           <h1 className="text-xl font-semibold">{conversation.title}</h1>
           <p className="text-xs text-slate-500">
-            {MODE_LABELS[conversation.mode]} · {MODE_HINTS[conversation.mode]}
+            {labelFor('tutor.mode', conversation.mode, t)} · {labelFor('tutor.hint', conversation.mode, t)}
           </p>
         </div>
         <button className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100" onClick={() => void remove()}>
-          Delete
+          {t('common.delete')}
         </button>
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4" role="log" aria-live="polite" aria-label="Conversation">
+      <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4" role="log" aria-live="polite" aria-label={t('tutor.conversation')}>
         {conversation.messages.length === 0 && !pending && <Opening mode={conversation.mode} onPick={(q) => setDraft(q)} />}
         <AnimatePresence initial={false}>
           {conversation.messages.map((m) => (
@@ -125,27 +127,32 @@ export default function ConversationPage() {
           }}
           rows={2}
           maxLength={4000}
-          placeholder="Ask a question or paste the problem you are stuck on…"
+          placeholder={t('tutor.placeholder')}
           className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
-          aria-label="Your message"
+          aria-label={t('tutor.yourMessage')}
           disabled={!!pending}
         />
         <Button type="submit" loading={!!pending} disabled={!draft.trim()}>
-          Send
+          {t('tutor.send')}
         </Button>
       </form>
-      <p className="pt-1 text-xs text-slate-600">AI answers can be wrong. Check important facts with your teacher. Messages may be reviewed to keep students safe.</p>
+      <p className="pt-1 text-xs text-slate-600">{t('tutor.disclaimer')}</p>
     </div>
   );
 }
 
+function openingPrompts(mode: Conversation['mode'], t: Translate): string[] {
+  const base = mode === 'homework' ? 'homework' : mode === 'socratic' ? 'socratic' : 'explain';
+  return [t(`tutor.prompt.${base}1`), t(`tutor.prompt.${base}2`), t(`tutor.prompt.${base}3`)];
+}
+
 function Opening({ mode, onPick }: { mode: Conversation['mode']; onPick: (q: string) => void }) {
-  const prompts = mode === 'homework' ? ['I am stuck on this problem: ', 'Can you check my first step? ', 'What should I try next?'] : mode === 'socratic' ? ['Help me figure out why ', 'Ask me questions about ', 'I think the answer is … am I on the right track?'] : ['Explain ', 'Give me an example of ', 'What is the difference between '];
+  const t = useI18n().t;
   return (
     <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-      <p className="font-medium text-slate-800">Hi! What are we working on today?</p>
+      <p className="font-medium text-slate-800">{t('tutor.hi')}</p>
       <div className="mt-2 flex flex-wrap gap-2">
-        {prompts.map((p) => (
+        {openingPrompts(mode, t).map((p) => (
           <button key={p} type="button" className="rounded-full bg-white px-3 py-1 text-xs ring-1 ring-slate-200 hover:bg-brand-50" onClick={() => onPick(p)}>
             {p.trim()}
           </button>
@@ -156,6 +163,7 @@ function Opening({ mode, onPick }: { mode: Conversation['mode']; onPick: (q: str
 }
 
 function Bubble({ message, streaming, onRate }: { message: TutorMessage; streaming?: boolean; onRate?: (m: TutorMessage, r: 1 | -1) => Promise<void> }) {
+  const t = useI18n().t;
   const variants = useMotionVariants(fadeRise);
   const prefersReduced = useReducedMotion();
   const mine = message.role === 'user';
@@ -165,15 +173,15 @@ function Bubble({ message, streaming, onRate }: { message: TutorMessage; streami
       <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${mine ? 'rounded-br-sm bg-brand-600 text-white' : `rounded-bl-sm border ${tone}`}`}>
         {!mine && (
           <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            AI tutor
-            {message.status === 'refused' && <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium normal-case tracking-normal text-amber-800">Could not help with that</span>}
-            {message.status === 'degraded' && <span className="rounded bg-slate-200 px-1.5 py-0.5 font-medium normal-case tracking-normal text-slate-700">Partial answer</span>}
+            {t('tutor.aiTutor')}
+            {message.status === 'refused' && <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium normal-case tracking-normal text-amber-800">{t('tutor.refused')}</span>}
+            {message.status === 'degraded' && <span className="rounded bg-slate-200 px-1.5 py-0.5 font-medium normal-case tracking-normal text-slate-700">{t('tutor.partial')}</span>}
           </p>
         )}
         <div className="whitespace-pre-wrap leading-relaxed">
           {message.content}
           {streaming && (
-            <span className="ml-1 inline-flex gap-0.5 align-middle" aria-label="Tutor is typing">
+            <span className="ml-1 inline-flex gap-0.5 align-middle" aria-label={t('tutor.typing')}>
               {[0, 1, 2].map((i) => (
                 <motion.span key={i} className="block h-1.5 w-1.5 rounded-full bg-slate-400" animate={prefersReduced ? { opacity: 1 } : { opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: i * 0.15 }} />
               ))}
@@ -182,7 +190,7 @@ function Bubble({ message, streaming, onRate }: { message: TutorMessage; streami
         </div>
         {!mine && !streaming && (message.citations.length > 0 || onRate) && (
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/70 pt-2 text-[11px] text-slate-500">
-            <span>{message.citations.length > 0 ? `Based on: ${message.citations.map((c) => c.label).join(', ')}` : message.status === 'ok' ? 'From general knowledge, not your lesson text.' : ''}</span>
+            <span>{message.citations.length > 0 ? t('tutor.basedOn', { sources: message.citations.map((c) => c.label).join(', ') }) : message.status === 'ok' ? t('tutor.general') : ''}</span>
             {onRate && message.status === 'ok' && (
               <span className="flex gap-1">
                 {([1, -1] as const).map((r) => (
@@ -192,7 +200,7 @@ function Bubble({ message, streaming, onRate }: { message: TutorMessage; streami
                     whileTap={prefersReduced ? undefined : { scale: 0.85 }}
                     transition={spring.soft}
                     aria-pressed={message.feedback === r}
-                    aria-label={r === 1 ? 'Helpful' : 'Not helpful'}
+                    aria-label={r === 1 ? t('tutor.helpful') : t('tutor.notHelpful')}
                     className={`rounded px-1.5 py-0.5 ${message.feedback === r ? 'bg-brand-100 text-brand-800' : 'hover:bg-slate-200'}`}
                     onClick={() => void onRate(message, r)}
                   >

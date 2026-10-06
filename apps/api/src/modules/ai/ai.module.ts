@@ -18,6 +18,6 @@ import { ServiceTokenGuard } from './service-token.guard';
     AiContentController,
   ],
   providers: [AiClient, AiTutorService, AiContentService, ServiceTokenGuard],
-  exports: [AiClient],
+  exports: [AiClient, AiContentService],
 })
 export class AiModule {}

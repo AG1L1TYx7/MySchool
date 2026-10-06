@@ -5,11 +5,11 @@ import { useState, type FormEvent } from 'react';
 import { Alert, Button, Input, Select } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useAuth, type RegisterResponse } from '@/lib/auth';
-
-const PASSWORD_HINT = 'At least 12 characters with upper and lower case letters, a digit and a symbol. Not a common password, and not your name or email.';
+import { useT } from '@/lib/i18n';
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const t = useT();
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'student', joinCode: '' });
   const [done, setDone] = useState<RegisterResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,21 +33,21 @@ export default function RegisterPage() {
   if (done) {
     return (
       <>
-        <h1 className="text-xl font-semibold">Check your email</h1>
+        <h1 className="text-xl font-semibold">{t('register.checkEmail')}</h1>
         <p className="mt-2 text-sm text-slate-600">{done.message}</p>
         {done.devToken && (
           <div className="mt-4">
             <Alert kind="info">
-              Development mode (no mail server). Use this link to verify:{' '}
+              {t('register.devMode')}{' '}
               <Link href={`/verify-email?token=${encodeURIComponent(done.devToken)}`} className="font-medium underline">
-                verify now
+                {t('register.verifyNow')}
               </Link>
             </Alert>
           </div>
         )}
         <p className="mt-6 text-center text-sm text-slate-600">
           <Link href="/login" className="font-medium text-brand-700 hover:underline">
-            Go to sign in
+            {t('register.goToSignIn')}
           </Link>
         </p>
       </>
@@ -56,29 +56,29 @@ export default function RegisterPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Create your account</h1>
-      <p className="mt-1 text-sm text-slate-500">Students and parents can register here. Teachers and administrators are invited by their school.</p>
+      <h1 className="text-xl font-semibold">{t('register.title')}</h1>
+      <p className="mt-1 text-sm text-slate-500">{t('register.subtitle')}</p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
         {error && <Alert>{error}</Alert>}
         <div className="grid grid-cols-2 gap-4">
-          <Input label="First name" name="firstName" autoComplete="given-name" required value={form.firstName} onChange={update('firstName')} />
-          <Input label="Last name" name="lastName" autoComplete="family-name" required value={form.lastName} onChange={update('lastName')} />
+          <Input label={t('register.firstName')} name="firstName" autoComplete="given-name" required value={form.firstName} onChange={update('firstName')} />
+          <Input label={t('register.lastName')} name="lastName" autoComplete="family-name" required value={form.lastName} onChange={update('lastName')} />
         </div>
-        <Input label="Email" name="email" type="email" autoComplete="email" required value={form.email} onChange={update('email')} />
-        <Input label="Password" name="password" type="password" autoComplete="new-password" required hint={PASSWORD_HINT} value={form.password} onChange={update('password')} />
-        <Select label="I am a" name="role" value={form.role} onChange={update('role')}>
-          <option value="student">Student</option>
-          <option value="parent">Parent or guardian</option>
+        <Input label={t('register.email')} name="email" type="email" autoComplete="email" required value={form.email} onChange={update('email')} />
+        <Input label={t('register.password')} name="password" type="password" autoComplete="new-password" required hint={t('register.passwordHint')} value={form.password} onChange={update('password')} />
+        <Select label={t('register.iAm')} name="role" value={form.role} onChange={update('role')}>
+          <option value="student">{t('register.student')}</option>
+          <option value="parent">{t('register.parent')}</option>
         </Select>
-        <Input label="School join code" name="joinCode" placeholder="e.g. DEMO-2026" hint="Your school gives you this code. Leave it blank to join a school later." value={form.joinCode} onChange={update('joinCode')} />
+        <Input label={t('register.joinCode')} name="joinCode" placeholder={t('register.joinCodePlaceholder')} hint={t('register.joinCodeHint')} value={form.joinCode} onChange={update('joinCode')} />
         <Button type="submit" className="w-full" loading={busy}>
-          Create account
+          {t('register.submit')}
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
-        Already have an account?{' '}
+        {t('register.haveAccount')}{' '}
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
-          Sign in
+          {t('register.signIn')}
         </Link>
       </p>
     </>

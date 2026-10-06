@@ -1,6 +1,7 @@
 'use client';
 
 import { ReadAloud } from '@/components/accommodations';
+import { LessonSummaries } from '@/components/lesson-summaries';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -255,6 +256,7 @@ function ModuleBlock({ module, index, total, courseId, canEdit, allModuleIds, on
                   </div>
                 )}
                 {!l.content && !l.contentUrl && <p className="text-slate-500">No content yet.</p>}
+                {(l.isPublished || canEdit) && <LessonSummaries lessonId={l.id} />}
               </div>
             )}
           </li>

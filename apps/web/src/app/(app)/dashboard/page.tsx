@@ -6,9 +6,10 @@ import { MotionItem, MotionList, ProgressRing, SkeletonRows } from '@/components
 import { AnnouncementCard } from '@/components/announcement-card';
 import { Alert, Card } from '@/components/ui';
 import { api } from '@/lib/api';
-import { ROLE_LABELS, useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
 import type { Announcement } from '@/lib/communication';
 import type { ClassItem } from '@/lib/curriculum';
+import { labelFor, useI18n } from '@/lib/i18n';
 import { todayIso, type TakenStatus } from '@/lib/school';
 import { label } from '@/lib/students';
 
@@ -24,6 +25,7 @@ interface WeekAssignment {
 /** Real progress, animated: assignments handled this week and attendance for students and parents. */
 function ThisWeek() {
   const { user } = useAuth();
+  const { t, tag } = useI18n();
   const [assignments, setAssignments] = useState<WeekAssignment[] | null>(null);
   const [attendance, setAttendance] = useState<{ attendanceRate: number | null; total: number } | null>(null);
   const learner = user?.role === 'student' || user?.role === 'parent';
@@ -44,7 +46,7 @@ function ThisWeek() {
   if (!learner) return null;
   if (assignments === null) {
     return (
-      <Card title="This week">
+      <Card title={t('dash.thisWeek')}>
         <SkeletonRows rows={2} />
       </Card>
     );
@@ -54,25 +56,23 @@ function ThisWeek() {
   const next = assignments.filter((a) => !a.mySubmission && !a.myGrade && a.dueAt).sort((a, b) => (a.dueAt ?? '').localeCompare(b.dueAt ?? ''))[0];
 
   return (
-    <Card title="This week" description={total === 0 ? 'Nothing due in the next seven days. Nice.' : `${handled} of ${total} assignments handled.`}>
+    <Card title={t('dash.thisWeek')} description={total === 0 ? t('dash.nothingDue') : t('dash.handled', { done: handled, total })}>
       <div className="flex flex-wrap items-center gap-8">
-        <ProgressRing value={total === 0 ? 100 : handled} max={total === 0 ? 100 : total} label="Assignments" tone={total > 0 && handled === total ? 'green' : 'brand'} />
+        <ProgressRing value={total === 0 ? 100 : handled} max={total === 0 ? 100 : total} label={t('dash.assignments')} tone={total > 0 && handled === total ? 'green' : 'brand'} />
         {attendance && attendance.total > 0 && attendance.attendanceRate !== null && (
-          <ProgressRing value={attendance.attendanceRate} label="Attendance" tone={attendance.attendanceRate >= 90 ? 'green' : attendance.attendanceRate >= 80 ? 'brand' : 'amber'} />
+          <ProgressRing value={attendance.attendanceRate} label={t('dash.attendance')} tone={attendance.attendanceRate >= 90 ? 'green' : attendance.attendanceRate >= 80 ? 'brand' : 'amber'} />
         )}
         <div className="min-w-[200px] flex-1 text-sm">
           {next ? (
             <>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Next up</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">{t('dash.nextUp')}</p>
               <Link href={`/assignments/${next.id}`} className="font-medium text-slate-900 hover:underline">
                 {next.title}
               </Link>
-              <p className="text-slate-500">
-                {next.className} · due {new Date(next.dueAt as string).toLocaleDateString()}
-              </p>
+              <p className="text-slate-500">{t('dash.dueOn', { className: next.className, date: new Date(next.dueAt as string).toLocaleDateString(tag) })}</p>
             </>
           ) : (
-            <p className="text-slate-600">Everything due soon is in. Keep the streak going tomorrow.</p>
+            <p className="text-slate-600">{t('dash.allIn')}</p>
           )}
         </div>
       </div>
@@ -83,6 +83,7 @@ function ThisWeek() {
 /** For the office and teachers: classes meeting today that have not taken attendance yet (docs/13 section 5). */
 function AttendanceOwed() {
   const { user, can } = useAuth();
+  const { t, n } = useI18n();
   const [status, setStatus] = useState<TakenStatus | null>(null);
   const orgId = user?.organizationId;
   const allowed = can('attendance.view') && !!orgId;
@@ -95,19 +96,19 @@ function AttendanceOwed() {
   if (!allowed || !status || status.taken.length + status.missing.length === 0) return null;
   const done = status.missing.length === 0;
   return (
-    <Card title="Attendance today" description={done ? 'Every class that meets today has taken attendance.' : `${status.missing.length} class${status.missing.length === 1 ? '' : 'es'} still owe attendance${status.deadline ? ` (due by ${status.deadline})` : ''}.`} actions={<Link href="/attendance/today" className="text-sm text-brand-700 hover:underline">Office view</Link>}>
+    <Card title={t('dash.attendanceToday')} description={done ? t('dash.attendanceDone') : n('dash.attendanceOwed', status.missing.length, { deadline: status.deadline ? t('dash.deadline', { time: status.deadline }) : '' })} actions={<Link href="/attendance/today" className="text-sm text-brand-700 hover:underline">{t('dash.officeView')}</Link>}>
       <div className="flex flex-wrap items-center gap-6">
-        <ProgressRing value={status.taken.length} max={status.taken.length + status.missing.length} label="Classes done" suffix="" tone={done ? 'green' : 'amber'} />
+        <ProgressRing value={status.taken.length} max={status.taken.length + status.missing.length} label={t('dash.classesDone')} suffix="" tone={done ? 'green' : 'amber'} />
         <ul className="min-w-0 flex-1 space-y-1 text-sm">
           {status.missing.slice(0, 4).map((c) => (
             <li key={c.classId}>
               <Link href={`/classes/${c.classId}/attendance`} className="font-medium text-slate-900 hover:underline">
                 {c.name}
               </Link>
-              <span className="text-slate-500">{c.period ? ` · period ${c.period}` : ''}</span>
+              <span className="text-slate-500">{c.period ? ` · ${t('dash.period', { n: c.period })}` : ''}</span>
             </li>
           ))}
-          {status.missing.length > 4 && <li className="text-slate-500">and {status.missing.length - 4} more</li>}
+          {status.missing.length > 4 && <li className="text-slate-500">{t('dash.andMore', { n: status.missing.length - 4 })}</li>}
         </ul>
       </div>
     </Card>
@@ -115,6 +116,7 @@ function AttendanceOwed() {
 }
 
 function LatestAnnouncements() {
+  const t = useI18n().t;
   const [rows, setRows] = useState<Announcement[] | null>(null);
   useEffect(() => {
     api<{ data: Announcement[] }>('/announcements?pageSize=3')
@@ -123,7 +125,7 @@ function LatestAnnouncements() {
   }, []);
   if (!rows || rows.length === 0) return null;
   return (
-    <Card title="Announcements" description="Latest from your school and classes." actions={<Link href="/announcements" className="text-sm text-brand-700 hover:underline">All</Link>}>
+    <Card title={t('dash.announcements')} description={t('dash.latest')} actions={<Link href="/announcements" className="text-sm text-brand-700 hover:underline">{t('dash.all')}</Link>}>
       <MotionList as="div" className="space-y-3">
         {rows.map((a) => (
           <MotionItem as="div" key={a.id}>
@@ -136,6 +138,7 @@ function LatestAnnouncements() {
 }
 
 function MyClasses() {
+  const t = useI18n().t;
   const [classes, setClasses] = useState<ClassItem[] | null>(null);
   useEffect(() => {
     api<{ data: ClassItem[] }>('/classes/mine')
@@ -144,7 +147,7 @@ function MyClasses() {
   }, []);
   if (!classes || classes.length === 0) return null;
   return (
-    <Card title="My classes" description="Classes you teach or attend this term.">
+    <Card title={t('dash.myClasses')} description={t('dash.myClassesDesc')}>
       <MotionList className="grid gap-3 md:grid-cols-2">
         {classes.map((c) => (
           <MotionItem key={c.id}>
@@ -164,7 +167,8 @@ function MyClasses() {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
+  const { t, tag } = useI18n();
   if (!user) return null;
   const categories = new Map<string, number>();
   for (const code of user.features) {
@@ -175,18 +179,18 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Good to see you, {user.firstName}</h1>
+        <h1 className="text-2xl font-semibold">{t('dash.greeting', { name: user.firstName })}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Signed in as {ROLE_LABELS[user.role] ?? user.role}
-          {user.lastLoginAt ? ` · last sign-in ${new Date(user.lastLoginAt).toLocaleString()}` : ''}
+          {t('dash.signedInAs', { role: labelFor('role', user.role, t) })}
+          {user.lastLoginAt ? ` · ${t('dash.lastSignIn', { when: new Date(user.lastLoginAt).toLocaleString(tag) })}` : ''}
         </p>
       </div>
 
       {!user.twoFactorEnabled && (
         <Alert kind="info">
-          Protect your account with two-factor authentication.{' '}
+          {t('dash.mfaNudge')}{' '}
           <Link href="/settings/security" className="font-medium underline">
-            Set it up now
+            {t('dash.mfaSetup')}
           </Link>
           .
         </Alert>
@@ -200,35 +204,43 @@ export default function DashboardPage() {
       <MyClasses />
 
       <div className="focus-hide grid gap-6 md:grid-cols-2">
-        <Card title="Your access" description="What this account can do, from your role and any individual overrides.">
+        <Card title={t('dash.access')} description={t('dash.accessDesc')}>
           <ul className="grid grid-cols-2 gap-2 text-sm">
-            {Array.from(categories.entries()).sort().map(([cat, n]) => (
+            {Array.from(categories.entries()).sort().map(([cat, count]) => (
               <li key={cat} className="flex justify-between rounded-md bg-slate-50 px-3 py-2">
                 <span className="capitalize text-slate-700">{cat.replace(/-/g, ' ')}</span>
-                <span className="font-medium text-slate-900">{n}</span>
+                <span className="font-medium text-slate-900">{count}</span>
               </li>
             ))}
           </ul>
         </Card>
-        <Card title="Around the school" description="Quick links for the week.">
+        <Card title={t('dash.around')} description={t('dash.aroundDesc')}>
           <ul className="space-y-1 text-sm">
+            {can('family.view') && (
+              <li>
+                <Link href="/family" className="text-brand-700 underline">
+                  {t('dash.family')}
+                </Link>
+                <span className="text-slate-500"> · {t('dash.familyDesc')}</span>
+              </li>
+            )}
             <li>
               <Link href="/calendar" className="text-brand-700 underline">
-                School calendar
+                {t('dash.calendar')}
               </Link>
-              <span className="text-slate-500"> · days off, events, due dates and term boundaries</span>
+              <span className="text-slate-500"> · {t('dash.calendarDesc')}</span>
             </li>
             <li>
               <Link href="/announcements" className="text-brand-700 underline">
-                Announcements
+                {t('dash.announcements')}
               </Link>
-              <span className="text-slate-500"> · from the school and your classes</span>
+              <span className="text-slate-500"> · {t('dash.announcementsDesc')}</span>
             </li>
             <li>
               <Link href="/messages" className="text-brand-700 underline">
-                Messages
+                {t('dash.messages')}
               </Link>
-              <span className="text-slate-500"> · reach teachers and the office</span>
+              <span className="text-slate-500"> · {t('dash.messagesDesc')}</span>
             </li>
           </ul>
         </Card>

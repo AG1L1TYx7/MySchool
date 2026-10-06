@@ -239,6 +239,21 @@ GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY
 ```
 Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
 
+### Families and Spanish (Release 2 slice 13)
+```
+GET    /family/home                         parents and students (family.view): every linked child with classes and current grades, attendance (30 days), missing work, work due in seven days, grades from the last seven days, behaviour notes and report cards
+GET    /family/digest                       the weekly digest email as it would be sent today, in the caller's language ({ subject, text })
+GET    /lessons/{id}/summaries              family-language lesson summaries; staff see drafts and released, families only released
+POST   /lessons/{id}/summaries              { language en|es } -> 202 AI job (ai.content.summary); poll /ai/jobs/{id}, resultId is the summary
+PATCH  /lesson-summaries/{id}               title, summary, keyIdeas[], questions[], tryAtHome[], status draft|released (release records the reviewer)
+DELETE /lesson-summaries/{id}
+GET    /students/{id}/conference-notes      the student's teachers, counselors and administrators (ai.content.conference); never families
+POST   /students/{id}/conference-notes      { language } -> 202 AI job drafted from this student's own records only
+DELETE /conference-notes/{id}
+PATCH  /auth/me                             locale en|es sets the interface language and the language of alerts and emails
+```
+Errors: `403 summaries.released` when drafting over a released summary, `403 summaries.no_content` for a lesson with no text. Jobs: weekdays at 16:30 guardians are told about work that became missing in the last day (category `assignment`, link `/family`); Sundays at 17:00 the weekly digest goes out (category `digest`, email on by default) in each guardian's language.
+
 ### Grading, standards and report cards (Release 2 slice 11)
 ```
 GET    /classes/{id}/grading                     gradingMode points|standards, proficiencyScaleId, scale, latePolicy, syllabus, categories[], weightWarning; members and staff

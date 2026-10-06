@@ -23,7 +23,15 @@ import {
 } from './ai.client';
 import { GenerateContentDto, RegenerateDto } from './dto/ai-content.dto';
 
-export type ContentCapability = 'content.quiz' | 'content.flashcards';
+export type ContentCapability =
+  | 'content.quiz'
+  | 'content.flashcards'
+  | 'content.summary'
+  | 'content.conference';
+const TEXT_CAPABILITIES: readonly ContentCapability[] = [
+  'content.summary',
+  'content.conference',
+];
 
 export interface PublicJob {
   id: string;
@@ -32,6 +40,8 @@ export interface PublicJob {
   progress: string | null;
   contentId: string | null;
   content?: PublicH5pContent | null;
+  /** Text jobs: the id of the lesson summary or conference note the draft became. */
+  resultId: string | null;
   error: { code: string; detail: string } | null;
   createdAt: Date;
   updatedAt: Date;
@@ -183,10 +193,53 @@ export class AiContentService {
     }
     if (job.status === 'QUEUED' || job.status === 'RUNNING')
       job = await this.refresh(job, actor);
-    const content = job.resultContentId
-      ? await this.h5p.get(job.resultContentId, actor).catch(() => null)
-      : null;
+    const content =
+      job.resultContentId &&
+      !TEXT_CAPABILITIES.includes(job.capability as ContentCapability)
+        ? await this.h5p.get(job.resultContentId, actor).catch(() => null)
+        : null;
     return toPublicJob(job, content);
+  }
+
+  /**
+   * A text job (family lesson summary, conference talking points): same pipeline as quizzes, but the
+   * finished draft becomes a lesson summary or a conference note instead of H5P content.
+   */
+  async startText(
+    capability: 'content.summary' | 'content.conference',
+    spec: {
+      topic: string;
+      subject: string;
+      gradeLevel: string;
+      language: string;
+      lessonId?: string;
+      studentId?: string;
+    },
+    context: ContentRequest['context'],
+    actor: AuthenticatedUser,
+    organizationId: string | null,
+  ): Promise<PublicJob> {
+    const request: ContentRequest = {
+      traceId: newId(),
+      capability,
+      organizationId,
+      actor: {
+        userId: actor.id,
+        role: actor.role.toLowerCase(),
+        ageBand: 'adult',
+      },
+      request: {
+        topic: spec.topic,
+        subject: spec.subject,
+        gradeLevel: spec.gradeLevel,
+        language: spec.language,
+        standard: null,
+        lessonId: spec.lessonId,
+        studentId: spec.studentId,
+      },
+      context,
+    };
+    return this.start(request, actor);
   }
 
   private async start(
@@ -267,6 +320,20 @@ export class AiContentService {
     }
     const spec = JSON.parse(job.request) as ContentRequest['request'];
     const r = snapshot.result;
+    if (
+      TEXT_CAPABILITIES.includes(job.capability as ContentCapability) ||
+      !r.h5p
+    ) {
+      const resultId = await this.persistText(job, spec, r);
+      return this.prisma.aiJob.update({
+        where: { id: job.id },
+        data: {
+          status: 'DONE',
+          progress: r.cached ? 'Served from cache' : 'Done',
+          resultContentId: resultId,
+        },
+      });
+    }
     const content = await this.h5p.create(
       {
         title: r.h5p.title,
@@ -296,6 +363,70 @@ export class AiContentService {
       },
     });
   }
+
+  /** Stores a finished text draft where it belongs; the AI label and model travel with it. */
+  private async persistText(
+    job: AiJob,
+    spec: ContentRequest['request'],
+    r: NonNullable<ContentJobSnapshot['result']>,
+  ): Promise<string | null> {
+    const draft = r.draft;
+    const str = (k: string) => (typeof draft[k] === 'string' ? draft[k] : '');
+    const arr = (k: string) =>
+      Array.isArray(draft[k])
+        ? (draft[k] as unknown[]).filter(
+            (x): x is string => typeof x === 'string',
+          )
+        : [];
+    const model = `${r.model.provider}:${r.model.name}`;
+    if (job.capability === 'content.summary' && spec.lessonId) {
+      const data = {
+        title: str('title') || spec.topic,
+        summary: str('summary'),
+        keyIdeas: JSON.stringify(arr('keyIdeas')),
+        questions: JSON.stringify(arr('questionsToAsk')),
+        tryAtHome: JSON.stringify(arr('tryAtHome')),
+        aiModel: model,
+        promptVersion: r.promptVersion,
+        aiJobId: job.id,
+        status: 'DRAFT' as const,
+        reviewedById: null,
+        releasedAt: null,
+      };
+      const row = await this.prisma.lessonSummary.upsert({
+        where: {
+          lessonId_language: {
+            lessonId: spec.lessonId,
+            language: spec.language,
+          },
+        },
+        create: {
+          id: newId(),
+          lessonId: spec.lessonId,
+          language: spec.language,
+          ...data,
+        },
+        update: data,
+      });
+      return row.id;
+    }
+    if (job.capability === 'content.conference' && spec.studentId) {
+      const row = await this.prisma.conferenceNote.create({
+        data: {
+          id: newId(),
+          studentId: spec.studentId,
+          authorId: job.userId,
+          language: spec.language,
+          content: JSON.stringify(draft),
+          aiModel: model,
+          promptVersion: r.promptVersion,
+          aiJobId: job.id,
+        },
+      });
+      return row.id;
+    }
+    return null;
+  }
 }
 
 function toPublicJob(job: AiJob, content: PublicH5pContent | null): PublicJob {
@@ -304,8 +435,9 @@ function toPublicJob(job: AiJob, content: PublicH5pContent | null): PublicJob {
     capability: job.capability,
     status: job.status.toLowerCase() as PublicJob['status'],
     progress: job.progress,
-    contentId: job.resultContentId,
+    contentId: content ? job.resultContentId : null,
     content,
+    resultId: job.resultContentId,
     error: job.errorCode
       ? { code: job.errorCode, detail: job.errorDetail ?? '' }
       : null,

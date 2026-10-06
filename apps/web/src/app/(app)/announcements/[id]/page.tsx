@@ -8,9 +8,11 @@ import { SkeletonRows } from '@/components/motion';
 import { Alert } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import type { Announcement } from '@/lib/communication';
+import { useT } from '@/lib/i18n';
 
 export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useT();
   const [a, setA] = useState<Announcement | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function AnnouncementPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <Link href="/announcements" className="text-xs text-brand-700 hover:underline">
-        ← All announcements
+        {t('ann.back')}
       </Link>
       {error && <Alert>{error}</Alert>}
       {a ? <AnnouncementCard a={a} /> : !error && <SkeletonRows rows={3} />}

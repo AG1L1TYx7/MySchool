@@ -6,38 +6,43 @@ import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { MotionPage } from '@/components/motion';
 import { AccommodationsProvider } from '@/components/accommodations';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { NotificationBell } from '@/components/notification-bell';
 import { Button, Logo } from '@/components/ui';
-import { ROLE_LABELS, useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
+import { labelFor, useT } from '@/lib/i18n';
+import type { MessageKey } from '@/locales/en';
 
 /** Navigation is driven by the caller's effective feature codes, never by hard-coded roles. */
-const NAV: Array<{ href: string; label: string; feature: string }> = [
-  { href: '/dashboard', label: 'Dashboard', feature: 'dashboard.view' },
-  { href: '/courses', label: 'Courses', feature: 'courses.view' },
-  { href: '/classes', label: 'Classes', feature: 'classes.view' },
-  { href: '/assignments', label: 'Assignments', feature: 'assignments.view' },
-  { href: '/calendar', label: 'Calendar', feature: 'calendar.view' },
-  { href: '/announcements', label: 'Announcements', feature: 'announcements.view' },
-  { href: '/messages', label: 'Messages', feature: 'messages.view' },
-  { href: '/tutor', label: 'AI tutor', feature: 'ai.tutor.chat' },
-  { href: '/grades', label: 'Grades', feature: 'grades.view.own' },
-  { href: '/grades', label: 'Grades', feature: 'grades.view.child' },
-  { href: '/report-cards', label: 'Report cards', feature: 'report-cards.view.all' },
-  { href: '/report-cards', label: 'Report cards', feature: 'report-cards.view.own' },
-  { href: '/report-cards', label: 'Report cards', feature: 'report-cards.view.child' },
-  { href: '/standards', label: 'Standards', feature: 'standards.view' },
-  { href: '/caseload', label: 'My caseload', feature: 'support.notes' },
-  { href: '/wellness', label: 'Wellness', feature: 'wellness.alerts' },
-  { href: '/content', label: 'Interactive content', feature: 'h5p.create' },
-  { href: '/students', label: 'Students', feature: 'students.view' },
-  { href: '/users', label: 'Users', feature: 'users.view' },
-  { href: '/organizations', label: 'Organisations', feature: 'organizations.view' },
-  { href: '/audit-logs', label: 'Audit log', feature: 'audit.logs.view' },
-  { href: '/settings/security', label: 'Security', feature: 'profile.view' },
+const NAV: Array<{ href: string; label: MessageKey; feature: string }> = [
+  { href: '/dashboard', label: 'nav.dashboard', feature: 'dashboard.view' },
+  { href: '/family', label: 'nav.family', feature: 'family.view' },
+  { href: '/courses', label: 'nav.courses', feature: 'courses.view' },
+  { href: '/classes', label: 'nav.classes', feature: 'classes.view' },
+  { href: '/assignments', label: 'nav.assignments', feature: 'assignments.view' },
+  { href: '/calendar', label: 'nav.calendar', feature: 'calendar.view' },
+  { href: '/announcements', label: 'nav.announcements', feature: 'announcements.view' },
+  { href: '/messages', label: 'nav.messages', feature: 'messages.view' },
+  { href: '/tutor', label: 'nav.tutor', feature: 'ai.tutor.chat' },
+  { href: '/grades', label: 'nav.grades', feature: 'grades.view.own' },
+  { href: '/grades', label: 'nav.grades', feature: 'grades.view.child' },
+  { href: '/report-cards', label: 'nav.reportCards', feature: 'report-cards.view.all' },
+  { href: '/report-cards', label: 'nav.reportCards', feature: 'report-cards.view.own' },
+  { href: '/report-cards', label: 'nav.reportCards', feature: 'report-cards.view.child' },
+  { href: '/standards', label: 'nav.standards', feature: 'standards.view' },
+  { href: '/caseload', label: 'nav.caseload', feature: 'support.notes' },
+  { href: '/wellness', label: 'nav.wellness', feature: 'wellness.alerts' },
+  { href: '/content', label: 'nav.content', feature: 'h5p.create' },
+  { href: '/students', label: 'nav.students', feature: 'students.view' },
+  { href: '/users', label: 'nav.users', feature: 'users.view' },
+  { href: '/organizations', label: 'nav.organizations', feature: 'organizations.view' },
+  { href: '/audit-logs', label: 'nav.auditLog', feature: 'audit.logs.view' },
+  { href: '/settings/security', label: 'nav.security', feature: 'profile.view' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, can, logout } = useAuth();
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -48,15 +53,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [loading, user, router, pathname]);
 
   if (loading || !user) {
-    return <main className="grid min-h-screen place-items-center text-sm text-slate-500">Loading…</main>;
+    return <main className="grid min-h-screen place-items-center text-sm text-slate-500">{t('common.loading')}</main>;
   }
 
   return (
     <AccommodationsProvider>
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
-      <aside aria-label="Sidebar" className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
+      <aside aria-label={t('shell.sidebar')} className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
         <Logo />
-        <nav aria-label="Primary" className="mt-6 flex gap-1 overflow-x-auto md:flex-col">
+        <nav aria-label={t('shell.primary')} className="mt-6 flex gap-1 overflow-x-auto md:flex-col">
           {NAV.filter((n) => can(n.feature))
             .filter((n, i, all) => all.findIndex((x) => x.href === n.href) === i)
             .map((n) => {
@@ -67,7 +72,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 href={n.href}
                 className={`rounded-md px-3 py-2 text-sm font-medium ${active ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-100'}`}
               >
-                {n.label}
+                {t(n.label)}
               </Link>
             );
           })}
@@ -79,12 +84,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="font-medium text-slate-900">
               {user.firstName} {user.lastName}
             </span>
-            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{ROLE_LABELS[user.role] ?? user.role}</span>
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{labelFor('role', user.role, t)}</span>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             {can('notifications.view') && <NotificationBell />}
             <Button variant="secondary" onClick={() => void logout().then(() => router.replace('/login'))}>
-              Sign out
+              {t('shell.signOut')}
             </Button>
           </div>
         </header>

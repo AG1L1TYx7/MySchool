@@ -6,10 +6,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Input } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 
 export default function TwoFactorChallengePage() {
   const { completeMfa } = useAuth();
   const router = useRouter();
+  const t = useT();
   const [pending, setPending] = useState<{ mfaToken: string; rememberMe: boolean } | null>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -49,18 +51,18 @@ export default function TwoFactorChallengePage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Two-factor verification</h1>
-      <p className="mt-1 text-sm text-slate-500">Enter the six-digit code from your authenticator app, or one of your backup codes.</p>
+      <h1 className="text-xl font-semibold">{t('twofa.title')}</h1>
+      <p className="mt-1 text-sm text-slate-500">{t('twofa.subtitle')}</p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
         {error && <Alert>{error}</Alert>}
-        <Input label="Code" name="code" inputMode="numeric" autoComplete="one-time-code" autoFocus required value={code} onChange={(e) => setCode(e.target.value)} />
+        <Input label={t('twofa.code')} name="code" inputMode="numeric" autoComplete="one-time-code" autoFocus required value={code} onChange={(e) => setCode(e.target.value)} />
         <Button type="submit" className="w-full" loading={busy}>
-          Verify
+          {t('twofa.verify')}
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
-          Back to sign in
+          {t('twofa.back')}
         </Link>
       </p>
     </>

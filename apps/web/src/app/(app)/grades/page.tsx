@@ -8,10 +8,12 @@ import { Alert, Card } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { fmtDate, type AttendanceCounts, type Grade } from '@/lib/academics';
 import { useAuth } from '@/lib/auth';
+import { useI18n } from '@/lib/i18n';
 import type { Paged, Student } from '@/lib/students';
 
 export default function GradesPage() {
   const { user } = useAuth();
+  const { t, n } = useI18n();
   const [grades, setGrades] = useState<Grade[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceCounts>>({});
@@ -39,16 +41,16 @@ export default function GradesPage() {
 
   const groups = new Map<string, Grade[]>();
   for (const g of grades) {
-    const key = g.student ? `${g.student.lastName}, ${g.student.firstName}` : 'Me';
+    const key = g.student ? `${g.student.lastName}, ${g.student.firstName}` : t('grades.me');
     groups.set(key, [...(groups.get(key) ?? []), g]);
   }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Grades</h1>
+        <h1 className="text-2xl font-semibold">{t('grades.title')}</h1>
         <Link href="/report-cards" className="text-sm text-brand-700 underline">
-          Report cards
+          {t('grades.reportCards')}
         </Link>
       </div>
       {error && <Alert>{error}</Alert>}
@@ -56,13 +58,13 @@ export default function GradesPage() {
         students.map((s) => {
           const c = attendance[s.id];
           return (
-            <Card key={s.id} title={`${s.firstName} ${s.lastName}`} description={c && c.total > 0 ? `${c.total} recorded day${c.total === 1 ? '' : 's'}: ${c.absent} absent, ${c.late + c.tardy} late` : 'No attendance recorded yet.'}>
+            <Card key={s.id} title={`${s.firstName} ${s.lastName}`} description={c && c.total > 0 ? n('grades.summary', c.total, { absent: c.absent, late: c.late + c.tardy }) : t('grades.noAttendance')}>
               <div className="flex flex-wrap items-start gap-6">
-                {c && c.total > 0 && c.attendanceRate !== null && <ProgressRing value={c.attendanceRate} size={88} stroke={9} label="Attendance" tone={c.attendanceRate >= 90 ? 'green' : c.attendanceRate >= 80 ? 'brand' : 'amber'} />}
+                {c && c.total > 0 && c.attendanceRate !== null && <ProgressRing value={c.attendanceRate} size={88} stroke={9} label={t('grades.attendance')} tone={c.attendanceRate >= 90 ? 'green' : c.attendanceRate >= 80 ? 'brand' : 'amber'} />}
                 {(() => {
                   const mine = grades.filter((g) => g.studentId === s.id);
                   const avg = mine.length ? mine.reduce((sum, g) => sum + g.percentage, 0) / mine.length : null;
-                  return avg === null ? null : <ProgressRing value={avg} size={88} stroke={9} label="Average" tone={avg >= 90 ? 'green' : avg >= 60 ? 'brand' : 'amber'} />;
+                  return avg === null ? null : <ProgressRing value={avg} size={88} stroke={9} label={t('grades.average')} tone={avg >= 90 ? 'green' : avg >= 60 ? 'brand' : 'amber'} />;
                 })()}
                 <div className="min-w-[280px] flex-1">
                   <GradeTable rows={grades.filter((g) => g.studentId === s.id)} />
@@ -85,22 +87,23 @@ export default function GradesPage() {
             <GradeTable rows={rows} />
           </Card>
         ))}
-      {grades.length === 0 && !error && (loaded ? <p className="text-sm text-slate-500">No grades posted yet.</p> : <SkeletonRows rows={3} />)}
+      {grades.length === 0 && !error && (loaded ? <p className="text-sm text-slate-500">{t('grades.none')}</p> : <SkeletonRows rows={3} />)}
     </div>
   );
 }
 
 function GradeTable({ rows }: { rows: Grade[] }) {
-  if (rows.length === 0) return <p className="text-sm text-slate-500">No grades yet.</p>;
+  const t = useI18n().t;
+  if (rows.length === 0) return <p className="text-sm text-slate-500">{t('grades.noneYet')}</p>;
   return (
     <table className="min-w-full text-sm">
       <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
         <tr>
-          <th className="py-2 pr-4">Assignment</th>
-          <th className="py-2 pr-4">Class</th>
-          <th className="py-2 pr-4">Score</th>
-          <th className="py-2 pr-4">Graded</th>
-          <th className="py-2">Feedback</th>
+          <th className="py-2 pr-4">{t('grades.col.assignment')}</th>
+          <th className="py-2 pr-4">{t('grades.col.class')}</th>
+          <th className="py-2 pr-4">{t('grades.col.score')}</th>
+          <th className="py-2 pr-4">{t('grades.col.graded')}</th>
+          <th className="py-2">{t('grades.col.feedback')}</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100">

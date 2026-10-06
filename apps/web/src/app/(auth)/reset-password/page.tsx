@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';
 import { Alert, Button, Input } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 function ResetPasswordForm() {
   const params = useSearchParams();
   const router = useRouter();
+  const t = useT();
   const [token, setToken] = useState(params.get('token') ?? '');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -19,7 +21,7 @@ function ResetPasswordForm() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (newPassword !== confirm) {
-      setError('The passwords do not match.');
+      setError(t('reset.mismatch'));
       return;
     }
     setBusy(true);
@@ -37,21 +39,21 @@ function ResetPasswordForm() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Choose a new password</h1>
-      <p className="mt-1 text-sm text-slate-500">All of your other sessions will be signed out.</p>
+      <h1 className="text-xl font-semibold">{t('reset.title')}</h1>
+      <p className="mt-1 text-sm text-slate-500">{t('reset.subtitle')}</p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
         {error && <Alert>{error}</Alert>}
-        {done && <Alert kind="success">Password updated. Redirecting to sign in…</Alert>}
-        <Input label="Reset code" name="token" required value={token} onChange={(e) => setToken(e.target.value)} />
-        <Input label="New password" name="newPassword" type="password" autoComplete="new-password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-        <Input label="Confirm new password" name="confirm" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        {done && <Alert kind="success">{t('reset.done')}</Alert>}
+        <Input label={t('reset.code')} name="token" required value={token} onChange={(e) => setToken(e.target.value)} />
+        <Input label={t('reset.newPassword')} name="newPassword" type="password" autoComplete="new-password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        <Input label={t('reset.confirm')} name="confirm" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         <Button type="submit" className="w-full" loading={busy} disabled={done}>
-          Update password
+          {t('reset.submit')}
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
-          Back to sign in
+          {t('forgot.back')}
         </Link>
       </p>
     </>

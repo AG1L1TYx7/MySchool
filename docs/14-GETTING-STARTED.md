@@ -130,6 +130,10 @@ On the organisation page, set the letter cutoffs and GPA points the district use
 
 Add counselors as users with the Counselor role (the demo has counselor@smartschool.local). On a student's page, their teachers, counselors and administrators record the IEP or 504 plan; the student then gets extended time on due dates, read-aloud buttons, larger text, reduced motion and a quieter layout automatically, and parents can read the plan. Counselors keep private notes there that nobody else sees and manage their caseload at /caseload. When a student says something to the AI tutor that needs a trusted adult, counselors and the principal are notified and work it at /wellness. On the organisation page, set which behaviour records families see, whether the school consents to AI features for students under 13 or asks parents first, and whether students may message classmates. Parents grant or decline AI features on their child's page.
 
+## 4e. Families and Spanish
+
+Parents and students see My family: every linked child with the current grade in each class, attendance for the last 30 days, missing work, what is due this week and what was graded, with a preview of the weekly email. The language menu in the header (and on the sign-in page) switches the whole family-facing interface between English and Spanish; the choice is saved on the account, so alerts and the weekly email arrive in that language too. Missing-work alerts go out on school-day afternoons and the weekly summary on Sunday evenings to guardians who keep those notices on under Notifications. On a lesson, a teacher asks the AI for a family summary in Spanish or English, edits it, and releases it; families only ever see released summaries, labelled as AI-generated and reviewed. On a student's page, teachers and counselors draft conference talking points from that student's own records; families never see them.
+
 ## 5. Backups
 
 ```bash

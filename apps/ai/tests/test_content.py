@@ -186,3 +186,56 @@ async def test_generate_refuses_unsafe_topics_and_feedback_skips_the_cache(
 async def test_unknown_job_is_404(client: AsyncClient) -> None:
     res = await client.get("/v1/jobs/does-not-exist")
     assert res.status_code == 404
+
+
+SUMMARY = {
+    "title": "Fracciones",
+    "language": "es",
+    "summary": "Esta semana la clase aprendio a comparar fracciones con el mismo denominador y a ubicarlas en la recta numerica.",
+    "keyIdeas": ["Una fraccion es una parte de un entero.", "El denominador dice en cuantas partes se divide."],
+    "questionsToAsk": ["Cual es mas grande, 2/5 o 3/5?"],
+    "tryAtHome": ["Corten una pizza en partes iguales y nombren cada porcion."],
+}
+
+CONFERENCE = {
+    "language": "es",
+    "opening": "Ava participa cada dia y entrega casi todo a tiempo.",
+    "strengths": ["8 de 9 tareas entregadas a tiempo."],
+    "concerns": ["2 ausencias en el ultimo mes."],
+    "talkingPoints": ["Las fracciones van bien.", "Hablemos de las ausencias."],
+    "questionsForFamily": ["Como ve la tarea en casa?"],
+    "nextSteps": ["Practicar 10 minutos de fracciones tres veces por semana."],
+}
+
+
+async def test_family_summary_is_text_in_the_family_language(runtime: Runtime, client: AsyncClient) -> None:
+    runtime.provider = FakeProvider(scripted_replies=[json.dumps(SUMMARY)])
+    req = content_request(capability="content.summary", traceId="s1")
+    req["request"] = {**req["request"], "language": "es", "topic": "Fractions"}
+    res = await client.post("/v1/content/generate", json=req)
+    assert res.status_code == 202
+    job = await wait_for_job(client, res.json()["jobId"])
+    assert job["status"] == "done", job
+    result = job["result"]
+    assert result["promptVersion"] == "content.summary@1"
+    assert result["h5p"] is None and result["validation"]["valid"] is True
+    assert result["draft"]["language"] == "es" and len(result["draft"]["keyIdeas"]) == 2
+    system = runtime.provider.calls[0][0]["content"]
+    assert "Language: es" in system and 'id="C1"' in system
+
+
+async def test_conference_talking_points_use_only_the_data_block(runtime: Runtime, client: AsyncClient) -> None:
+    runtime.provider = FakeProvider(scripted_replies=[json.dumps(CONFERENCE)])
+    req = content_request(capability="content.conference", traceId="k1")
+    req["request"] = {**req["request"], "language": "es", "topic": "Ava"}
+    req["context"] = {
+        "courseId": None,
+        "lessonId": None,
+        "blocks": [{"id": "D1", "label": "DATA", "text": "assignments on time: 8 of 9; absences last 30 days: 2"}],
+    }
+    res = await client.post("/v1/content/generate", json=req)
+    job = await wait_for_job(client, res.json()["jobId"])
+    assert job["status"] == "done", job
+    assert job["result"]["draft"]["talkingPoints"] and job["result"]["h5p"] is None
+    system = runtime.provider.calls[0][0]["content"]
+    assert "8 of 9" in system and "DATA" in system

@@ -8,8 +8,9 @@ import { MotionItem, MotionList, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { timeAgo, type Conversation, type Message, type Person } from '@/lib/communication';
+import type { Conversation, Message, Person } from '@/lib/communication';
 import type { ClassItem } from '@/lib/curriculum';
+import { labelFor, timeAgo, useI18n } from '@/lib/i18n';
 import { fadeRise, spring, useMotionVariants, useReducedMotion } from '@/lib/motion';
 import { connectHub } from '@/lib/realtime';
 
@@ -20,6 +21,7 @@ import { connectHub } from '@/lib/realtime';
  */
 export function MessagesView({ selectedId }: { selectedId?: string }) {
   const { user, can } = useAuth();
+  const { t, tag } = useI18n();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,12 +70,12 @@ export function MessagesView({ selectedId }: { selectedId?: string }) {
 
   return (
     <div className="mx-auto grid h-[calc(100vh-7rem)] max-w-6xl grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
-      <aside aria-label="Conversations" className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white">
+      <aside aria-label={t('msg.conversations')} className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white">
         <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-          <h1 className="text-base font-semibold">Messages</h1>
+          <h1 className="text-base font-semibold">{t('msg.title')}</h1>
           {can('messages.send') && (
             <Button variant="secondary" onClick={() => setComposing(true)}>
-              New
+              {t('msg.new')}
             </Button>
           )}
         </div>
@@ -88,7 +90,7 @@ export function MessagesView({ selectedId }: { selectedId?: string }) {
               <SkeletonRows rows={5} />
             </div>
           ) : conversations.length === 0 ? (
-            <p className="p-4 text-sm text-slate-500">No conversations yet. Start one with a teacher.</p>
+            <p className="p-4 text-sm text-slate-500">{t('msg.noConversations')}</p>
           ) : (
             <MotionList className="divide-y divide-slate-100">
               {conversations.map((c) => (
@@ -100,8 +102,8 @@ export function MessagesView({ selectedId }: { selectedId?: string }) {
                     </div>
                     <p className="truncate text-xs text-slate-600">
                       {c.type !== 'direct' ? `${c.type} · ` : ''}
-                      {c.lastMessage ? c.lastMessage.content || '(deleted)' : 'No messages yet'}
-                      {c.lastMessageAt ? ` · ${timeAgo(c.lastMessageAt)}` : ''}
+                      {c.lastMessage ? c.lastMessage.content || t('msg.deletedShort') : t('msg.noMessages')}
+                      {c.lastMessageAt ? ` · ${timeAgo(c.lastMessageAt, t, tag)}` : ''}
                     </p>
                   </Link>
                 </MotionItem>
@@ -123,7 +125,7 @@ export function MessagesView({ selectedId }: { selectedId?: string }) {
           <Thread key={selected.id} conversation={selected} onRead={markReadLocally} />
         ) : (
           <Card>
-            <p className="text-sm text-slate-500">Pick a conversation, or start a new one.</p>
+            <p className="text-sm text-slate-500">{t('msg.pick')}</p>
           </Card>
         )}
       </section>
@@ -133,7 +135,8 @@ export function MessagesView({ selectedId }: { selectedId?: string }) {
 
 function Compose({ onCancel, onCreated }: { onCancel: () => void; onCreated: (c: Conversation) => void }) {
   const { user } = useAuth();
-  const staff = user?.role === 'teacher' || user?.role === 'principal' || user?.role === 'assistant' || user?.role === 'superintendent' || user?.role === 'super_admin';
+  const t = useI18n().t;
+  const staff = user?.role === 'teacher' || user?.role === 'principal' || user?.role === 'assistant' || user?.role === 'superintendent' || user?.role === 'super_admin' || user?.role === 'counselor';
   const [contacts, setContacts] = useState<Person[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [mode, setMode] = useState<'direct' | 'class'>('direct');
@@ -157,31 +160,31 @@ function Compose({ onCancel, onCreated }: { onCancel: () => void; onCreated: (c:
     }
   }
   return (
-    <Card title="New conversation" description={staff ? 'Message a person, or open a conversation for a whole class.' : 'You can message your teachers and school staff.'}>
+    <Card title={t('msg.newConversation')} description={staff ? t('msg.newDescStaff') : t('msg.newDescFamily')}>
       <form onSubmit={(e) => void start(e)} className="space-y-3" noValidate>
         {error && <Alert>{error}</Alert>}
         {staff && (
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1">
-              <input type="radio" checked={mode === 'direct'} onChange={() => setMode('direct')} /> Person
+              <input type="radio" checked={mode === 'direct'} onChange={() => setMode('direct')} /> {t('msg.person')}
             </label>
             <label className="flex items-center gap-1">
-              <input type="radio" checked={mode === 'class'} onChange={() => setMode('class')} /> Class
+              <input type="radio" checked={mode === 'class'} onChange={() => setMode('class')} /> {t('common.class')}
             </label>
           </div>
         )}
         {mode === 'direct' ? (
-          <Select label="To" id="to" value={userId} onChange={(e) => setUserId(e.target.value)}>
-            <option value="">Choose a person</option>
+          <Select label={t('msg.to')} id="to" value={userId} onChange={(e) => setUserId(e.target.value)}>
+            <option value="">{t('msg.choosePerson')}</option>
             {contacts.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.firstName} {p.lastName} ({p.role})
+                {p.firstName} {p.lastName} ({labelFor('role', p.role, t)})
               </option>
             ))}
           </Select>
         ) : (
-          <Select label="Class" id="class" value={classId} onChange={(e) => setClassId(e.target.value)}>
-            <option value="">Choose a class</option>
+          <Select label={t('common.class')} id="class" value={classId} onChange={(e) => setClassId(e.target.value)}>
+            <option value="">{t('msg.chooseClass')}</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -191,10 +194,10 @@ function Compose({ onCancel, onCreated }: { onCancel: () => void; onCreated: (c:
         )}
         <div className="flex gap-2">
           <Button type="submit" loading={busy} disabled={mode === 'direct' ? !userId : !classId}>
-            Start
+            {t('msg.start')}
           </Button>
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       </form>
@@ -204,6 +207,7 @@ function Compose({ onCancel, onCreated }: { onCancel: () => void; onCreated: (c:
 
 function Thread({ conversation, onRead }: { conversation: Conversation; onRead: (id: string) => void }) {
   const { user } = useAuth();
+  const { t, n, tag } = useI18n();
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -229,8 +233,13 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
     };
     const onEdited = (e: { messageId: string; newContent: string; editedAt: string }) => setMessages((l) => l?.map((m) => (m.id === e.messageId ? { ...m, content: e.newContent, editedAt: e.editedAt } : m)) ?? l);
     const onDeleted = (e: { messageId: string }) => setMessages((l) => l?.map((m) => (m.id === e.messageId ? { ...m, content: '', deletedAt: new Date().toISOString() } : m)) ?? l);
-    const onTyping = (e: { userId: string; conversationId: string }) => e.conversationId === conversation.id && e.userId !== user?.id && setTyping((t) => new Set([...t, e.userId]));
-    const onStop = (e: { userId: string }) => setTyping((t) => { const n = new Set(t); n.delete(e.userId); return n; });
+    const onTyping = (e: { userId: string; conversationId: string }) => e.conversationId === conversation.id && e.userId !== user?.id && setTyping((s) => new Set([...s, e.userId]));
+    const onStop = (e: { userId: string }) =>
+      setTyping((s) => {
+        const next = new Set(s);
+        next.delete(e.userId);
+        return next;
+      });
     socket.on('ReceiveMessage', onMessage);
     socket.on('MessageEdited', onEdited);
     socket.on('MessageDeleted', onDeleted);
@@ -278,18 +287,18 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
   }
 
   async function remove(m: Message) {
-    if (!confirm('Delete this message?')) return;
+    if (!confirm(t('msg.confirmDelete'))) return;
     await api(`/messages/${m.id}`, { method: 'DELETE' }).catch((err) => setError(errorMessage(err)));
   }
 
-  const typingNames = [...typing].map((id) => names.get(id) ?? 'Someone');
+  const typingNames = [...typing].map((id) => names.get(id) ?? t('msg.someone'));
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border border-slate-200 bg-white">
       <header className="border-b border-slate-100 px-4 py-2">
         <h2 className="text-base font-semibold text-slate-900">{conversation.title}</h2>
         <p className="text-xs text-slate-500">
           {conversation.participants.map((p) => `${p.firstName} ${p.lastName}`).join(', ')}
-          {conversation.type !== 'direct' ? ` · ${conversation.participants.length} people` : ''}
+          {conversation.type !== 'direct' ? ` · ${t('msg.people', { n: conversation.participants.length })}` : ''}
         </p>
       </header>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3" role="log" aria-live="polite">
@@ -302,9 +311,14 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
               return (
                 <motion.div key={m.id} layout={!prefersReduced} variants={variants} initial="hidden" animate="visible" className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`group max-w-[78%] rounded-2xl px-3 py-2 text-sm ${mine ? 'rounded-br-sm bg-brand-600 text-white' : 'rounded-bl-sm bg-slate-100 text-slate-900'}`}>
-                    {!mine && conversation.type !== 'direct' && <p className="text-[11px] font-semibold opacity-80">{m.sender ? `${m.sender.firstName} ${m.sender.lastName}` : 'Removed user'}</p>}
-                    {m.replyTo && <p className={`mb-1 border-l-2 pl-2 text-xs ${mine ? 'border-white/60 text-white/80' : 'border-slate-300 text-slate-500'}`}>{m.replyTo.senderName ? `${m.replyTo.senderName}: ` : ''}{m.replyTo.content || '(deleted)'}</p>}
-                    {m.deletedAt ? <p className="italic opacity-70">Message deleted</p> : <p className="whitespace-pre-wrap">{m.content}</p>}
+                    {!mine && conversation.type !== 'direct' && <p className="text-[11px] font-semibold opacity-80">{m.sender ? `${m.sender.firstName} ${m.sender.lastName}` : t('msg.removedUser')}</p>}
+                    {m.replyTo && (
+                      <p className={`mb-1 border-l-2 pl-2 text-xs ${mine ? 'border-white/60 text-white/80' : 'border-slate-300 text-slate-500'}`}>
+                        {m.replyTo.senderName ? `${m.replyTo.senderName}: ` : ''}
+                        {m.replyTo.content || t('msg.deletedShort')}
+                      </p>
+                    )}
+                    {m.deletedAt ? <p className="italic opacity-70">{t('msg.messageDeleted')}</p> : <p className="whitespace-pre-wrap">{m.content}</p>}
                     {m.files.length > 0 && (
                       <ul className="mt-1 text-xs underline">
                         {m.files.map((f) => (
@@ -313,16 +327,16 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
                       </ul>
                     )}
                     <p className={`mt-1 flex items-center gap-2 text-[11px] ${mine ? 'text-white/90' : 'text-slate-600'}`}>
-                      {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {m.editedAt && ' · edited'}
+                      {new Date(m.createdAt).toLocaleTimeString(tag, { hour: '2-digit', minute: '2-digit' })}
+                      {m.editedAt && ` · ${t('msg.edited')}`}
                       {!m.deletedAt && (
                         <button type="button" className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100" onClick={() => setReplyTo(m)}>
-                          Reply
+                          {t('msg.reply')}
                         </button>
                       )}
                       {!m.deletedAt && mine && (
                         <button type="button" className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100" onClick={() => void remove(m)}>
-                          Delete
+                          {t('common.delete')}
                         </button>
                       )}
                     </p>
@@ -334,7 +348,7 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
         )}
         {typingNames.length > 0 && (
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={spring.soft} className="text-xs text-slate-500">
-            {typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing…
+            {n('msg.typing', typingNames.length, { names: typingNames.join(', ') })}
           </motion.p>
         )}
         <div ref={endRef} />
@@ -347,8 +361,8 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
       <form onSubmit={(e) => void send(e)} className="border-t border-slate-100 p-3">
         {replyTo && (
           <p className="mb-1 flex items-center justify-between rounded bg-slate-50 px-2 py-1 text-xs text-slate-600">
-            <span className="truncate">Replying to: {replyTo.content}</span>
-            <button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">
+            <span className="truncate">{t('msg.replyingTo', { text: replyTo.content })}</span>
+            <button type="button" onClick={() => setReplyTo(null)} aria-label={t('msg.cancelReply')}>
               ✕
             </button>
           </p>
@@ -365,12 +379,12 @@ function Thread({ conversation, onRead }: { conversation: Conversation; onRead: 
             }}
             rows={2}
             maxLength={4000}
-            placeholder="Write a message…"
-            aria-label="Message"
+            placeholder={t('msg.placeholder')}
+            aria-label={t('msg.messageAria')}
             className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
           <Button type="submit" loading={sending} disabled={!draft.trim()}>
-            Send
+            {t('msg.send')}
           </Button>
         </div>
       </form>
