@@ -98,9 +98,7 @@ describe('Support and safety (e2e)', () => {
     });
     emmaId = emma.id;
     emmaBirth = emma.dateOfBirth;
-    await prisma.aiConversation.deleteMany({
-      where: { user: { email: 'student@smartschool.local' } },
-    });
+    // The demo student is shared with the AI tutor suite: never delete their conversations here.
     await prisma.wellnessAlert.deleteMany({ where: { studentId: emmaId } });
     await prisma.aiConsent.deleteMany({ where: { studentId: emmaId } });
     await prisma.organization.update({
