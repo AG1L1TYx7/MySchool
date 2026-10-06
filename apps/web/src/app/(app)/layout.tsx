@@ -7,6 +7,7 @@ import { AnimatePresence } from 'framer-motion';
 import { MotionPage } from '@/components/motion';
 import { AccommodationsProvider } from '@/components/accommodations';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { XpPill } from '@/components/motivation-cards';
 import { NotificationBell } from '@/components/notification-bell';
 import { Button, Logo } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -14,8 +15,9 @@ import { labelFor, useT } from '@/lib/i18n';
 import type { MessageKey } from '@/locales/en';
 
 /** Navigation is driven by the caller's effective feature codes, never by hard-coded roles. */
-const NAV: Array<{ href: string; label: MessageKey; feature: string }> = [
+const NAV: Array<{ href: string; label: MessageKey; feature: string; roles?: string[] }> = [
   { href: '/dashboard', label: 'nav.dashboard', feature: 'dashboard.view' },
+  { href: '/motivation', label: 'nav.motivation', feature: 'motivation.view', roles: ['student'] },
   { href: '/family', label: 'nav.family', feature: 'family.view' },
   { href: '/courses', label: 'nav.courses', feature: 'courses.view' },
   { href: '/classes', label: 'nav.classes', feature: 'classes.view' },
@@ -62,7 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside aria-label={t('shell.sidebar')} className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
         <Logo />
         <nav aria-label={t('shell.primary')} className="mt-6 flex gap-1 overflow-x-auto md:flex-col">
-          {NAV.filter((n) => can(n.feature))
+          {NAV.filter((n) => can(n.feature) && (!n.roles || n.roles.includes(user.role)))
             .filter((n, i, all) => all.findIndex((x) => x.href === n.href) === i)
             .map((n) => {
             const active = pathname === n.href || pathname.startsWith(`${n.href}/`);
@@ -87,6 +89,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{labelFor('role', user.role, t)}</span>
           </div>
           <div className="flex items-center gap-2">
+            <XpPill />
             <LanguageSwitcher />
             {can('notifications.view') && <NotificationBell />}
             <Button variant="secondary" onClick={() => void logout().then(() => router.replace('/login'))}>

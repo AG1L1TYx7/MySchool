@@ -133,6 +133,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/Gamification` (15).
 **AI.** The Gamification agent in the AI service can propose quests and awards.
 **Status.** Real; seeded catalogue.
+**Release 2 (slice 14).** Rebuilt as private motivation on `StudentPoints`, `RewardTransactions`, `Badges`, `StudentBadges`, `LessonCompletions`, `Quests` and `QuestProgress` (titles derive from level): XP and levels, streaks with freeze tokens, sixteen badges (three teacher-awarded), personal weekly quests generated each Monday, class quests with a shared total, lesson completion with progress maps, a teacher console and the family view. No rankings anywhere (ADR-024); the AI quest proposer is deferred to the teacher-assistant slice.
 
 ## 15. Parent portal
 

@@ -248,6 +248,7 @@ enum NotificationCategory {
   SYSTEM
   AI
   DIGEST
+  MOTIVATION
 }
 
 enum ConversationType {
@@ -341,6 +342,7 @@ model Organization {
   behaviorVisibility     String    @default("POSITIVE_ONLY") @map("BehaviorVisibility") @db.VarChar(20)
   aiConsentDefault       String    @default("SCHOOL") @map("AiConsentDefault") @db.VarChar(20)
   studentMessaging       Boolean   @default(false) @map("StudentMessaging")
+  motivationEnabled      Boolean   @default(true) @map("MotivationEnabled")
   createdAt              DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt              DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt              DateTime? @map("DeletedAt") @db.DateTime(6)
@@ -369,6 +371,9 @@ model Organization {
   bellSchedules     BellSchedule[]
   attendanceCodes   AttendanceCode[]
   calendarEvents    CalendarEvent[]
+
+  badges Badge[]
+  quests Quest[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -446,6 +451,10 @@ model User {
   conferenceNotes    ConferenceNote[]
   summariesReviewed  LessonSummary[]
   icalToken          String?                   @unique @map("IcalToken") @db.VarChar(64)
+
+  rewardsGiven  RewardTransaction[]
+  badgesGiven   StudentBadge[]
+  questsCreated Quest[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -543,6 +552,13 @@ model Student {
   grades          Grade[]
   attendance      Attendance[]
   h5pResults      H5PContentResult[]
+
+  points            StudentPoints?
+  rewards           RewardTransaction[]
+  badges            StudentBadge[]
+  lessonCompletions LessonCompletion[]
+  quests            Quest[]
+  questProgress     QuestProgress[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -663,6 +679,8 @@ model Lesson {
   standards LessonStandard[]
   summaries LessonSummary[]
 
+  completions LessonCompletion[]
+
   @@index([moduleId, sortOrder])
   @@map("Lessons")
 }
@@ -711,6 +729,8 @@ model Class {
   reportCardLines  ReportCardLine[]
   announcements    Announcement[]
   conversations    Conversation[]
+
+  quests Quest[]
 
   @@index([organizationId, term, status, deletedAt])
   @@index([courseId])
@@ -1869,4 +1889,145 @@ model ConferenceNote {
 
   @@index([studentId, createdAt])
   @@map("ConferenceNotes")
+}
+
+// ---------------------------------------------------------------------------
+// Motivation (Release 2 slice 14, docs/12 section 4): private XP, streaks, badges, quests
+// ---------------------------------------------------------------------------
+
+enum QuestStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+}
+
+model StudentPoints {
+  id            String    @id @map("Id") @db.Char(36)
+  studentId     String    @unique @map("StudentId") @db.Char(36)
+  xp            Int       @default(0) @map("Xp")
+  level         Int       @default(1) @map("Level")
+  streakDays    Int       @default(0) @map("StreakDays")
+  longestStreak Int       @default(0) @map("LongestStreak")
+  lastActionOn  DateTime? @map("LastActionOn") @db.Date
+  freezeTokens  Int       @default(0) @map("FreezeTokens")
+  freezesUsed   Int       @default(0) @map("FreezesUsed")
+  title         String    @default("newcomer") @map("Title") @db.VarChar(40)
+  createdAt     DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt     DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("StudentPoints")
+}
+
+model RewardTransaction {
+  id          String   @id @map("Id") @db.Char(36)
+  studentId   String   @map("StudentId") @db.Char(36)
+  amount      Int      @map("Amount")
+  reason      String   @map("Reason") @db.VarChar(40)
+  entityType  String   @default("") @map("EntityType") @db.VarChar(40)
+  entityId    String   @default("") @map("EntityId") @db.Char(36)
+  note        String?  @map("Note") @db.Text
+  awardedById String?  @map("AwardedById") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  awardedBy User?   @relation(fields: [awardedById], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, reason, entityType, entityId])
+  @@index([studentId, createdAt])
+  @@map("RewardTransactions")
+}
+
+model Badge {
+  id             String   @id @map("Id") @db.Char(36)
+  code           String   @unique @map("Code") @db.VarChar(60)
+  name           String   @map("Name") @db.VarChar(100)
+  description    String   @map("Description") @db.Text
+  category       String   @map("Category") @db.VarChar(20)
+  tier           Int      @default(1) @map("Tier")
+  icon           String   @map("Icon") @db.VarChar(16)
+  teacherAwarded Boolean  @default(false) @map("TeacherAwarded")
+  organizationId String?  @map("OrganizationId") @db.Char(36)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  organization Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  awards       StudentBadge[]
+
+  @@map("Badges")
+}
+
+model StudentBadge {
+  id          String   @id @map("Id") @db.Char(36)
+  studentId   String   @map("StudentId") @db.Char(36)
+  badgeId     String   @map("BadgeId") @db.Char(36)
+  awardedById String?  @map("AwardedById") @db.Char(36)
+  reason      String?  @map("Reason") @db.Text
+  createdAt   DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  badge     Badge   @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedBy User?   @relation(fields: [awardedById], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, badgeId])
+  @@map("StudentBadges")
+}
+
+model LessonCompletion {
+  id          String   @id @map("Id") @db.Char(36)
+  studentId   String   @map("StudentId") @db.Char(36)
+  lessonId    String   @map("LessonId") @db.Char(36)
+  completedAt DateTime @default(now()) @map("CompletedAt") @db.DateTime(6)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lesson  Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, lessonId])
+  @@index([lessonId])
+  @@map("LessonCompletions")
+}
+
+model Quest {
+  id             String      @id @map("Id") @db.Char(36)
+  organizationId String      @map("OrganizationId") @db.Char(36)
+  classId        String?     @map("ClassId") @db.Char(36)
+  studentId      String?     @map("StudentId") @db.Char(36)
+  title          String      @map("Title") @db.VarChar(200)
+  description    String?     @map("Description") @db.Text
+  metric         String      @map("Metric") @db.VarChar(30)
+  goal           Int         @map("Goal")
+  rewardXp       Int         @default(0) @map("RewardXp")
+  startsAt       DateTime    @map("StartsAt") @db.DateTime(6)
+  endsAt         DateTime    @map("EndsAt") @db.DateTime(6)
+  status         QuestStatus @default(ACTIVE) @map("Status")
+  auto           Boolean     @default(false) @map("Auto")
+  createdById    String?     @map("CreatedById") @db.Char(36)
+  createdAt      DateTime    @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime    @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class        Class?          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student      Student?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy    User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  progress     QuestProgress[]
+
+  @@index([organizationId, status, endsAt])
+  @@index([classId, status])
+  @@index([studentId, status])
+  @@map("Quests")
+}
+
+model QuestProgress {
+  id          String    @id @map("Id") @db.Char(36)
+  questId     String    @map("QuestId") @db.Char(36)
+  studentId   String    @map("StudentId") @db.Char(36)
+  count       Int       @default(0) @map("Count")
+  completedAt DateTime? @map("CompletedAt") @db.DateTime(6)
+  updatedAt   DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  quest   Quest   @relation(fields: [questId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([questId, studentId])
+  @@map("QuestProgress")
 }

@@ -2,6 +2,7 @@
 
 import { ReadAloud } from '@/components/accommodations';
 import { LessonSummaries } from '@/components/lesson-summaries';
+import { MarkLessonDone, ProgressMap } from '@/components/progress-map';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -84,6 +85,7 @@ export default function CoursePage() {
       {course.description && <p className="text-sm text-slate-700">{course.description}</p>}
 
       {course.canEdit && <DetailsForm course={course} onSaved={load} />}
+      {!course.canEdit && <ProgressMap courseId={id} />}
 
       <Card title="Outline" description={course.canEdit ? 'Modules group lessons. Students see published modules and lessons once the course is published.' : undefined}>
         {course.modules.length === 0 && <p className="text-sm text-slate-500">No modules yet.</p>}
@@ -257,6 +259,7 @@ function ModuleBlock({ module, index, total, courseId, canEdit, allModuleIds, on
                 )}
                 {!l.content && !l.contentUrl && <p className="text-slate-500">No content yet.</p>}
                 {(l.isPublished || canEdit) && <LessonSummaries lessonId={l.id} />}
+                {!canEdit && l.isPublished && <MarkLessonDone lessonId={l.id} />}
               </div>
             )}
           </li>

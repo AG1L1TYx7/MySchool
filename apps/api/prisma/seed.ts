@@ -12,6 +12,7 @@ import argon2 from 'argon2';
 import { newId as uuidv7 } from '../src/common/utils/ids';
 import { FEATURE_CATALOG } from '../src/modules/access/feature-catalog';
 import { H5P_LIBRARIES } from '../src/modules/h5p/h5p-libraries';
+import { BADGES } from '../src/modules/motivation/motivation-rules';
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
 const prisma = new PrismaClient({
@@ -1258,6 +1259,74 @@ async function seedSupport(organizationId: string): Promise<void> {
   );
 }
 
+async function seedMotivation(organizationId: string): Promise<void> {
+  for (const b of BADGES) {
+    await prisma.badge.upsert({
+      where: { code: b.code },
+      update: {
+        name: b.name,
+        description: b.description,
+        category: b.category,
+        tier: b.tier,
+        icon: b.icon,
+        teacherAwarded: !!b.teacherAwarded,
+      },
+      create: {
+        id: uuidv7(),
+        code: b.code,
+        name: b.name,
+        description: b.description,
+        category: b.category,
+        tier: b.tier,
+        icon: b.icon,
+        teacherAwarded: !!b.teacherAwarded,
+      },
+    });
+  }
+  const klass = await prisma.class.findFirst({
+    where: { organizationId, name: 'English 7 - Section A', deletedAt: null },
+  });
+  const teacher = await prisma.user.findUnique({
+    where: { email: 'teacher@smartschool.local' },
+  });
+  if (klass && teacher) {
+    const existing = await prisma.quest.findFirst({
+      where: {
+        classId: klass.id,
+        title: 'Everyone turns in on time this week',
+      },
+    });
+    if (!existing) {
+      const now = new Date();
+      const start = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+      );
+      start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+      const end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 7);
+      await prisma.quest.create({
+        data: {
+          id: uuidv7(),
+          organizationId,
+          classId: klass.id,
+          title: 'Everyone turns in on time this week',
+          description:
+            'The whole class works together: every on-time submission counts toward the class goal.',
+          metric: 'on_time',
+          goal: 10,
+          rewardXp: 30,
+          startsAt: start,
+          endsAt: end,
+          createdById: teacher.id,
+        },
+      });
+    }
+  }
+  console.log(
+    `motivation: ${BADGES.length} badges in the catalogue and a class quest`,
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedH5pLibraries();
@@ -1270,6 +1339,7 @@ async function main(): Promise<void> {
   await seedAcademics(orgId);
   await seedGrading(orgId);
   await seedSupport(orgId);
+  await seedMotivation(orgId);
 }
 
 main()

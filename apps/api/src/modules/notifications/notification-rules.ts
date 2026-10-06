@@ -9,6 +9,7 @@ export const CATEGORIES = [
   'SYSTEM',
   'AI',
   'DIGEST',
+  'MOTIVATION',
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 

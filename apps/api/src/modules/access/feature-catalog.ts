@@ -285,6 +285,13 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('calendar.view', 'View calendar', 'Calendar', ALL),
   f('family.view', 'Family home', 'Parent portal', ['PARENT', 'STUDENT']),
   f('calendar.manage', 'Manage calendar events', 'Calendar', STAFF),
+  f('motivation.view', 'See XP, streaks, badges and quests', 'Motivation', ALL),
+  f(
+    'motivation.award',
+    'Award points and badges, run class quests',
+    'Motivation',
+    STAFF,
+  ),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

@@ -134,6 +134,10 @@ Add counselors as users with the Counselor role (the demo has counselor@smartsch
 
 Parents and students see My family: every linked child with the current grade in each class, attendance for the last 30 days, missing work, what is due this week and what was graded, with a preview of the weekly email. The language menu in the header (and on the sign-in page) switches the whole family-facing interface between English and Spanish; the choice is saved on the account, so alerts and the weekly email arrive in that language too. Missing-work alerts go out on school-day afternoons and the weekly summary on Sunday evenings to guardians who keep those notices on under Notifications. On a lesson, a teacher asks the AI for a family summary in Spanish or English, edits it, and releases it; families only ever see released summaries, labelled as AI-generated and reviewed. On a student's page, teachers and counselors draft conference talking points from that student's own records; families never see them.
 
+## 4f. Motivation
+
+Students earn XP for finishing lessons (the Mark lesson finished button at the end of a lesson), turning work in, turning it in on time, beating their previous score and perfect scores; levels and titles grow with XP, and a streak counts school days in a row with a freeze token covering one missed day. Badges unlock from the same actions, and teachers award Kindness, Helper and Leader badges or extra points with a reason from the class Motivation page, where they also start class quests (a shared goal that everyone's work counts toward). Every Monday each student gets a few personal quests for the week. Students see all of this under My progress and on their dashboard; parents see it on My family. Nobody is ranked against anybody: students never see each other's numbers, and the console lists students alphabetically. The school can turn the whole thing off on the organisation page.
+
 ## 5. Backups
 
 ```bash

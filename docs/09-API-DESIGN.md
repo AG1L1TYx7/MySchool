@@ -239,6 +239,20 @@ GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY
 ```
 Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
 
+### Motivation (Release 2 slice 14)
+```
+GET    /me/motivation                       the signed-in student only: xp, level, title, levelStartXp, nextLevelXp, todayXp, streak { days, longest, alive, freezeTokens }, badges, quests (own progress; class quests add classTotal), recent rewards
+GET    /students/{id}/motivation            the same for the student's family, teachers, counselors and administrators (motivation.view)
+POST   /students/{id}/motivation/awards     { kind xp, amount 1..100, reason } or { kind badge, badgeCode kindness|helper|leader, reason }; the student's teachers and administrators (motivation.award); 403 motivation.already_awarded
+GET    /classes/{id}/motivation             teacher console: students alphabetically with level, streak, badges, on-time count and nearMilestone; class quests with totals and participant counts; never a ranking
+GET    /classes/{id}/quests                 class quests for a member: class total plus the caller's own count; POST { title, metric lessons|submissions|on_time|xp, goal, rewardXp, endsAt? } by the class teachers; DELETE /quests/{id}
+POST   /lessons/{id}/complete               a student marks a published lesson finished; XP once per lesson; { completed, alreadyCompleted, reward }
+GET    /courses/{id}/progress               progress map: modules and lessons with completion and nextLessonId; students see their own, others pass studentId
+GET    /badges                              the badge catalogue
+GET    /organizations/{id}/motivation/settings  { motivationEnabled }; PUT under organizations.structure
+```
+Rules (`modules/motivation/motivation-rules.ts`): XP 10 per lesson, 20 per first submission plus 10 on time, 15 when a score beats the previous one, 25 for a perfect score, quest rewards and teacher awards on top; automatic XP is capped at 200 a day and granted once per entity; levels need 100, 250, 475, 813... cumulative XP and never go down; titles follow levels; a streak counts consecutive school days with a learning action, a freeze token (earned every five days, two at most) covers one missed day; badges have fixed criteria except the three teacher-awarded ones. Events: `assignment.submitted` and `grade.posted` feed rewards; `lesson.completed` is emitted. Jobs: Monday 06:00 personal weekly quests from what the student has ahead; 00:10 daily expiry. Notifications use category `motivation` (in-app only by default).
+
 ### Families and Spanish (Release 2 slice 13)
 ```
 GET    /family/home                         parents and students (family.view): every linked child with classes and current grades, attendance (30 days), missing work, work due in seven days, grades from the last seven days, behaviour notes and report cards

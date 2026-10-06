@@ -63,7 +63,7 @@ Anti-abuse: XP for an action is granted once per entity (one lesson, one assignm
 
 - **Slice 5 onward:** every new screen ships with the motion tokens, skeleton loading, animated progress and the feedback patterns above (part of the docs/11 definition of done, section 1 item 7 "walk-through" includes a motion check).
 - **UX slice (after slice 5, two weeks):** retrofit the existing screens (sign-in, dashboard, courses, classes, assignments, grades, attendance, students) with the motion system; add the design tokens file, the `Motion` wrapper components, page transitions, skeletons and the first celebration (submission and grade). Add Playwright flows that assert reduced-motion behaviour and that celebrations do not block input.
-- **Release 2 gamification slice:** XP, levels, streaks, badges, quests, progress maps, class challenges, teacher console and parent view, on the gamification tables; evaluation of engagement metrics in docs/08 section 6 (daily active students, lesson completion, on-time submission rate).
+- **Release 2 gamification slice (done, slice 14):** XP, levels, streaks, badges, quests, progress maps, class quests, teacher console and parent view ship on the motivation tables; mastery rings, class challenges beyond quests and the tutor tie-in wait for the learning-science and teacher-assistant slices; engagement metrics (docs/08 section 6) are read from `RewardTransactions` and `LessonCompletions`.
 
 ## 6. Acceptance checklist (per screen)
 

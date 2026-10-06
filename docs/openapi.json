@@ -5361,7 +5361,8 @@
                 "attendance",
                 "system",
                 "ai",
-                "digest"
+                "digest",
+                "motivation"
               ]
             }
           },
@@ -9126,6 +9127,358 @@
         ]
       }
     },
+    "/api/v1/me/motivation": {
+      "get": {
+        "operationId": "MotivationController_mine_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The signed-in student: XP, level, title, streak, badges, quests and recent rewards (private)",
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/motivation": {
+      "get": {
+        "operationId": "MotivationController_forStudent_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's motivation summary for their family, teachers, counselors and administrators",
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/motivation/awards": {
+      "post": {
+        "operationId": "MotivationController_award_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AwardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Award XP or a badge with a reason (teachers)",
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/motivation": {
+      "get": {
+        "operationId": "MotivationController_classConsole_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Teacher console: each student’s level, streak and badges, who is near a milestone, class quests; no ranking",
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/quests": {
+      "get": {
+        "operationId": "MotivationController_classQuests_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Class quests: the class total and the caller’s own contribution, never other students’",
+        "tags": [
+          "Motivation"
+        ]
+      },
+      "post": {
+        "operationId": "MotivationController_createQuest_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/quests/{id}": {
+      "delete": {
+        "operationId": "MotivationController_removeQuest_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/lessons/{id}/complete": {
+      "post": {
+        "operationId": "MotivationController_completeLesson_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student marks a lesson finished (XP once per lesson)",
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/courses/{id}/progress": {
+      "get": {
+        "operationId": "MotivationController_progress_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Progress map: modules and lessons with what is finished and the next step; studentId for a child or a student you teach",
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/badges": {
+      "get": {
+        "operationId": "MotivationController_badges_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The badge catalogue",
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/motivation/settings": {
+      "get": {
+        "operationId": "MotivationController_settings_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Motivation"
+        ]
+      },
+      "put": {
+        "operationId": "MotivationController_updateSettings_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MotivationSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Motivation"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -11211,7 +11564,8 @@
               "attendance",
               "system",
               "ai",
-              "digest"
+              "digest",
+              "motivation"
             ]
           },
           "inApp": {
@@ -12427,6 +12781,85 @@
         "required": [
           "language"
         ]
+      },
+      "AwardDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "xp",
+              "badge"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "badgeCode": {
+            "type": "string",
+            "description": "A teacher-awarded badge code: kindness, helper, leader"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Shown to the student and their family"
+          }
+        },
+        "required": [
+          "kind",
+          "reason"
+        ]
+      },
+      "CreateQuestDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "lessons",
+              "submissions",
+              "on_time",
+              "xp"
+            ]
+          },
+          "goal": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Class total to reach"
+          },
+          "rewardXp": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 200,
+            "default": 30
+          },
+          "endsAt": {
+            "type": "string",
+            "description": "Defaults to the end of this week"
+          }
+        },
+        "required": [
+          "title",
+          "metric",
+          "goal"
+        ]
+      },
+      "MotivationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "motivationEnabled": {
+            "type": "boolean",
+            "description": "XP, streaks, badges and quests on or off for the school"
+          }
+        }
       }
     }
   }
