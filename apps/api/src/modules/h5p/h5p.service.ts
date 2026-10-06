@@ -31,6 +31,7 @@ import {
   contentTypeFor,
   maxScoreOf,
   parseLibrary,
+  sanitizeParameters,
   signPlayTicket,
   validateParameters,
   verifyPlayTicket,
@@ -148,7 +149,8 @@ export class H5pService {
     > = {},
   ): Promise<PublicH5pContent> {
     const organizationId = resolveOrganizationId(actor, dto.organizationId);
-    const errors = validateParameters(dto.library, dto.parameters);
+    const parameters = sanitizeParameters(dto.parameters);
+    const errors = validateParameters(dto.library, parameters);
     if (errors.length)
       throw new BadRequestException({
         code: 'h5p.invalid',
@@ -163,8 +165,8 @@ export class H5pService {
         title: dto.title.trim(),
         library: dto.library.trim(),
         contentType: contentTypeFor(dto.library),
-        parameters: JSON.stringify(dto.parameters),
-        maxScore: maxScoreOf(dto.library, dto.parameters),
+        parameters: JSON.stringify(parameters),
+        maxScore: maxScoreOf(dto.library, parameters),
         subject: dto.subject ?? null,
         gradeLevel: dto.gradeLevel ?? null,
         topic: dto.topic ?? null,
@@ -202,15 +204,16 @@ export class H5pService {
     if (dto.gradeLevel !== undefined) data.gradeLevel = dto.gradeLevel;
     if (dto.topic !== undefined) data.topic = dto.topic;
     if (dto.parameters !== undefined) {
-      const errors = validateParameters(row.library, dto.parameters);
+      const parameters = sanitizeParameters(dto.parameters);
+      const errors = validateParameters(row.library, parameters);
       if (errors.length)
         throw new BadRequestException({
           code: 'h5p.invalid',
           detail: `Content is not playable: ${errors.join('; ')}`,
           errors,
         });
-      data.parameters = JSON.stringify(dto.parameters);
-      data.maxScore = maxScoreOf(row.library, dto.parameters);
+      data.parameters = JSON.stringify(parameters);
+      data.maxScore = maxScoreOf(row.library, parameters);
     }
     const updated = await this.prisma.h5PContent.update({
       where: { id },

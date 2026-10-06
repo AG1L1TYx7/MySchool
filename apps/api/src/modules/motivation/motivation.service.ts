@@ -1046,6 +1046,7 @@ export class MotivationService {
       select: {
         id: true,
         title: true,
+        organizationId: true,
         modules: {
           where: staff ? {} : { isPublished: true },
           orderBy: { sortOrder: 'asc' },
@@ -1065,6 +1066,13 @@ export class MotivationService {
       throw new NotFoundException({
         code: 'resource.not_found',
         detail: 'Course not found.',
+      });
+    // A course belongs to a school: families of another school never see its outline.
+    if (staff) assertOrganizationAccess(actor, course.organizationId);
+    else if (actor.organizationId !== course.organizationId)
+      throw new ForbiddenException({
+        code: 'authz.forbidden',
+        detail: 'Not available for your account.',
       });
     const done = new Map(
       (

@@ -105,6 +105,8 @@ Lighthouse (desktop) on the sign-in and registration pages: accessibility 100, b
 
 ## 6. Known gaps carried into Release 2
 
+Update, 6 October 2026: the review by checklist above is now backed by an attack suite that runs in CI; see docs/16 for the method, the three findings it produced and what remains untested.
+
 - Lighthouse performance is 91 with applied throttling but 86 under the simulated profile, which extrapolates from a local server where every script finishes before the first paint. Tracked for the accessibility and performance slice; the remaining lever is a smaller framework bundle.
 - Docker images untested on this machine (no Docker). Backup and restore drill done with the local database only.
 - Manual accessibility audit and third-party penetration test not yet done.

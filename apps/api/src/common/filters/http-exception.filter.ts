@@ -72,6 +72,43 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // Database errors that mean the request, not the server, was wrong (docs/09 section 4).
+    const prismaCode = (exception as { code?: unknown } | null)?.code;
+    if (typeof prismaCode === 'string' && /^P2\d{3}$/.test(prismaCode)) {
+      const mapped =
+        prismaCode === 'P2025'
+          ? {
+              status: 404,
+              code: 'resource.not_found',
+              detail: 'The record does not exist.',
+            }
+          : prismaCode === 'P2002'
+            ? {
+                status: 409,
+                code: 'resource.conflict',
+                detail: 'A record with the same value already exists.',
+              }
+            : prismaCode === 'P2003'
+              ? {
+                  status: 409,
+                  code: 'resource.in_use',
+                  detail: 'The record is referenced by another record.',
+                }
+              : null;
+      if (mapped) {
+        this.send(res, {
+          type: TYPE_BASE + mapped.code,
+          title: titleFor(mapped.status),
+          status: mapped.status,
+          detail: mapped.detail,
+          instance: req.originalUrl ?? req.url,
+          code: mapped.code,
+          traceId,
+        });
+        return;
+      }
+    }
+
     this.logger.error(
       `Unhandled error ${traceId} on ${req.method} ${req.url}`,
       exception instanceof Error ? exception.stack : String(exception),

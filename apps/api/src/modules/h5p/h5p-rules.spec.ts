@@ -1,4 +1,5 @@
 import {
+  sanitizeParameters,
   buildManifest,
   contentTypeFor,
   dependenciesFor,
@@ -114,5 +115,35 @@ describe('h5p rules', () => {
     const [payload] = token.split('.');
     expect(verifyPlayTicket(`${payload}.forged`, SECRET)).toBeNull();
     expect(verifyPlayTicket(token, SECRET, (ticket.exp + 1) * 1000)).toBeNull();
+  });
+});
+
+describe('sanitizeParameters', () => {
+  it('keeps formatting and removes anything that runs', () => {
+    const out = sanitizeParameters({
+      question:
+        '<p>Which?</p><script>alert(1)</script><img src=x onerror="alert(2)">',
+      answers: [
+        { text: '<div onclick="steal()">Right</div>', correct: true },
+        {
+          text: '<b>Wrong</b><iframe src="https://evil.example"></iframe>',
+          correct: false,
+        },
+        {
+          text: '<a href="javascript:alert(3)">link</a> <a href="https://ok.example">ok</a>',
+        },
+      ],
+      nested: { deep: ['<style>body{}</style>plain', 7, null, true] },
+    });
+    const text = JSON.stringify(out);
+    expect(text).not.toMatch(
+      /<script|onerror|onclick|<iframe|<style|javascript:/i,
+    );
+    expect(out.question.startsWith('<p>Which?</p>')).toBe(true);
+    expect(out.answers[0].text).toBe('<div>Right</div>');
+    expect(out.answers[1].text).toBe('<b>Wrong</b>');
+    expect(out.answers[2].text).toContain('href="https://ok.example"');
+    expect(out.answers[0].correct).toBe(true);
+    expect(out.nested.deep).toEqual(['plain', 7, null, true]);
   });
 });

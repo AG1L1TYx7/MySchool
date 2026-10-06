@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { FilterXSS } from 'xss';
 import {
   CONTENT_TYPES,
   findLibrary,
@@ -42,6 +43,76 @@ const isRecord = (v: unknown): v is Params =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** Structural validation mirroring the AI service's `h5p.validate`: what the player would trip over. */
+/**
+ * H5P libraries render parameter strings as HTML, so anything a teacher (or the AI) types is markup a student's
+ * browser will run. Keep formatting, drop scripts, frames, styles, event handlers and javascript: links.
+ */
+const ATTRS = ['class'];
+const TAGS = [
+  'p',
+  'br',
+  'b',
+  'strong',
+  'i',
+  'em',
+  'u',
+  's',
+  'sub',
+  'sup',
+  'span',
+  'div',
+  'ul',
+  'ol',
+  'li',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'blockquote',
+  'code',
+  'pre',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td',
+];
+const filter = new FilterXSS({
+  whiteList: {
+    ...Object.fromEntries(TAGS.map((t) => [t, ATTRS])),
+    a: ['href', 'title', 'target', 'rel', 'class'],
+    img: ['src', 'alt', 'title', 'width', 'height', 'class'],
+  },
+  stripIgnoreTag: true,
+  stripIgnoreTagBody: [
+    'script',
+    'style',
+    'iframe',
+    'object',
+    'embed',
+    'noscript',
+  ],
+});
+
+/** Every string anywhere in the parameters, cleaned; everything else left as it is. */
+export function sanitizeParameters<T>(value: T): T {
+  if (typeof value === 'string') return filter.process(value) as unknown as T;
+  if (Array.isArray(value))
+    return (value as unknown[]).map((v) =>
+      sanitizeParameters(v),
+    ) as unknown as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>))
+      out[k] = sanitizeParameters(v);
+    return out as T;
+  }
+  return value;
+}
+
 export function validateParameters(library: string, params: unknown): string[] {
   const ref = parseLibrary(library);
   if (!ref) return [`unsupported library ${library}`];
