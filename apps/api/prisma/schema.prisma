@@ -343,6 +343,7 @@ model Organization {
   aiConsentDefault       String    @default("SCHOOL") @map("AiConsentDefault") @db.VarChar(20)
   studentMessaging       Boolean   @default(false) @map("StudentMessaging")
   motivationEnabled      Boolean   @default(true) @map("MotivationEnabled")
+  retentionPolicy        String?   @map("RetentionPolicy") @db.Text
   createdAt              DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt              DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt              DateTime? @map("DeletedAt") @db.DateTime(6)
@@ -378,10 +379,12 @@ model Organization {
   lessonPlans   LessonPlan[]
   teacherDrafts TeacherDraft[]
 
-  xapiStatements  XapiStatement[]
-  reportSchedules ReportSchedule[]
-  reportRuns      ReportRun[]
-  srsCards        SrsCard[]
+  xapiStatements    XapiStatement[]
+  reportSchedules   ReportSchedule[]
+  reportRuns        ReportRun[]
+  deletionRequests  DeletionRequest[]
+  securityIncidents SecurityIncident[]
+  srsCards          SrsCard[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -472,10 +475,12 @@ model User {
   substituteAccess   SubstituteAccess[]  @relation("SubstituteUser")
   substitutesGranted SubstituteAccess[]  @relation("SubstituteGrantedBy")
 
-  xapiStatements  XapiStatement[]
-  reportSchedules ReportSchedule[]
-  pushDevices     PushDevice[]
-  pushLogs        PushLog[]
+  xapiStatements    XapiStatement[]
+  reportSchedules   ReportSchedule[]
+  pushDevices       PushDevice[]
+  deletionRequests  DeletionRequest[]
+  securityIncidents SecurityIncident[]
+  pushLogs          PushLog[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -541,6 +546,7 @@ model Student {
   gender                 String?          @map("Gender") @db.VarChar(32)
   gradeLevel             String?          @map("GradeLevel") @db.VarChar(16)
   enrollmentStatus       EnrollmentStatus @default(ACTIVE) @map("EnrollmentStatus")
+  legalHold              Boolean          @default(false) @map("LegalHold")
   enrollmentDate         DateTime?        @map("EnrollmentDate") @db.Date
   preferredLearningStyle LearningStyle?   @map("PreferredLearningStyle")
   accessibilityNeeds     String?          @map("AccessibilityNeeds") @db.Text
@@ -584,10 +590,11 @@ model Student {
   gradingSuggestions GradingSuggestion[]
   teacherDrafts      TeacherDraft[]
 
-  xapiStatements XapiStatement[]
-  srsCards       SrsCard[]
-  srsReviews     SrsReview[]
-  mastery        MasteryLevel[]
+  xapiStatements   XapiStatement[]
+  srsCards         SrsCard[]
+  srsReviews       SrsReview[]
+  mastery          MasteryLevel[]
+  deletionRequests DeletionRequest[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -2414,4 +2421,57 @@ model PushLog {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@map("PushLogs")
+}
+
+/// Compliance (slice 19): a request to erase a student's records, with a grace period and an administrator's approval.
+model DeletionRequest {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  studentId      String?   @map("StudentId") @db.Char(36)
+  studentName    String    @map("StudentName") @db.VarChar(200)
+  studentNumber  String    @map("StudentNumber") @db.VarChar(50)
+  requestedById  String    @map("RequestedById") @db.Char(36)
+  reason         String?   @map("Reason") @db.VarChar(1000)
+  status         String    @default("pending") @map("Status") @db.VarChar(12)
+  scheduledFor   DateTime? @map("ScheduledFor") @db.DateTime(6)
+  decidedById    String?   @map("DecidedById") @db.Char(36)
+  decidedAt      DateTime? @map("DecidedAt") @db.DateTime(6)
+  completedAt    DateTime? @map("CompletedAt") @db.DateTime(6)
+  summary        String?   @map("Summary") @db.Text
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  student      Student?     @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  requestedBy  User         @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([status, scheduledFor])
+  @@map("DeletionRequests")
+}
+
+/// A security incident and its timeline, for the breach-notification runbook (docs/18).
+model SecurityIncident {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String?   @map("OrganizationId") @db.Char(36)
+  title          String    @map("Title") @db.VarChar(200)
+  severity       String    @map("Severity") @db.VarChar(10)
+  status         String    @default("open") @map("Status") @db.VarChar(12)
+  summary        String    @map("Summary") @db.Text
+  affectedCount  Int       @default(0) @map("AffectedCount")
+  dataCategories String?   @map("DataCategories") @db.VarChar(500)
+  detectedAt     DateTime  @map("DetectedAt") @db.DateTime(6)
+  containedAt    DateTime? @map("ContainedAt") @db.DateTime(6)
+  notifiedAt     DateTime? @map("NotifiedAt") @db.DateTime(6)
+  closedAt       DateTime? @map("ClosedAt") @db.DateTime(6)
+  timeline       String    @default("[]") @map("Timeline") @db.Text
+  reportedById   String    @map("ReportedById") @db.Char(36)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportedBy   User          @relation(fields: [reportedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("SecurityIncidents")
 }

@@ -331,6 +331,17 @@ describe('Academics (e2e)', () => {
     ).data
       .filter((e) => e.status === 'enrolled')
       .map((e) => e.studentId);
+    // Only seeded students: parallel suites enrol students of their own in this class and delete them again,
+    // and a row for a student removed mid-test fails the insert.
+    const seeded = new Set(
+      (
+        await prisma.student.findMany({
+          where: { id: { in: ids }, studentNumber: { startsWith: 'S2026-' } },
+          select: { id: true },
+        })
+      ).map((st) => st.id),
+    );
+    ids.splice(0, ids.length, ...ids.filter((id) => seeded.has(id)));
     const bulk = await request(server)
       .post('/api/v1/attendance/bulk')
       .set(as('teacher'))

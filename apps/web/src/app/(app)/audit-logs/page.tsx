@@ -51,7 +51,7 @@ export default function AuditLogsPage() {
           <Input label="Action starts with" placeholder="auth., users., access." value={action} onChange={(e) => (setPage(1), setAction(e.target.value))} />
         </div>
         {error && <Alert>{error}</Alert>}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Audit log table">
           <table className="min-w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>

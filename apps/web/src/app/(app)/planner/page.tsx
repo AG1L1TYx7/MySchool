@@ -44,11 +44,11 @@ export default function PlannerPage() {
           <h1 className="text-2xl font-semibold">Weekly planner</h1>
           <p className="mt-1 text-sm text-slate-500">Due dates, scheduled lesson plans, events and term boundaries for your classes. Plans come from the assistant.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" aria-label="Previous week" onClick={() => setWeek(shift(data?.weekStart ?? today, -7))}>
             ‹
           </Button>
-          <span className="min-w-[200px] text-center text-sm font-medium text-slate-800">{data ? `Week of ${new Date(`${data.weekStart}T12:00:00Z`).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}` : '…'}</span>
+          <span className="min-w-[150px] text-center text-sm font-medium text-slate-800">{data ? `Week of ${new Date(`${data.weekStart}T12:00:00Z`).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}` : '…'}</span>
           <Button variant="secondary" aria-label="Next week" onClick={() => setWeek(shift(data?.weekStart ?? today, 7))}>
             ›
           </Button>

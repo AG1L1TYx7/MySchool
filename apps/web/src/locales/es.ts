@@ -802,4 +802,16 @@ export const es: Record<MessageKey, string> = {
   'notif.testSimulated': 'Push no está configurado, así que la prueba solo quedó registrada.',
   'notif.removeDevice': 'Quitar',
   'notif.lastSeen': 'Visto por última vez {when}',
+  // Compliance (slice 19)
+  'nav.compliance': 'Cumplimiento',
+  'category.compliance': 'Mapa de datos, retención y eliminación',
+  'records.title': 'Sus registros',
+  'records.desc': 'Bajo FERPA puede pedir una copia de los registros educativos que guarda la escuela y pedir que se borren.',
+  'records.download': 'Descargar una copia de los registros',
+  'records.requestDeletion': 'Pedir a la escuela que borre estos registros',
+  'records.requested': 'Solicitud enviada. La escuela la revisará y le avisará.',
+  'records.pending': 'Hay una solicitud de eliminación esperando la decisión de la escuela.',
+  'records.approved': 'Eliminación aprobada. Los registros se borrarán el {date}.',
+  'records.whatGoes': 'Qué se borra (después de un periodo de gracia de {days} días)',
+  'a11y.skip': 'Ir al contenido principal',
 };

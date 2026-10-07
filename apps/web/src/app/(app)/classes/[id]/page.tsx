@@ -344,6 +344,7 @@ function Roster({ klass, onChange }: { klass: ClassItem; onChange: () => Promise
     <Card title="Roster" description={`${klass.enrolledCount}${klass.maxStudents ? ` of ${klass.maxStudents}` : ''} enrolled${klass.waitlistedCount ? `, ${klass.waitlistedCount} on the waitlist` : ''}.`}>
       {state.error && <Alert>{state.error}</Alert>}
       {state.ok && <Alert kind="success">{state.ok}</Alert>}
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Roster table">
       <table className="mt-2 min-w-full text-sm">
         <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
@@ -385,6 +386,7 @@ function Roster({ klass, onChange }: { klass: ClassItem; onChange: () => Promise
           )}
         </tbody>
       </table>
+      </div>
       <div className="mt-4 border-t border-slate-100 pt-4">
         <Input label="Enrol students" placeholder="Search by name or number" value={search} onChange={(e) => setSearch(e.target.value)} />
         {candidates.length > 0 && (

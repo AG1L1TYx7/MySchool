@@ -239,6 +239,24 @@ GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY
 ```
 Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
 
+### Compliance (Release 3 slice 19)
+```
+GET    /organizations/{id}/compliance/data-map        compliance.view: entries (table, holds, subject, purpose, basis, retention, location, rows, retentionDays), retention, bounds
+GET    /organizations/{id}/compliance/retention       PUT { aiConversations?, notifications?, auditLogs?, learningRecords?, pushLogs?, withdrawnStudents? } days, clamped to bounds (compliance.manage)
+POST   /organizations/{id}/compliance/retention/run   apply now -> { removed: { aiConversations, notifications, ... } }
+GET    /organizations/{id}/compliance/deletion-requests   { data, plan: { graceDays, removes[] } }
+POST   /students/{id}/deletion-requests               { reason? } -> 201 pending; guardian, the student or an administrator; compliance.request_exists when one is open
+GET    /students/{id}/deletion-requests               the student's own requests and the plan (family, administrators)
+POST   /deletion-requests/{id}/decide                 { decision approve|reject, note? }; approve schedules the erasure 30 days out and tells the requester
+POST   /deletion-requests/{id}/execute                erase now; compliance.not_approved, compliance.legal_hold
+PUT    /students/{id}/legal-hold                      { legalHold } (compliance.manage, audited)
+GET    /students/{id}/records-export.zip              FERPA copy: zip of JSON files per section plus manifest.json and README.txt; family, counselors, administrators; audited
+GET    /compliance/incidents?organizationId=          administrators (district roles see every school); POST { title, severity, summary, detectedAt?, affectedCount?, dataCategories?, organizationId? } -> 201
+PATCH  /compliance/incidents/{id}                     { status?, severity?, affectedCount?, dataCategories?, note? }; status moves forward only (compliance.incident_status)
+POST   /compliance/incidents/{id}/notify              every administrator and district role, notification plus forced email; stamps notifiedAt
+```
+Nightly jobs: retention at 03:40, due erasures at 03:50. Everything here writes the audit log.
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

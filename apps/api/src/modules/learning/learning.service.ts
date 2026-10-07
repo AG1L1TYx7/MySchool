@@ -1460,7 +1460,8 @@ export class LearningService {
         detail:
           'Only the class teachers, counselors and administrators see this.',
       });
-    if (actor.role === 'COUNSELOR')
+    // Administrators and counselors of another school are not this class's school.
+    if (!isDistrictRole(actor))
       assertOrganizationAccess(actor, klass.organizationId);
     return klass;
   }

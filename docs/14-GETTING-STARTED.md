@@ -154,6 +154,10 @@ Sign in as the principal: the dashboard opens with a School today card, and Insi
 
 There is no native app yet, but the API a phone would use is live: sign in, then call `GET /api/v1/mobile/home` and `GET /api/v1/mobile/sync` with the bearer token (Swagger lists them under Mobile). Register a device with `POST /api/v1/me/devices` and press "Send a test" on the Notifications page: without a Firebase key the test is recorded as simulated and the page says so; set `FIREBASE_SERVICE_ACCOUNT_JSON` to the service account JSON to send for real. To see the tutor work offline, open a conversation, switch the browser to offline in developer tools, send a message (it shows "Waiting to send"), then go back online: it is sent and answered once.
 
+## 4k. Compliance
+
+Sign in as the principal and open Compliance. The Data map tab lists every table that holds personal data with live counts; Retention sets how long each kind of record is kept and Apply now runs the nightly job immediately; Deletion requests shows what families asked for, with approve, decline and erase now; Incidents opens a security incident on the breach clock and notifies every administrator. As the parent, the family home has Your records: download a copy of the records as a zip, or ask the school to erase them. On a student's page, Records and retention has the export and the legal hold. Press Tab on any page: the first stop is "Skip to main content".
+
 ## 5. Backups
 
 ```bash

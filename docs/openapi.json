@@ -11612,6 +11612,468 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/compliance/data-map": {
+      "get": {
+        "operationId": "ComplianceController_dataMap_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every table that holds personal data, whose it is, why, how long, with live row counts",
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/compliance/retention": {
+      "get": {
+        "operationId": "ComplianceController_retention_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      },
+      "put": {
+        "operationId": "ComplianceController_setRetention_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/compliance/retention/run": {
+      "post": {
+        "operationId": "ComplianceController_runRetention_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply the retention policy now and report what was removed",
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/compliance/deletion-requests": {
+      "get": {
+        "operationId": "ComplianceController_deletionRequests_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/deletion-requests": {
+      "post": {
+        "operationId": "ComplianceController_requestDeletion_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeletionRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask for a student's records to be erased: a guardian, the student or an administrator",
+        "tags": [
+          "Compliance"
+        ]
+      },
+      "get": {
+        "operationId": "ComplianceController_myDeletionRequests_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/deletion-requests/{id}/decide": {
+      "post": {
+        "operationId": "ComplianceController_decide_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideDeletionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/deletion-requests/{id}/execute": {
+      "post": {
+        "operationId": "ComplianceController_execute_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Erase now instead of waiting out the grace period (refused under a legal hold)",
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/legal-hold": {
+      "put": {
+        "operationId": "ComplianceController_legalHold_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegalHoldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/records-export.zip": {
+      "get": {
+        "operationId": "ComplianceController_recordsExport_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A copy of the education records as a zip of JSON files (FERPA); family, counselors, administrators",
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/incidents": {
+      "get": {
+        "operationId": "ComplianceController_incidents_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      },
+      "post": {
+        "operationId": "ComplianceController_createIncident_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/incidents/{id}": {
+      "patch": {
+        "operationId": "ComplianceController_updateIncident_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/incidents/{id}/notify": {
+      "post": {
+        "operationId": "ComplianceController_notifyIncident_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Notify every administrator now by notification and email, and stamp the clock",
+        "tags": [
+          "Compliance"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -15402,6 +15864,140 @@
           },
           "active": {
             "type": "boolean"
+          }
+        }
+      },
+      "RetentionDto": {
+        "type": "object",
+        "properties": {
+          "aiConversations": {
+            "type": "number",
+            "description": "Days; see bounds in the data map"
+          },
+          "notifications": {
+            "type": "number"
+          },
+          "auditLogs": {
+            "type": "number"
+          },
+          "learningRecords": {
+            "type": "number"
+          },
+          "pushLogs": {
+            "type": "number"
+          },
+          "withdrawnStudents": {
+            "type": "number",
+            "description": "0 keeps withdrawn students until a deletion request"
+          }
+        }
+      },
+      "CreateDeletionRequestDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "DecideDeletionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "LegalHoldDto": {
+        "type": "object",
+        "properties": {
+          "legalHold": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "legalHold"
+        ]
+      },
+      "CreateIncidentDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "detectedAt": {
+            "type": "string"
+          },
+          "affectedCount": {
+            "type": "number"
+          },
+          "dataCategories": {
+            "type": "string",
+            "description": "Comma-separated data categories, for the notice"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "title",
+          "severity",
+          "summary"
+        ]
+      },
+      "UpdateIncidentDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "contained",
+              "notified",
+              "closed"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "affectedCount": {
+            "type": "number"
+          },
+          "dataCategories": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "description": "A timeline entry"
           }
         }
       }

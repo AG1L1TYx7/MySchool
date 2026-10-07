@@ -30,6 +30,7 @@ export interface PublicStudent {
   gender: string | null;
   gradeLevel: string | null;
   enrollmentStatus: EnrollmentStatusApi;
+  legalHold: boolean;
   enrollmentDate: string | null;
   preferredLearningStyle: LearningStyleApi | null;
   accessibilityNeeds: string | null;
@@ -76,6 +77,7 @@ export function toPublicStudent(s: Student): PublicStudent {
     gender: s.gender,
     gradeLevel: s.gradeLevel,
     enrollmentStatus: s.enrollmentStatus.toLowerCase() as EnrollmentStatusApi,
+    legalHold: s.legalHold,
     enrollmentDate: dateOnly(s.enrollmentDate),
     preferredLearningStyle: s.preferredLearningStyle
       ? (s.preferredLearningStyle.toLowerCase() as LearningStyleApi)

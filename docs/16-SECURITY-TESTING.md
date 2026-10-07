@@ -34,6 +34,10 @@ Besides the suite: `pnpm audit --audit-level=high` and `pip-audit` fail CI; `pnp
 
 Everything else the suite checks already held: every other route guarded, 401 without a token, no 500 on junk for school roles, no secret fields anywhere, no enumeration, tokens unforgeable, self-service cannot escalate, the anti-forgery header enforced, headers set, file names cleaned.
 
+## 2b. Second pass (7 October 2026, slice 19)
+
+The route catalogue grew by the learning, insight, mobile, push and compliance routes and every one is covered by the role matrix and the second-school probes automatically. New probes: school B's family and staff against school A's records export, deletion requests, legal hold and incidents; a device token registered by one person cannot be removed by another; a replayed tutor message with a known client id never produces a second answer. Found and fixed: a principal or counselor of another school could read a class's mastery summary and learning curve (the learning module checked the school only for counselors); the records export is limited in the service to the family, counselors and administrators even though record readers can reach the route. No new vulnerability class was found.
+
 ## 3. Not tested yet, and honest about it
 
 - **A human penetration test.** The suite is systematic but it only asks the questions we thought of. A third party should attack the pilot deployment before a district signs the data-privacy agreement (docs/13 section 10).

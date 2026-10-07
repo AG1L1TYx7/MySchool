@@ -312,6 +312,18 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     'Learning',
     STAFF_AND_COUNSELOR,
   ),
+  f(
+    'compliance.view',
+    'Data map, retention, deletion requests, incidents',
+    'Compliance',
+    ADMINS,
+  ),
+  f(
+    'compliance.manage',
+    'Change retention, decide deletions, manage incidents',
+    'Compliance',
+    ADMINS,
+  ),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

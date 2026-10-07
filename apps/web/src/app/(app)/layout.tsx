@@ -30,6 +30,7 @@ const NAV: Array<{ href: string; label: MessageKey; feature: string; roles?: str
   { href: '/assistant', label: 'nav.assistant', feature: 'ai.assistant' },
   { href: '/planner', label: 'nav.planner', feature: 'planner.view' },
   { href: '/insight', label: 'nav.insight', feature: 'reports.view' },
+  { href: '/compliance', label: 'nav.compliance', feature: 'compliance.view' },
   { href: '/grades', label: 'nav.grades', feature: 'grades.view.own' },
   { href: '/grades', label: 'nav.grades', feature: 'grades.view.child' },
   { href: '/report-cards', label: 'nav.reportCards', feature: 'report-cards.view.all' },
@@ -65,6 +66,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AccommodationsProvider>
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:text-brand-800 focus:ring-2 focus:ring-brand-500">
+        {t('a11y.skip')}
+      </a>
       <aside aria-label={t('shell.sidebar')} className="border-b border-slate-200 bg-white px-4 py-4 md:border-b-0 md:border-r">
         <Logo />
         <nav aria-label={t('shell.primary')} className="mt-6 flex gap-1 overflow-x-auto md:flex-col">
@@ -85,14 +89,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <div className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-          <div className="text-sm">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 md:px-6">
+          <div className="min-w-0 text-sm">
             <span className="font-medium text-slate-900">
               {user.firstName} {user.lastName}
             </span>
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{labelFor('role', user.role, t)}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <XpPill />
             <LanguageSwitcher />
             {can('notifications.view') && <NotificationBell />}
@@ -101,7 +105,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 md:px-8">
+        <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 md:px-8">
           <AnimatePresence mode="wait" initial={false}>
             <MotionPage key={pathname}>{children}</MotionPage>
           </AnimatePresence>

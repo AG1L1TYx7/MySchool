@@ -826,6 +826,18 @@ export const en = {
   'notif.testSimulated': 'Push is not configured, so the test was only recorded.',
   'notif.removeDevice': 'Remove',
   'notif.lastSeen': 'Last seen {when}',
+  // Compliance (slice 19)
+  'nav.compliance': 'Compliance',
+  'category.compliance': 'Data map, retention and deletion',
+  'records.title': 'Your records',
+  'records.desc': 'Under FERPA you can ask for a copy of the education records the school holds, and ask for them to be erased.',
+  'records.download': 'Download a copy of the records',
+  'records.requestDeletion': 'Ask the school to erase these records',
+  'records.requested': 'Request sent. The school will review it and let you know.',
+  'records.pending': 'A deletion request is waiting for the school to decide.',
+  'records.approved': 'Deletion approved. The records will be erased on {date}.',
+  'records.whatGoes': 'What erasure removes (after a {days}-day grace period)',
+  'a11y.skip': 'Skip to main content',
 } as const;
 
 export type MessageKey = keyof typeof en;

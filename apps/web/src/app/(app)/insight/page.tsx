@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Bars } from '@/components/insight-cards';
 import { MotionItem, MotionList, PillGroup, ProgressBar, ProgressRing, SkeletonRows } from '@/components/motion';
@@ -28,13 +28,16 @@ type Tab = 'overview' | 'reports' | 'classes';
 /** The tab lives in the URL (?tab=reports) so a reload, a download or a shared link lands on the same view. */
 function Insight() {
   const { user, can } = useAuth();
-  const router = useRouter();
   const params = useSearchParams();
   const admin = !!user && ['principal', 'superintendent', 'super_admin', 'counselor'].includes(user.role);
   const allowed = can('reports.view');
   const raw = params.get('tab');
-  const tab: Tab = raw === 'reports' || raw === 'classes' ? raw : 'overview';
-  const setTab = (t: Tab) => router.replace(t === 'overview' ? '/insight' : `/insight?tab=${t}`);
+  // The tab lives in state and is only mirrored to the URL: re-rendering from the URL would remount the forms and lose typed input.
+  const [tab, setTabState] = useState<Tab>(raw === 'reports' || raw === 'classes' ? raw : 'overview');
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    window.history.replaceState(null, '', t === 'overview' ? '/insight' : `/insight?tab=${t}`);
+  };
   if (!allowed) return <NotForYou what="insight" back="/dashboard" />;
   if (!admin) return <TeacherInsight />;
   return (
@@ -399,7 +402,7 @@ function ClassList() {
             <li key={c.id}>
               <Link href={`/classes/${c.id}/insight`} className="block rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800 ring-1 ring-slate-200 hover:bg-slate-100">
                 {c.name}
-                <span className="block text-xs text-slate-500">{c.course.title}</span>
+                <span className="block text-xs text-slate-600">{c.course.title}</span>
               </Link>
             </li>
           ))}

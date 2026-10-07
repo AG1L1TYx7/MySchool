@@ -241,6 +241,8 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/v1/accessibility` (30). AI service: `/api/ai/accessibility/*` (5).
 **Status.** Partial. The audit used a simulated checker (stub); target runs a real accessibility scan of stored content or returns 501.
 
+**Release 3 (slice 19).** The accessibility audit is now real and covers the product itself rather than stored content: axe-core against every screen as every role at desktop and phone width, the reflow and 200% text-zoom checks, and a manual pass on the WCAG 2.2 criteria axe cannot judge, written up as the accessibility conformance report in docs/19 and repeated every slice. The interface gained a skip link and a focusable main landmark. Student accommodations (extended time, read aloud, large text, reduced motion, reduced distraction) shipped in slice 12. Not built: an accessibility scan of stored H5P or uploaded content, UDL profiles, an assistive-technology registry, inclusion metrics, and the AI simplification and alternative-format features; they stay in the catalogue for the content-library slice.
+
 ## 28. Career and college readiness
 
 **Capabilities.** Career profile; interest inventory (Holland codes) and skill assessments with history and gap analysis; career matching and pathway recommendations; college applications; scholarships; industry trends; portfolio and recommendation letters; networking connections.

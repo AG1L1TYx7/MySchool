@@ -26,6 +26,9 @@ An AI-native K-12 learning management system for US schools and districts that r
 | 14 | [Getting Started](14-GETTING-STARTED.md) | Install SmartSchool for a pilot (Docker) or a workstation; demo accounts; backups; checks; updating. |
 | 15 | [Release 1 Review](15-RELEASE-1-REVIEW.md) | See how Release 1 measures against the security checklist and the performance budget, with the load-test and audit results and the gaps carried forward. |
 - [16-SECURITY-TESTING.md](16-SECURITY-TESTING.md): how the product is attacked before it is trusted; findings and open items
+- [17-DATA-MAP.md](17-DATA-MAP.md): what the product holds about people, whose, why and for how long; the rights it supports
+- [18-BREACH-RUNBOOK.md](18-BREACH-RUNBOOK.md): what to do, in order, when personal data may have left the boundary
+- [19-ACCESSIBILITY-CONFORMANCE.md](19-ACCESSIBILITY-CONFORMANCE.md): the WCAG 2.2 AA conformance report, repeated every slice
 
 ## Reading order
 

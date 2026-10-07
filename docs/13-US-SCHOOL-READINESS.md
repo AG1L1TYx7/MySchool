@@ -80,6 +80,8 @@ Costs: Google, Microsoft, ClassLink and Clever Instant Login are free to integra
 
 ## 10. Compliance (every slice, audited in slice 19)
 
+Audited in slice 19 (7 October 2026): the data map is published (docs/17) and generated live with counts; retention is a school setting applied nightly; deletion on request runs end to end with a grace period and a legal hold; the FERPA records export exists for families and administrators; the breach runbook is docs/18 and the product records incidents on its clock; the accessibility conformance report is docs/19. Still open: the third-party penetration test and the signed SDPC agreement, both scheduled before the first district contract.
+
 | Law or standard | What we do |
 |---|---|
 | **FERPA** | Education records are shown only to the student, their guardians, and school officials with a legitimate educational interest, which our feature permissions encode. Parents can request records; an export per student exists. Directory-information rules are respected in anything public. No student data is used to train models. |

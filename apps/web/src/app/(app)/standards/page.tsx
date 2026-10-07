@@ -178,7 +178,7 @@ export default function StandardsPage() {
         <ul className="divide-y divide-slate-100 text-sm">
           {rows.map((s) => (
             <li key={s.id} className="flex flex-wrap gap-3 py-2">
-              <span className="w-56 shrink-0 font-mono text-xs text-slate-700">
+              <span className="w-full font-mono text-xs text-slate-700 sm:w-56 sm:shrink-0">
                 {s.code}
                 {s.setCode ? <span className="block text-slate-500">{s.setCode}</span> : null}
               </span>

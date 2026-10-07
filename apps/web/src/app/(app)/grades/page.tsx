@@ -66,7 +66,7 @@ export default function GradesPage() {
                   const avg = mine.length ? mine.reduce((sum, g) => sum + g.percentage, 0) / mine.length : null;
                   return avg === null ? null : <ProgressRing value={avg} size={88} stroke={9} label={t('grades.average')} tone={avg >= 90 ? 'green' : avg >= 60 ? 'brand' : 'amber'} />;
                 })()}
-                <div className="min-w-[280px] flex-1">
+                <div className="min-w-0 flex-1 overflow-x-auto" tabIndex={0} role="region" aria-label="Grades table">
                   <GradeTable rows={grades.filter((g) => g.studentId === s.id)} />
                 </div>
               </div>

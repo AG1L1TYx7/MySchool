@@ -96,7 +96,7 @@ export default function CalendarPage() {
           <h1 className="text-2xl font-semibold">{t('cal.title')}</h1>
           <p className="text-sm text-slate-500">{t('cal.subtitle', { name: user?.firstName ?? '' })}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" aria-label={t('cal.prev')} onClick={() => setMonth((m) => shift(m, -1))}>
             ‹
           </Button>

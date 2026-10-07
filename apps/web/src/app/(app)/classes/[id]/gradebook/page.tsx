@@ -73,7 +73,7 @@ export default function GradebookPage() {
 
       {view === 'standards' && book.standards ? (
         <Card title="Proficiency by standard" description={`Latest level per standard on the ${book.standards.levels.map((l) => `${l.level} ${l.label}`).join(', ')} scale.`}>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Gradebook table">
             <table className="min-w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
@@ -117,7 +117,7 @@ export default function GradebookPage() {
         </Card>
       ) : (
         <Card description="M = missing (counts as 0), EX = excused (left out), I = incomplete. Struck-through scores are dropped as the lowest in their category; + marks extra credit.">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Gradebook table">
             <table className="min-w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
                 {book.mode === 'categories' && (

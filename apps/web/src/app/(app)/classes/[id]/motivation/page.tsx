@@ -79,7 +79,7 @@ export default function ClassMotivationPage() {
         {!data ? (
           <SkeletonRows rows={5} />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Class motivation table">
             <table className="min-w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>

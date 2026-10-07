@@ -32,6 +32,7 @@ import { FamilyModule } from './modules/family/family.module';
 import { SummariesModule } from './modules/summaries/summaries.module';
 import { MotivationModule } from './modules/motivation/motivation.module';
 import { AssistantModule } from './modules/assistant/assistant.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
 import { InsightModule } from './modules/insight/insight.module';
 import { MobileModule } from './modules/mobile/mobile.module';
 import { PushModule } from './modules/push/push.module';
@@ -132,6 +133,7 @@ import { UsersModule } from './modules/users/users.module';
     InsightModule,
     PushModule,
     MobileModule,
+    ComplianceModule,
     HealthModule,
     MetricsModule,
   ],

@@ -23,6 +23,7 @@ export interface Student {
   updatedAt: string;
   /** Set on a single record: whether the caller may open the support plan and consent. */
   canSupport?: boolean;
+  legalHold?: boolean;
 }
 
 export interface Guardian {

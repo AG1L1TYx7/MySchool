@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MotionItem, MotionList, PillGroup, ProgressRing, SkeletonRows } from '@/components/motion';
 import { TranscriptButton } from '@/components/insight-cards';
+import { FamilyRecordsCard } from '@/components/records-card';
 import { FamilyLearningCard } from '@/components/learning-cards';
 import { FamilyMotivationCard } from '@/components/motivation-cards';
 import { NotForYou } from '@/components/not-for-you';
@@ -111,6 +112,7 @@ export default function FamilyPage() {
         <Card title={t('fam.transcript')} description={t('fam.transcriptDesc')}>
           <TranscriptButton studentId={s.id} lastName={s.lastName} />
         </Card>
+        <FamilyRecordsCard studentId={s.id} lastName={s.lastName} />
 
         <Card title={t('fam.classes')} description={t('fam.classesDesc')}>
           <MotionList className="divide-y divide-slate-100">

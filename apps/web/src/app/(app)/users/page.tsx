@@ -50,7 +50,7 @@ export default function UsersPage() {
           <Input label="Search" placeholder="Name or email" value={search} onChange={(e) => (setPage(1), setSearch(e.target.value))} />
         </div>
         {error && <Alert>{error}</Alert>}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Users table">
           <table className="min-w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
