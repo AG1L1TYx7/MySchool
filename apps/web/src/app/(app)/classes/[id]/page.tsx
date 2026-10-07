@@ -99,6 +99,11 @@ export default function ClassPage() {
             Learning
           </Link>
         )}
+        {can('reports.view') && (
+          <Link href={`/classes/${id}/insight`} className="rounded-md bg-white px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">
+            Insight
+          </Link>
+        )}
       </nav>
 
       <ClassPolicies classId={id} />

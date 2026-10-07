@@ -229,7 +229,7 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('analytics.class', 'Class analytics', 'Analytics', STAFF),
   f('analytics.student', 'Student analytics', 'Analytics', STAFF),
   f('analytics.organization', 'Organisation analytics', 'Analytics', ADMINS),
-  f('reports.view', 'View reports', 'Reports', STAFF),
+  f('reports.view', 'View reports', 'Reports', STAFF_AND_COUNSELOR),
   f('reports.create', 'Create reports', 'Reports', STAFF),
   f('reports.schedule', 'Schedule reports', 'Reports', ADMINS),
 

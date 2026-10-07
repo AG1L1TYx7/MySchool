@@ -803,6 +803,11 @@ export const en = {
   'learn.dash.go': 'Start practicing',
   'learn.dash.due.one': '{n} card due today',
   'learn.dash.due.other': '{n} cards due today',
+  // Insight (slice 17)
+  'nav.insight': 'Insight',
+  'category.reports': 'Reports and insight',
+  'fam.transcript': 'Download transcript (PDF)',
+  'fam.transcriptDesc': 'Every published report card on one record, with the GPA per year.',
 } as const;
 
 export type MessageKey = keyof typeof en;

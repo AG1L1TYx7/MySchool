@@ -10989,6 +10989,363 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/insight/overview": {
+      "get": {
+        "operationId": "InsightController_overview_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "ISO date; defaults to today",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Principal dashboard: attendance today, missing work by grade, failing by class, gradebook completeness, AI usage, engagement",
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/insight/reports/{kind}.csv": {
+      "get": {
+        "operationId": "InsightController_reportCsv_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "classId",
+            "required": false,
+            "in": "query",
+            "description": "class_summary only",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One of the scheduled report kinds, now, as CSV",
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/report-schedules": {
+      "get": {
+        "operationId": "InsightController_schedules_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Insight"
+        ]
+      },
+      "post": {
+        "operationId": "InsightController_createSchedule_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/report-schedules/{id}": {
+      "patch": {
+        "operationId": "InsightController_updateSchedule_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Insight"
+        ]
+      },
+      "delete": {
+        "operationId": "InsightController_removeSchedule_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/report-schedules/{id}/runs": {
+      "get": {
+        "operationId": "InsightController_runs_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/report-schedules/{id}/run": {
+      "post": {
+        "operationId": "InsightController_runNow_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Build and email the report now; says whether a mail transport delivered it",
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/insight": {
+      "get": {
+        "operationId": "InsightController_classInsight_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Grade distribution, attendance, missing work, at-risk list and assignment averages for one class",
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/insight": {
+      "get": {
+        "operationId": "InsightController_studentInsight_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One student's classes, attendance, missing work, weekly activity, AI and practice; family, teachers, counselors, administrators",
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/transcript.pdf": {
+      "get": {
+        "operationId": "InsightController_transcript_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "PDF transcript from published report cards, with per-year and cumulative GPA",
+        "tags": [
+          "Insight"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -14650,6 +15007,103 @@
         "required": [
           "quality"
         ]
+      },
+      "CreateScheduleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "school_overview",
+              "attendance_today",
+              "missing_work",
+              "failing_students",
+              "gradebook_completeness",
+              "ai_usage",
+              "class_summary"
+            ]
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "dayOfWeek": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 6,
+            "description": "0 = Sunday; weekly only"
+          },
+          "dayOfMonth": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 31,
+            "description": "monthly only"
+          },
+          "hour": {
+            "type": "number",
+            "default": 7,
+            "description": "Hour of the day in UTC"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "class_summary only"
+          },
+          "recipients": {
+            "description": "Staff email addresses at this school",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "frequency",
+          "recipients"
+        ]
+      },
+      "UpdateScheduleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "dayOfWeek": {
+            "type": "number"
+          },
+          "dayOfMonth": {
+            "type": "number"
+          },
+          "hour": {
+            "type": "number"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
       }
     }
   }

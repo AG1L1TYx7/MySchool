@@ -239,6 +239,19 @@ GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY
 ```
 Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
 
+### Insight (Release 2 slice 17)
+```
+GET    /organizations/{id}/insight/overview?date=    reports.view + administrator or counselor: attendance today, missing work by grade level, failing by class, gradebook completeness, AI usage, activity
+GET    /organizations/{id}/insight/reports/{kind}.csv?classId=   kinds school_overview | attendance_today | missing_work | failing_students | gradebook_completeness | ai_usage | class_summary (class teachers may pull their own class)
+GET    /organizations/{id}/report-schedules         reports.schedule; POST { name, kind, frequency daily|weekly|monthly, dayOfWeek?, dayOfMonth?, hour (UTC), classId?, recipients[] staff emails } -> 201
+PATCH  /report-schedules/{id}                       { name?, frequency?, dayOfWeek?, dayOfMonth?, hour?, recipients?, active? }; DELETE -> 204
+GET    /report-schedules/{id}/runs                  the last 50 runs; POST /report-schedules/{id}/run -> the run now (delivered false when no mail transport is configured)
+GET    /classes/{id}/insight                        reports.view, class teachers, counselors, administrators: distribution, attendance, missing, atRisk with flags, roster, assignments
+GET    /students/{id}/insight                       reports.view or family.view: classes with current grades, attendance, missing, weekly series, AI and practice counts, flags
+GET    /students/{id}/transcript.pdf                reports.view or the family's report-card features: published report cards by year, per-year and cumulative GPA; audited
+```
+Reports carry student data, so recipients are checked against staff accounts at the school (`insight.recipient_not_staff`). Nothing here ranks students; at-risk lists are alphabetical.
+
 ### Learning records and science (Release 2 slice 16)
 ```
 GET    /practice/queue?limit=20             due cards (oldest first) then new ones for the signed-in student; due, newCards, reviewedToday

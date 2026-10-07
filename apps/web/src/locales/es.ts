@@ -779,4 +779,9 @@ export const es: Record<MessageKey, string> = {
   'learn.dash.go': 'Empezar a practicar',
   'learn.dash.due.one': '{n} tarjeta para hoy',
   'learn.dash.due.other': '{n} tarjetas para hoy',
+  // Insight (slice 17)
+  'nav.insight': 'Panorama',
+  'category.reports': 'Reportes y panorama',
+  'fam.transcript': 'Descargar el historial académico (PDF)',
+  'fam.transcriptDesc': 'Todas las boletas publicadas en un solo registro, con el promedio por año.',
 };

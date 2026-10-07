@@ -10,6 +10,7 @@ import { newId } from '../src/common/utils/ids';
 import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 import { startAiStub } from './ai-stub';
+import { retryWrite } from './retry';
 
 interface Record_ {
   id: string;
@@ -215,10 +216,12 @@ describe('Learning records and science (e2e)', () => {
       update: {},
       create: { lessonId, standardId },
     });
-    await prisma.organization.update({
-      where: { id: orgId },
-      data: { motivationEnabled: true },
-    });
+    await retryWrite(() =>
+      prisma.organization.update({
+        where: { id: orgId },
+        data: { motivationEnabled: true },
+      }),
+    );
   });
 
   afterAll(async () => {

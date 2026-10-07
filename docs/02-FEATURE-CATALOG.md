@@ -151,6 +151,8 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/v1/Analytics` (7), `/api/analytics/student` (2), `/api/analytics/class` (3), `/api/analytics/organization` (2), `/api/v1/reports` (5). Jobs: scheduled-reports-processor, warm-analytics-cache, analytics-aggregation.
 **Status.** Real.
 
+**Release 2 (slice 17).** Rebuilt as Insight, computed on request from the records the school keeps rather than from aggregate tables: the school overview for administrators and counselors (attendance taken today and the present rate, missing work in the last 14 days by grade level, students failing by class under 60%, gradebook completeness per class over 30 days, AI conversations, messages, refusals and capabilities over 7 days, sign-ins and activity by role), one picture per class (grade distribution in five bands, 30-day attendance, missing work, an alphabetical at-risk list with the reasons, assignment averages) and one per student (current grades, 90-day attendance, missing items, submissions and lessons per week for eight weeks, AI and practice counts). Seven report kinds download as CSV now or go out by email on a daily, weekly or monthly schedule (`ReportSchedules`, `ReportRuns`; recipients must be staff accounts at the school; an hourly job sends what is due; each run records whether a mail transport delivered it). A PDF transcript builds from published report cards with per-year and cumulative unweighted GPA. Not built: dashboard widgets, Excel attachments, analytics caching, credits on transcripts.
+
 ## 17. Mobile API
 
 **Capabilities.** Compact dashboard, offline sync payload, paginated classes, assignments, grades and attendance for mobile clients; response compression.

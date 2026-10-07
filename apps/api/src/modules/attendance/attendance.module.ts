@@ -18,6 +18,6 @@ import { AttendanceService } from './attendance.service';
     AttendanceReportsController,
   ],
   providers: [AttendanceService, AttendanceReportsService],
-  exports: [AttendanceService],
+  exports: [AttendanceService, AttendanceReportsService],
 })
 export class AttendanceModule {}

@@ -29,6 +29,7 @@ const NAV: Array<{ href: string; label: MessageKey; feature: string; roles?: str
   { href: '/tutor', label: 'nav.tutor', feature: 'ai.tutor.chat' },
   { href: '/assistant', label: 'nav.assistant', feature: 'ai.assistant' },
   { href: '/planner', label: 'nav.planner', feature: 'planner.view' },
+  { href: '/insight', label: 'nav.insight', feature: 'reports.view' },
   { href: '/grades', label: 'nav.grades', feature: 'grades.view.own' },
   { href: '/grades', label: 'nav.grades', feature: 'grades.view.child' },
   { href: '/report-cards', label: 'nav.reportCards', feature: 'report-cards.view.all' },

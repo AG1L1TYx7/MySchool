@@ -11,6 +11,7 @@ import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 import { MotivationService } from '../src/modules/motivation/motivation.service';
 import { startAiStub } from './ai-stub';
+import { retryWrite } from './retry';
 
 interface Summary {
   enabled: boolean;
@@ -190,17 +191,21 @@ describe('Motivation (e2e)', () => {
       },
     });
     await prisma.studentPoints.deleteMany({ where: { studentId: studentId } });
-    await prisma.organization.update({
-      where: { id: orgId },
-      data: { motivationEnabled: true },
-    });
+    await retryWrite(() =>
+      prisma.organization.update({
+        where: { id: orgId },
+        data: { motivationEnabled: true },
+      }),
+    );
   });
 
   afterAll(async () => {
-    await prisma.organization.update({
-      where: { id: orgId },
-      data: { motivationEnabled: true },
-    });
+    await retryWrite(() =>
+      prisma.organization.update({
+        where: { id: orgId },
+        data: { motivationEnabled: true },
+      }),
+    );
     await app.close();
     stub.server.close();
   });

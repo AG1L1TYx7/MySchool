@@ -10,6 +10,7 @@ import { configureApp } from '../src/app.setup';
 import { newId } from '../src/common/utils/ids';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 import { startAiStub } from './ai-stub';
+import { retryWrite } from './retry';
 
 interface Problem {
   code: string;
@@ -101,14 +102,16 @@ describe('Support and safety (e2e)', () => {
     // The demo student is shared with the AI tutor suite: never delete their conversations here.
     await prisma.wellnessAlert.deleteMany({ where: { studentId: emmaId } });
     await prisma.aiConsent.deleteMany({ where: { studentId: emmaId } });
-    await prisma.organization.update({
-      where: { id: orgId },
-      data: {
-        behaviorVisibility: 'POSITIVE_ONLY',
-        aiConsentDefault: 'SCHOOL',
-        studentMessaging: false,
-      },
-    });
+    await retryWrite(() =>
+      prisma.organization.update({
+        where: { id: orgId },
+        data: {
+          behaviorVisibility: 'POSITIVE_ONLY',
+          aiConsentDefault: 'SCHOOL',
+          studentMessaging: false,
+        },
+      }),
+    );
     // A student of our own for the tutor escalation, so the AI spec's quota tests cannot interfere.
     const passwordHash = await argon2.hash(PASSWORD, {
       type: argon2.argon2id,

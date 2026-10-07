@@ -32,6 +32,7 @@ import { FamilyModule } from './modules/family/family.module';
 import { SummariesModule } from './modules/summaries/summaries.module';
 import { MotivationModule } from './modules/motivation/motivation.module';
 import { AssistantModule } from './modules/assistant/assistant.module';
+import { InsightModule } from './modules/insight/insight.module';
 import { LearningModule } from './modules/learning/learning.module';
 import { H5pModule } from './modules/h5p/h5p.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
@@ -126,6 +127,7 @@ import { UsersModule } from './modules/users/users.module';
     MotivationModule,
     AssistantModule,
     LearningModule,
+    InsightModule,
     HealthModule,
     MetricsModule,
   ],

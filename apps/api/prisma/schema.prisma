@@ -378,8 +378,10 @@ model Organization {
   lessonPlans   LessonPlan[]
   teacherDrafts TeacherDraft[]
 
-  xapiStatements XapiStatement[]
-  srsCards       SrsCard[]
+  xapiStatements  XapiStatement[]
+  reportSchedules ReportSchedule[]
+  reportRuns      ReportRun[]
+  srsCards        SrsCard[]
 
   @@index([name])
   @@index([isActive, deletedAt])
@@ -470,7 +472,8 @@ model User {
   substituteAccess   SubstituteAccess[]  @relation("SubstituteUser")
   substitutesGranted SubstituteAccess[]  @relation("SubstituteGrantedBy")
 
-  xapiStatements XapiStatement[]
+  xapiStatements  XapiStatement[]
+  reportSchedules ReportSchedule[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -2317,4 +2320,54 @@ model MasteryLevel {
   @@unique([studentId, standardId])
   @@index([standardId, level])
   @@map("MasteryLevels")
+}
+
+/// Insight (slice 17): a report that goes out by email on a schedule, as CSV.
+model ReportSchedule {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  name           String    @map("Name") @db.VarChar(120)
+  kind           String    @map("Kind") @db.VarChar(40)
+  frequency      String    @map("Frequency") @db.VarChar(10)
+  dayOfWeek      Int?      @map("DayOfWeek")
+  dayOfMonth     Int?      @map("DayOfMonth")
+  hour           Int       @default(7) @map("Hour")
+  classId        String?   @map("ClassId") @db.Char(36)
+  recipients     String    @map("Recipients") @db.Text
+  active         Boolean   @default(true) @map("Active")
+  createdById    String    @map("CreatedById") @db.Char(36)
+  lastRunAt      DateTime? @map("LastRunAt") @db.DateTime(6)
+  nextRunAt      DateTime  @map("NextRunAt") @db.DateTime(6)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  runs         ReportRun[]
+
+  @@index([organizationId, active])
+  @@index([active, nextRunAt])
+  @@map("ReportSchedules")
+}
+
+model ReportRun {
+  id             String    @id @map("Id") @db.Char(36)
+  scheduleId     String?   @map("ScheduleId") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  kind           String    @map("Kind") @db.VarChar(40)
+  status         String    @map("Status") @db.VarChar(10)
+  delivered      Boolean   @default(false) @map("Delivered")
+  recipients     String    @map("Recipients") @db.Text
+  rowCount       Int       @default(0) @map("RowCount")
+  fileName       String    @map("FileName") @db.VarChar(160)
+  error          String?   @map("Error") @db.Text
+  startedAt      DateTime  @default(now()) @map("StartedAt") @db.DateTime(6)
+  finishedAt     DateTime? @map("FinishedAt") @db.DateTime(6)
+
+  schedule     ReportSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt])
+  @@index([scheduleId, startedAt])
+  @@map("ReportRuns")
 }

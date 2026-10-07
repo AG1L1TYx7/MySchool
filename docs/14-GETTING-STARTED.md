@@ -146,6 +146,10 @@ Teachers open Teacher assistant in the sidebar. Lesson plans: name a topic and a
 
 Sign in as the student and open Practice. Add cards from the published flashcard set (or write your own), then review: show the answer and rate it 0 to 5. The tenth review of the day earns practice XP. The Progress tab shows mastery by skill and the learning curve. Finish a lesson on a course page to see a module ring fill on the course page and a skill appear under mastery. As the teacher, open a class and choose Learning for the class curve, the standards with band bars and who needs help. As the principal, `GET /api/v1/organizations/{id}/xapi/export` returns the full statements for an external record store.
 
+## 4i. Insight and scheduled reports
+
+Sign in as the principal: the dashboard opens with a School today card, and Insight in the menu shows the overview (attendance taken, missing work by grade, failing students by class, gradebook completeness, AI usage, activity). The Reports tab downloads any report as CSV and lets you schedule one by email to staff addresses; Run now builds it immediately and says honestly whether a mail transport delivered it (set SMTP_HOST to send for real). Open a class and choose Insight for the class picture. On a student's page the Insight card has the transcript download; families get the same download on their home page.
+
 ## 5. Backups
 
 ```bash

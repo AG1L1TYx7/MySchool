@@ -7,6 +7,12 @@ export interface MailMessage {
   subject: string;
   text: string;
   html?: string;
+  /** Files to attach, for scheduled reports; nodemailer takes content as a string or Buffer. */
+  attachments?: Array<{
+    filename: string;
+    content: string | Buffer;
+    contentType?: string;
+  }>;
 }
 
 /**

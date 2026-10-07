@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MotionItem, MotionList, ProgressRing, SkeletonRows } from '@/components/motion';
 import { AnnouncementCard } from '@/components/announcement-card';
+import { SchoolTodayCard } from '@/components/insight-cards';
 import { LearningCard } from '@/components/learning-cards';
 import { ProgressCard } from '@/components/motivation-cards';
 import { Alert, Card } from '@/components/ui';
@@ -198,6 +199,7 @@ export default function DashboardPage() {
         </Alert>
       )}
 
+      <SchoolTodayCard />
       <ThisWeek />
       <ProgressCard />
       <LearningCard />

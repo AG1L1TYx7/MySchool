@@ -1,5 +1,6 @@
 'use client';
 
+import { StudentInsightCard } from '@/components/insight-cards';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
@@ -93,6 +94,7 @@ export default function StudentDetailPage() {
         )}
       </Card>
 
+      {student.canSupport && <StudentInsightCard studentId={id} />}
       <Guardians studentId={id} canManage={can('students.guardians.manage')} />
       {student.canSupport && <AccommodationCard studentId={id} />}
       {student.canSupport && <ConsentCard studentId={id} />}

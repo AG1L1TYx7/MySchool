@@ -74,7 +74,7 @@ Costs: Google, Microsoft, ClassLink and Clever Instant Login are free to integra
 
 ## 9. Principals and districts (slices 17 and 18)
 
-- Principal dashboard: attendance today, missing work by grade level, students failing by class, gradebook completeness, AI usage.
+- Principal dashboard: attendance today, missing work by grade level, students failing by class, gradebook completeness, AI usage. **Done in slice 17** (`/insight`, scheduled CSV reports by email, PDF transcripts).
 - District dashboard and cross-school reports; state reporting exports.
 - District policy switches: AI features on or off per school, which roles may use which features, retention periods.
 
