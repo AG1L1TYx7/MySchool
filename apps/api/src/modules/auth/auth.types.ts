@@ -13,6 +13,8 @@ export interface AuthenticatedUser {
   sessionId: string;
   /** Privileged role without 2FA: only the auth routes are allowed until setup completes. */
   mfaSetupRequired: boolean;
+  /** Present when the request was authenticated with an API key: only these feature codes may be used. */
+  apiKey?: { id: string; name: string; scopes: string[] };
 }
 
 export interface AccessTokenClaims {

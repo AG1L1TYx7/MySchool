@@ -21,6 +21,7 @@ import {
 } from '../decorators/access.decorators';
 import { PermissionService } from '../permission.service';
 import { TenantsService } from '../../tenants/tenants.service';
+import { scopesAllow } from '../../integrations/integration-rules';
 
 /**
  * Runs after JWT authentication. Applies, in order: feature flag gate (404 when off),
@@ -115,6 +116,20 @@ export class AccessGuard implements CanActivate {
             code: 'feature.disabled_by_district',
             detail: 'Your district has switched this feature off.',
           });
+    }
+    // A request made with an API key is limited to the key's scopes; role overrides do not apply.
+    if (user.apiKey) {
+      const scopes = user.apiKey.scopes;
+      const anyOk =
+        !anyFeatures?.length ||
+        anyFeatures.some((code) => scopesAllow(scopes, code));
+      const allOk = (features ?? []).every((code) => scopesAllow(scopes, code));
+      if (!anyOk || !allOk)
+        throw new ForbiddenException({
+          code: 'apikey.scope',
+          detail: 'This API key is not scoped for that action.',
+        });
+      return true;
     }
     if (anyFeatures?.length) {
       const effective = await this.permissions.effectiveFeatures(

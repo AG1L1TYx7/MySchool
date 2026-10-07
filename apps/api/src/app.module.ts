@@ -34,6 +34,7 @@ import { MotivationModule } from './modules/motivation/motivation.module';
 import { AssistantModule } from './modules/assistant/assistant.module';
 import { ComplianceModule } from './modules/compliance/compliance.module';
 import { DistrictModule } from './modules/district/district.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { InsightModule } from './modules/insight/insight.module';
 import { MobileModule } from './modules/mobile/mobile.module';
@@ -79,6 +80,7 @@ import { UsersModule } from './modules/users/users.module';
           },
           redact: [
             'req.headers.authorization',
+            'req.headers["x-api-key"]',
             'req.headers.cookie',
             'req.body.password',
             'req.body.newPassword',
@@ -138,6 +140,7 @@ import { UsersModule } from './modules/users/users.module';
     ComplianceModule,
     TenantsModule,
     DistrictModule,
+    IntegrationsModule,
     HealthModule,
     MetricsModule,
   ],

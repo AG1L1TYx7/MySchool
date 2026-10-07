@@ -334,6 +334,13 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('tenants.manage', 'Create and host tenants (platform)', 'District', [
     'SUPER_ADMIN',
   ]),
+  f(
+    'integrations.manage',
+    'Webhooks, API keys and LTI platforms and tools',
+    'Integrations',
+    ADMINS,
+  ),
+  f('lti.launch', 'Open external LTI tools', 'Integrations', ALL),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

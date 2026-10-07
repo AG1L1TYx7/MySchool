@@ -6,6 +6,7 @@ import {
 } from '../../common/dto/paged-response.dto';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { csvLines } from '../integrations/integration-rules';
 
 export interface AuditEntry {
   userId?: string | null;
@@ -88,5 +89,70 @@ export class AuditService {
       this.prisma.auditLog.count({ where }),
     ]);
     return PagedResponse.of(data, q, total);
+  }
+
+  /** The same filter as the list, as CSV (at most 50,000 rows, newest first). */
+  async exportCsv(
+    q: AuditQueryDto,
+    organizationId: string | null | undefined,
+    actor: { id: string; organizationId: string | null },
+  ): Promise<string> {
+    const where: Prisma.AuditLogWhereInput = {
+      ...(organizationId ? { organizationId } : {}),
+      ...(q.userId ? { userId: q.userId } : {}),
+      ...(q.action ? { action: { startsWith: q.action } } : {}),
+      ...(q.entityType ? { entityType: q.entityType } : {}),
+      ...(q.from || q.to
+        ? {
+            timestamp: {
+              ...(q.from ? { gte: new Date(q.from) } : {}),
+              ...(q.to ? { lte: new Date(q.to) } : {}),
+            },
+          }
+        : {}),
+    };
+    const rows = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+      take: 50_000,
+      include: { user: { select: { email: true } } },
+    });
+    await this.record({
+      userId: actor.id,
+      organizationId: actor.organizationId,
+      action: 'audit.export',
+      entityType: 'AuditLog',
+      details: { rows: rows.length, filter: { ...q } },
+    });
+    return csvLines([
+      [
+        'Timestamp',
+        'Action',
+        'User',
+        'Organization',
+        'Entity type',
+        'Entity id',
+        'Method',
+        'Path',
+        'Status',
+        'IP',
+        'Trace',
+        'Details',
+      ],
+      ...rows.map((r) => [
+        r.timestamp.toISOString(),
+        r.action,
+        r.user?.email ?? r.userId ?? '',
+        r.organizationId ?? '',
+        r.entityType ?? '',
+        r.entityId ?? '',
+        r.httpMethod ?? '',
+        r.requestPath ?? '',
+        r.statusCode ?? '',
+        r.ipAddress ?? '',
+        r.traceId ?? '',
+        r.details ?? '',
+      ]),
+    ]);
   }
 }

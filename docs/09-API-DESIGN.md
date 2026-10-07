@@ -274,6 +274,36 @@ GET    /district/state-exports/{kind}.csv    enrollment | attendance | disciplin
 Errors: feature.disabled_by_district (403) from any route whose feature the district switched off; ai.disabled_by_district (403) from AI routes
 ```
 
+### Integrations (Release 3 slice 21)
+
+```
+GET    /organizations/{id}/webhooks                     integrations.manage: subscriptions (never the secret)
+GET    /organizations/{id}/webhooks/event-types         the thirteen event types a filter may name (a trailing dot is a prefix)
+POST   /organizations/{id}/webhooks                     { name, url (https; http on localhost only), events?, retryLimit? } -> 201 with secret, once
+PATCH  /organizations/{id}/webhooks/{wid}               { name?, url?, events?, isActive?, retryLimit? }
+DELETE /organizations/{id}/webhooks/{wid}               204
+POST   /organizations/{id}/webhooks/{wid}/rotate-secret -> new secret, once
+POST   /organizations/{id}/webhooks/{wid}/test          posts webhook.test now -> { status, responseCode, lastError, attempts }
+GET    /organizations/{id}/webhooks/{wid}/deliveries    paged { eventId, eventType, status pending|delivered|failed, attempts, responseCode, lastError, nextAttemptAt, deliveredAt }
+GET    /organizations/{id}/api-keys                     keys with prefix, scopes, budget, creator, last use, expiry, revocation
+GET    /organizations/{id}/api-keys/scopes              the allowed read-only scopes
+POST   /organizations/{id}/api-keys                     { name, scopes[], rateLimitPerMinute?, expiresInDays? } -> 201 with key (ssk_<prefix>_<secret>), once
+DELETE /organizations/{id}/api-keys/{kid}               revoke (row kept)
+Header X-Api-Key: <key>   runs as the creating administrator, scoped; 401 auth.api_key_invalid | auth.api_key_revoked, 403 apikey.scope, 429 rate_limited
+GET    /organizations/{id}/lti/platforms                POST { name, issuer, clientId, deploymentId?, authorizationUrl, jwksUrl, tokenUrl? }; PATCH/DELETE /{pid}
+GET    /organizations/{id}/lti/tools                    POST { name, loginUrl, launchUrl, jwksUrl?, customParams? } -> tool with platform { issuer, authorizationUrl, jwksUrl, clientId, deploymentId }; PATCH/DELETE /{tid}
+GET    /organizations/{id}/lti/tools/{tid}/launch?classId=   lti.launch: HTML page that posts the OIDC initiation to the tool
+GET    /classes/{id}/lti-tools                          tools a person in the class may open
+GET    /lti/jwks | /lti/config.json?organizationId=     public
+GET|POST /lti/login                                     public OIDC initiation -> 302 to the platform; state cookie ss_lti
+POST   /lti/launch                                      public; id_token + state -> 302 /sso/complete?next= (or /login?error=lti_<reason>)
+GET|POST /lti/platform/auth                             public; answers a tool with an auto-posted id_token
+GET    /classes/{id}/exports/canvas-gradebook.csv       grades.export (audited)
+GET    /classes/{id}/exports/google-classroom.csv       grades.export (audited)
+GET    /classes/{id}/exports/common-cartridge.imscc     assignments.view + class teacher or administrator (audited)
+GET    /audit-logs/export.csv                           audit.logs.view: same filters as the list, 50,000 rows at most (audited audit.export)
+```
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

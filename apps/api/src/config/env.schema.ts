@@ -112,6 +112,10 @@ export const envSchema = z
 
     TENANT_REQUIRED: boolFromString.default(false),
     TENANT_BASE_DOMAIN: z.string().default('localhost'),
+    /** Public URL of this API as platforms and tools reach it (LTI issuer, JWKS and launch URLs). */
+    API_PUBLIC_URL: z.string().url().default('http://localhost:5000'),
+    /** Minutes between webhook delivery passes is fixed at one; this caps deliveries per pass. */
+    WEBHOOK_BATCH_SIZE: z.coerce.number().int().positive().default(200),
 
     LOG_LEVEL: z
       .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])

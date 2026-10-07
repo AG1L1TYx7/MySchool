@@ -162,6 +162,10 @@ Sign in as the principal and open Compliance. The Data map tab lists every table
 
 Sign in as the superintendent and open District. Overview shows every school in the district on one line with the totals above; Reports downloads the cross-school CSVs; Policies switches AI off for the district or for named schools, decides whether schools may allow student-to-student messaging, lists feature codes to switch off district-wide and sets retention defaults; State reporting downloads the enrollment, attendance, discipline and grades files. As the platform administrator, Tenants creates a district, gives it a custom domain and shows the DNS record to add before pressing Verify; the District page then has a district picker. The sign-in page takes its name and colour from the district behind the host: set `TENANT_BASE_DOMAIN` (default `localhost`) so `beta.<base domain>` resolves the tenant with slug `beta`, or open `/login` on a verified custom domain.
 
+## 4m. Integrations
+
+Sign in as the principal and open Integrations. Webhooks: add an https endpoint (http is allowed on localhost while developing), tick the events, copy the secret shown once, press Send test and open Deliveries to see the attempt; a receiver checks `X-Webhook-Signature` as the sha256 HMAC of `timestamp.body`. API keys: name the key, tick its scopes, copy the key shown once and call the API with `X-Api-Key`; revoke it from the list. LTI 1.3: the first card shows the URLs to register SmartSchool in Canvas (or use `/api/v1/lti/config.json?organizationId=`), then add the platform's issuer, client id, authorization and JWKS URLs; under Tools register an outside tool and give it the details shown, after which Open appears on every class page. On a gradebook, For Canvas and For Google Classroom download grade sheets in those layouts. On the audit log, Export CSV downloads the filtered trail. Set `API_PUBLIC_URL` to the address platforms and tools reach the API at.
+
 ## 5. Backups
 
 ```bash

@@ -70,7 +70,7 @@ Costs: Google, Microsoft, ClassLink and Clever Instant Login are free to integra
 - Teacher insight from tutor traces: where the class is stuck this week, with a practice set ready to assign.
 - Differentiation: the same quiz or reading at three reading levels in one action.
 - Substitute access with an expiry date; weekly planner view.
-- Export to Google Classroom and Canvas; LTI 1.3 tool so SmartSchool runs inside Canvas or Schoology where a district already has one.
+- Export to Google Classroom and Canvas; LTI 1.3 tool so SmartSchool runs inside Canvas or Schoology where a district already has one. **Done in slice 21** (gradebook exports in the Canvas and Classroom layouts, Common Cartridge of a class, LTI 1.3 tool and platform, webhooks and API keys for district IT under Integrations).
 
 ## 9. Principals and districts (slices 17 and 20)
 

@@ -54,6 +54,14 @@ export class AuditInterceptor implements NestInterceptor {
           httpMethod: req.method,
           statusCode: res.statusCode,
           traceId: typeof req.id === 'string' ? req.id : null,
+          ...(req.user?.apiKey
+            ? {
+                details: {
+                  apiKeyId: req.user.apiKey.id,
+                  apiKeyName: req.user.apiKey.name,
+                },
+              }
+            : {}),
         });
       }),
     );

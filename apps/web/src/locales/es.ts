@@ -809,6 +809,9 @@ export const es: Record<MessageKey, string> = {
   'nav.tenants': 'Distritos alojados',
   'category.district': 'Resumen del distrito, políticas e informes estatales',
   'auth.hostedBy': 'Alojado para {name}',
+  // Integrations (slice 21)
+  'nav.integrations': 'Integraciones',
+  'category.integrations': 'Webhooks, claves de API y LTI',
   'category.compliance': 'Mapa de datos, retención y eliminación',
   'records.title': 'Sus registros',
   'records.desc': 'Bajo FERPA puede pedir una copia de los registros educativos que guarda la escuela y pedir que se borren.',

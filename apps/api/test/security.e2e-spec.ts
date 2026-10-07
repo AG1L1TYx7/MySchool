@@ -58,6 +58,7 @@ const FEATURELESS_OK = [
 const PUBLIC_PREFIXES = [
   /^\/health/,
   /^\/branding/,
+  /^\/lti\//,
   /^\/metrics/,
   /^\/auth\/(register|verify-email|resend-verification|login|2fa\/challenge|refresh|forgot-password|reset-password|sso)/,
   /^\/calendar\/ical\//,

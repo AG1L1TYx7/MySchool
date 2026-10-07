@@ -33,6 +33,7 @@ const NAV: Array<{ href: string; label: MessageKey; feature: string; roles?: str
   { href: '/compliance', label: 'nav.compliance', feature: 'compliance.view' },
   { href: '/district', label: 'nav.district', feature: 'district.view' },
   { href: '/tenants', label: 'nav.tenants', feature: 'tenants.manage' },
+  { href: '/integrations', label: 'nav.integrations', feature: 'integrations.manage' },
   { href: '/grades', label: 'nav.grades', feature: 'grades.view.own' },
   { href: '/grades', label: 'nav.grades', feature: 'grades.view.child' },
   { href: '/report-cards', label: 'nav.reportCards', feature: 'report-cards.view.all' },

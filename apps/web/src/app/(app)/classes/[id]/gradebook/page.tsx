@@ -64,9 +64,17 @@ export default function GradebookPage() {
             </div>
           )}
           {can('grades.export') && (
-            <Button variant="secondary" onClick={() => void download(`/classes/${id}/gradebook/export`, `gradebook-${book.className}.csv`)}>
-              Export CSV
-            </Button>
+            <>
+              <Button variant="secondary" onClick={() => void download(`/classes/${id}/gradebook/export`, `gradebook-${book.className}.csv`)}>
+                Export CSV
+              </Button>
+              <Button variant="secondary" onClick={() => void download(`/classes/${id}/exports/canvas-gradebook.csv`, `canvas-${book.className}.csv`)}>
+                For Canvas
+              </Button>
+              <Button variant="secondary" onClick={() => void download(`/classes/${id}/exports/google-classroom.csv`, `classroom-${book.className}.csv`)}>
+                For Google Classroom
+              </Button>
+            </>
           )}
         </div>
       </div>

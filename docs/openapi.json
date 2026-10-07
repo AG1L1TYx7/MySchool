@@ -60,6 +60,65 @@
         ]
       }
     },
+    "/api/v1/audit-logs/export.csv": {
+      "get": {
+        "operationId": "AuditController_exportCsv_api/v1",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated fields; prefix with - for descending, e.g. -createdAt,lastName",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The filtered audit trail as CSV (audited)",
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
     "/api/v1/roles": {
       "get": {
         "operationId": "AccessController_roles_api/v1",
@@ -12372,6 +12431,1018 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/webhooks": {
+      "get": {
+        "operationId": "IntegrationsController_listWebhooks_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Webhook subscriptions of the school",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "post": {
+        "operationId": "IntegrationsController_createWebhook_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWebhookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a subscription; the secret is returned once",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/webhooks/event-types": {
+      "get": {
+        "operationId": "IntegrationsController_eventTypes_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Event types a subscription may ask for",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/webhooks/{id}": {
+      "patch": {
+        "operationId": "IntegrationsController_updateWebhook_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWebhookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a subscription (name, url, events, active, retry limit)",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "delete": {
+        "operationId": "IntegrationsController_removeWebhook_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a subscription and its delivery history",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/webhooks/{id}/rotate-secret": {
+      "post": {
+        "operationId": "IntegrationsController_rotateSecret_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rotate the signing secret; the new one is returned once",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/webhooks/{id}/test": {
+      "post": {
+        "operationId": "IntegrationsController_testWebhook_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a webhook.test event now and report the outcome",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/webhooks/{id}/deliveries": {
+      "get": {
+        "operationId": "IntegrationsController_deliveries_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated fields; prefix with - for descending, e.g. -createdAt,lastName",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "delivered",
+                "failed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delivery history of a subscription",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/api-keys": {
+      "get": {
+        "operationId": "IntegrationsController_listKeys_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "API keys of the school (never the key itself)",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "post": {
+        "operationId": "IntegrationsController_createKey_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a key; the key is returned once. Present it as X-Api-Key.",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/api-keys/scopes": {
+      "get": {
+        "operationId": "IntegrationsController_scopes_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Scopes a key may be given",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/api-keys/{id}": {
+      "delete": {
+        "operationId": "IntegrationsController_revokeKey_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a key (kept in the list for the record)",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/platforms": {
+      "get": {
+        "operationId": "IntegrationsController_listPlatforms_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Platforms (Canvas, Schoology) that may launch SmartSchool",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "post": {
+        "operationId": "IntegrationsController_createPlatform_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLtiPlatformDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a platform",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/platforms/{id}": {
+      "patch": {
+        "operationId": "IntegrationsController_updatePlatform_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLtiPlatformDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a platform",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "delete": {
+        "operationId": "IntegrationsController_removePlatform_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a platform (its user links go with it)",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/tools": {
+      "get": {
+        "operationId": "IntegrationsController_listTools_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "External tools SmartSchool launches, with the platform details to give each tool",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "post": {
+        "operationId": "IntegrationsController_createTool_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLtiToolDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a tool; SmartSchool assigns the client id and deployment id",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/tools/{id}": {
+      "patch": {
+        "operationId": "IntegrationsController_updateTool_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLtiToolDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a tool",
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "delete": {
+        "operationId": "IntegrationsController_removeTool_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a tool",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/tools/{id}/launch": {
+      "get": {
+        "operationId": "IntegrationsController_launchTool_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a tool: an HTML page that starts the LTI launch (optional ?classId=)",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/lti/jwks": {
+      "get": {
+        "operationId": "LtiController_jwks_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "JSON Web Key Set that verifies id_tokens SmartSchool signs",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/config.json": {
+      "get": {
+        "operationId": "LtiController_configuration_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Tool configuration for registering SmartSchool in Canvas (?organizationId=)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/login": {
+      "get": {
+        "operationId": "LtiController_loginGet_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "OIDC login initiation (GET form)",
+        "tags": [
+          "LTI"
+        ]
+      },
+      "post": {
+        "operationId": "LtiController_loginPost_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "OIDC login initiation (POST form)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/launch": {
+      "post": {
+        "operationId": "LtiController_launch_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "LTI resource link launch: verifies the id_token, signs the person in and redirects into the app",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/platform/auth": {
+      "get": {
+        "operationId": "LtiController_platformAuthGet_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Authorization endpoint for tools SmartSchool launches (GET)",
+        "tags": [
+          "LTI"
+        ]
+      },
+      "post": {
+        "operationId": "LtiController_platformAuthPost_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Authorization endpoint for tools SmartSchool launches (POST)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/exports/canvas-gradebook.csv": {
+      "get": {
+        "operationId": "ExportsController_canvas_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gradebook in the layout Canvas imports (audited)",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/exports/google-classroom.csv": {
+      "get": {
+        "operationId": "ExportsController_classroom_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Grade sheet in the layout Google Classroom uses (audited)",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/exports/common-cartridge.imscc": {
+      "get": {
+        "operationId": "ExportsController_cartridge_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "IMS Common Cartridge 1.3 of the published assignments (teacher or administrator; audited)",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/lti-tools": {
+      "get": {
+        "operationId": "ExportsController_tools_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "External tools that can be opened from this class",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -16403,6 +17474,224 @@
           "retention": {
             "type": "object",
             "description": "Retention days by switch; applied to schools without their own setting"
+          }
+        }
+      },
+      "CreateWebhookDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "SIS sync"
+          },
+          "url": {
+            "type": "string",
+            "example": "https://sis.district.org/hooks/smartschool"
+          },
+          "events": {
+            "type": "array",
+            "description": "Empty means every event; a type ending in a dot is a prefix",
+            "items": {
+              "type": "string",
+              "enum": [
+                "student.enrolled",
+                "student.updated",
+                "enrollment.changed",
+                "course.created",
+                "assignment.created",
+                "assignment.published",
+                "assignment.submitted",
+                "grade.posted",
+                "attendance.marked",
+                "report_card.published",
+                "announcement.published",
+                "message.sent",
+                "lesson.completed"
+              ]
+            }
+          },
+          "retryLimit": {
+            "type": "number",
+            "default": 5
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ]
+      },
+      "UpdateWebhookDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "retryLimit": {
+            "type": "number"
+          }
+        }
+      },
+      "CreateApiKeyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "District data warehouse"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "students.view",
+                "students.export",
+                "classes.view",
+                "courses.view",
+                "assignments.view",
+                "grades.view.all",
+                "grades.export",
+                "attendance.view",
+                "calendar.view",
+                "standards.view",
+                "reports.view",
+                "audit.logs.view",
+                "organizations.view",
+                "district.view"
+              ]
+            }
+          },
+          "rateLimitPerMinute": {
+            "type": "number",
+            "default": 600,
+            "description": "Requests per minute"
+          },
+          "expiresInDays": {
+            "type": "number",
+            "description": "Days until the key stops working; omit for no expiry"
+          }
+        },
+        "required": [
+          "name",
+          "scopes"
+        ]
+      },
+      "CreateLtiPlatformDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Canvas"
+          },
+          "issuer": {
+            "type": "string",
+            "example": "https://canvas.instructure.com"
+          },
+          "clientId": {
+            "type": "string",
+            "description": "The client id the platform assigned to SmartSchool"
+          },
+          "deploymentId": {
+            "type": "string"
+          },
+          "authorizationUrl": {
+            "type": "string",
+            "example": "https://canvas.instructure.com/api/lti/authorize_redirect"
+          },
+          "jwksUrl": {
+            "type": "string",
+            "example": "https://canvas.instructure.com/api/lti/security/jwks"
+          },
+          "tokenUrl": {
+            "type": "string",
+            "example": "https://canvas.instructure.com/login/oauth2/token"
+          }
+        },
+        "required": [
+          "name",
+          "issuer",
+          "clientId",
+          "authorizationUrl",
+          "jwksUrl"
+        ]
+      },
+      "UpdateLtiPlatformDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "deploymentId": {
+            "type": "string"
+          },
+          "authorizationUrl": {
+            "type": "string"
+          },
+          "jwksUrl": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateLtiToolDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Desmos"
+          },
+          "loginUrl": {
+            "type": "string",
+            "description": "OIDC login initiation URL of the tool"
+          },
+          "launchUrl": {
+            "type": "string",
+            "description": "Target link URI the tool launches at"
+          },
+          "jwksUrl": {
+            "type": "string"
+          },
+          "customParams": {
+            "type": "object",
+            "description": "Custom parameters sent on every launch"
+          }
+        },
+        "required": [
+          "name",
+          "loginUrl",
+          "launchUrl"
+        ]
+      },
+      "UpdateLtiToolDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "loginUrl": {
+            "type": "string"
+          },
+          "launchUrl": {
+            "type": "string"
+          },
+          "customParams": {
+            "type": "object"
+          },
+          "isActive": {
+            "type": "boolean"
           }
         }
       }

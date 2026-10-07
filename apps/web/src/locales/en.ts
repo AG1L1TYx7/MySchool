@@ -833,6 +833,9 @@ export const en = {
   'nav.tenants': 'Tenants',
   'category.district': 'District overview, policies and state reporting',
   'auth.hostedBy': 'Hosted for {name}',
+  // Integrations (slice 21)
+  'nav.integrations': 'Integrations',
+  'category.integrations': 'Webhooks, API keys and LTI',
   'category.compliance': 'Data map, retention and deletion',
   'records.title': 'Your records',
   'records.desc': 'Under FERPA you can ask for a copy of the education records the school holds, and ask for them to be erased.',

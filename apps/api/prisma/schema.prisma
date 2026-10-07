@@ -380,10 +380,14 @@ model Organization {
   lessonPlans   LessonPlan[]
   teacherDrafts TeacherDraft[]
 
-  xapiStatements  XapiStatement[]
-  reportSchedules ReportSchedule[]
-  reportRuns      ReportRun[]
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  xapiStatements       XapiStatement[]
+  reportSchedules      ReportSchedule[]
+  reportRuns           ReportRun[]
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  webhookSubscriptions WebhookSubscription[]
+  apiKeys              ApiKey[]
+  ltiPlatforms         LtiPlatform[]
+  ltiTools             LtiTool[]
 
   deletionRequests  DeletionRequest[]
   securityIncidents SecurityIncident[]
@@ -485,6 +489,9 @@ model User {
   deletionRequests  DeletionRequest[]
   securityIncidents SecurityIncident[]
   pushLogs          PushLog[]
+
+  apiKeys      ApiKey[]
+  ltiUserLinks LtiUserLink[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -2498,4 +2505,143 @@ model Tenant {
   organizations Organization[]
 
   @@map("Tenants")
+}
+
+/// Integrations (slice 21): webhooks for IT systems. The secret signs every delivery; it is shown once at creation.
+model WebhookSubscription {
+  id              String    @id @map("Id") @db.Char(36)
+  organizationId  String    @map("OrganizationId") @db.Char(36)
+  name            String    @map("Name") @db.VarChar(100)
+  url             String    @map("Url") @db.VarChar(500)
+  secret          String    @map("Secret") @db.VarChar(128)
+  events          String?   @map("Events") @db.Text
+  isActive        Boolean   @default(true) @map("IsActive")
+  retryLimit      Int       @default(5) @map("RetryLimit")
+  failureCount    Int       @default(0) @map("FailureCount")
+  lastDeliveredAt DateTime? @map("LastDeliveredAt") @db.DateTime(6)
+  createdById     String?   @map("CreatedById") @db.Char(36)
+  createdAt       DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt       DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([organizationId, isActive])
+  @@map("WebhookSubscriptions")
+}
+
+model WebhookDelivery {
+  id             String    @id @map("Id") @db.Char(36)
+  subscriptionId String    @map("SubscriptionId") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  eventId        String    @map("EventId") @db.Char(36)
+  eventType      String    @map("EventType") @db.VarChar(100)
+  payload        String    @map("Payload") @db.Text
+  status         String    @default("pending") @map("Status") @db.VarChar(16)
+  attempts       Int       @default(0) @map("Attempts")
+  responseCode   Int?      @map("ResponseCode")
+  lastError      String?   @map("LastError") @db.VarChar(500)
+  nextAttemptAt  DateTime  @map("NextAttemptAt") @db.DateTime(6)
+  deliveredAt    DateTime? @map("DeliveredAt") @db.DateTime(6)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([subscriptionId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("WebhookDeliveries")
+}
+
+/// API keys for district integrations: the key acts with the authority of the administrator who created it, limited to its scopes.
+model ApiKey {
+  id                 String    @id @map("Id") @db.Char(36)
+  organizationId     String    @map("OrganizationId") @db.Char(36)
+  name               String    @map("Name") @db.VarChar(100)
+  prefix             String    @unique @map("Prefix") @db.VarChar(16)
+  keyHash            String    @map("KeyHash") @db.VarChar(128)
+  scopes             String    @map("Scopes") @db.Text
+  rateLimitPerMinute Int       @default(600) @map("RateLimitPerMinute")
+  createdById        String    @map("CreatedById") @db.Char(36)
+  lastUsedAt         DateTime? @map("LastUsedAt") @db.DateTime(6)
+  expiresAt          DateTime? @map("ExpiresAt") @db.DateTime(6)
+  revokedAt          DateTime? @map("RevokedAt") @db.DateTime(6)
+  createdAt          DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, revokedAt])
+  @@map("ApiKeys")
+}
+
+/// LTI 1.3: a platform (Canvas, Schoology) that launches SmartSchool as a tool.
+model LtiPlatform {
+  id               String   @id @map("Id") @db.Char(36)
+  organizationId   String   @map("OrganizationId") @db.Char(36)
+  name             String   @map("Name") @db.VarChar(100)
+  issuer           String   @map("Issuer") @db.VarChar(500)
+  clientId         String   @map("ClientId") @db.VarChar(200)
+  deploymentId     String?  @map("DeploymentId") @db.VarChar(200)
+  authorizationUrl String   @map("AuthorizationUrl") @db.VarChar(500)
+  jwksUrl          String   @map("JwksUrl") @db.VarChar(500)
+  tokenUrl         String?  @map("TokenUrl") @db.VarChar(500)
+  isActive         Boolean  @default(true) @map("IsActive")
+  createdAt        DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt        DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userLinks    LtiUserLink[]
+
+  @@unique([issuer, clientId])
+  @@index([organizationId])
+  @@map("LtiPlatforms")
+}
+
+/// Which SmartSchool user an LTI platform's subject is.
+model LtiUserLink {
+  id         String   @id @map("Id") @db.Char(36)
+  platformId String   @map("PlatformId") @db.Char(36)
+  subject    String   @map("Subject") @db.VarChar(255)
+  userId     String   @map("UserId") @db.Char(36)
+  createdAt  DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  platform LtiPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([platformId, subject])
+  @@index([userId])
+  @@map("LtiUserLinks")
+}
+
+/// LTI 1.3: an external tool SmartSchool launches as a platform.
+model LtiTool {
+  id             String   @id @map("Id") @db.Char(36)
+  organizationId String   @map("OrganizationId") @db.Char(36)
+  name           String   @map("Name") @db.VarChar(100)
+  clientId       String   @unique @map("ClientId") @db.VarChar(64)
+  deploymentId   String   @map("DeploymentId") @db.VarChar(64)
+  loginUrl       String   @map("LoginUrl") @db.VarChar(500)
+  launchUrl      String   @map("LaunchUrl") @db.VarChar(500)
+  jwksUrl        String?  @map("JwksUrl") @db.VarChar(500)
+  customParams   String?  @map("CustomParams") @db.Text
+  isActive       Boolean  @default(true) @map("IsActive")
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, isActive])
+  @@map("LtiTools")
+}
+
+/// The signing key SmartSchool uses for LTI (one active row; rotated by inserting a new one).
+model LtiKey {
+  id         String   @id @map("Id") @db.Char(36)
+  kid        String   @unique @map("Kid") @db.VarChar(64)
+  privatePem String   @map("PrivatePem") @db.Text
+  publicJwk  String   @map("PublicJwk") @db.Text
+  createdAt  DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  @@map("LtiKeys")
 }

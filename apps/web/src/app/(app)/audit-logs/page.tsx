@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Card, Input } from '@/components/ui';
-import { api, errorMessage } from '@/lib/api';
+import { Alert, Button, Card, Input } from '@/components/ui';
+import { api, download, errorMessage } from '@/lib/api';
 
 interface AuditRow {
   id: string;
@@ -45,7 +45,12 @@ export default function AuditLogsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <h1 className="text-2xl font-semibold">Audit log</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Audit log</h1>
+        <Button variant="secondary" onClick={() => void download(`/audit-logs/export.csv${action ? `?action=${encodeURIComponent(action)}` : ''}`, `audit-${new Date().toISOString().slice(0, 10)}.csv`)}>
+          Export CSV
+        </Button>
+      </div>
       <Card>
         <div className="mb-4 max-w-sm">
           <Input label="Action starts with" placeholder="auth., users., access." value={action} onChange={(e) => (setPage(1), setAction(e.target.value))} />

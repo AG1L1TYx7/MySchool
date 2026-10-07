@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ClassPolicies, GradingSettings } from '@/components/grading-settings';
+import { LtiToolsCard } from '@/components/lti-tools-card';
 import { SubstitutesCard } from '@/components/substitutes-card';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
@@ -111,6 +112,7 @@ export default function ClassPage() {
       {klass.canManage && can('grades.edit') && <GradingSettings classId={id} organizationId={klass.organizationId} />}
       {can('classes.teachers.manage') && <Teachers klass={klass} onChange={load} />}
       {klass.canManage && can('classes.substitutes') && <SubstitutesCard classId={id} />}
+      {can('lti.launch') && <LtiToolsCard classId={id} organizationId={klass.organizationId} />}
       {klass.canManage && can('classes.roster.manage') && <Roster klass={klass} onChange={load} />}
     </div>
   );
