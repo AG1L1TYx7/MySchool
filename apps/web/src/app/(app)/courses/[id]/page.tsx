@@ -2,6 +2,7 @@
 
 import { ReadAloud } from '@/components/accommodations';
 import { LessonSummaries } from '@/components/lesson-summaries';
+import { CourseMasteryRings } from '@/components/learning-cards';
 import { MarkLessonDone, ProgressMap } from '@/components/progress-map';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -86,6 +87,7 @@ export default function CoursePage() {
 
       {course.canEdit && <DetailsForm course={course} onSaved={load} />}
       {!course.canEdit && <ProgressMap courseId={id} />}
+      {!course.canEdit && <CourseMasteryRings courseId={id} />}
 
       <Card title="Outline" description={course.canEdit ? 'Modules group lessons. Students see published modules and lessons once the course is published.' : undefined}>
         {course.modules.length === 0 && <p className="text-sm text-slate-500">No modules yet.</p>}

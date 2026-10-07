@@ -10281,6 +10281,35 @@
         ]
       }
     },
+    "/api/v1/classes/{id}/substitutes/candidates": {
+      "get": {
+        "operationId": "AssistantController_candidates_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Teachers and assistants of the school who could cover this class",
+        "tags": [
+          "Teacher assistant"
+        ]
+      }
+    },
     "/api/v1/substitutes/{id}": {
       "delete": {
         "operationId": "AssistantController_removeSubstitute_api/v1",
@@ -10337,6 +10366,626 @@
         "summary": "The week for my classes: due dates, events, term boundaries and scheduled plans",
         "tags": [
           "Teacher assistant"
+        ]
+      }
+    },
+    "/api/v1/practice/queue": {
+      "get": {
+        "operationId": "LearningController_queue_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cards due today, then new ones, for the signed-in student",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/practice/cards": {
+      "get": {
+        "operationId": "LearningController_cards_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      },
+      "post": {
+        "operationId": "LearningController_createCard_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/practice/cards/from-content/{contentId}": {
+      "post": {
+        "operationId": "LearningController_fromContent_api/v1",
+        "parameters": [
+          {
+            "name": "contentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turn a published flashcard set into practice cards (once per card)",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/practice/cards/{id}/review": {
+      "post": {
+        "operationId": "LearningController_review_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Grade a recall 0 to 5; SM-2 schedules the next review",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/practice/cards/{id}/suspend": {
+      "post": {
+        "operationId": "LearningController_suspend_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/practice/cards/{id}": {
+      "delete": {
+        "operationId": "LearningController_removeCard_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/me/practice": {
+      "get": {
+        "operationId": "LearningController_myPractice_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/me/mastery": {
+      "get": {
+        "operationId": "LearningController_myMastery_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/me/learning/curve": {
+      "get": {
+        "operationId": "LearningController_myCurve_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/mastery": {
+      "get": {
+        "operationId": "LearningController_mastery_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's mastery per standard: family, teachers, counselors, administrators",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/learning/curve": {
+      "get": {
+        "operationId": "LearningController_curve_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/learning/records": {
+      "get": {
+        "operationId": "LearningController_records_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's recent learning records (xAPI), newest first",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/practice": {
+      "get": {
+        "operationId": "LearningController_practice_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/courses/{id}/mastery": {
+      "get": {
+        "operationId": "LearningController_courseMastery_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mastery rings per module for one student (studentId for a child or a taught student)",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/mastery": {
+      "get": {
+        "operationId": "LearningController_classMastery_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The class per standard: average, bands, who needs help",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/learning/curve": {
+      "get": {
+        "operationId": "LearningController_classCurve_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/h5p/contents/{id}/analytics": {
+      "get": {
+        "operationId": "LearningController_analytics_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/xapi/statements": {
+      "get": {
+        "operationId": "LearningController_statements_api/v1",
+        "parameters": [
+          {
+            "name": "studentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "objectId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "objectType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "h5p-content",
+                "lesson",
+                "assignment",
+                "srs-card"
+              ]
+            }
+          },
+          {
+            "name": "verb",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "experienced",
+                "attempted",
+                "answered",
+                "completed",
+                "passed",
+                "failed",
+                "interacted",
+                "progressed"
+              ]
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "until",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maximum": 500,
+              "default": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Query learning records by student, object, verb and time (own school)",
+        "tags": [
+          "Learning"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/xapi/export": {
+      "get": {
+        "operationId": "LearningController_exportStatements_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "description": "Only statements stored after this time",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maximum": 5000,
+              "default": 1000,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Full xAPI statements for an external record store, oldest first, resumable with since",
+        "tags": [
+          "Learning"
         ]
       }
     },
@@ -13687,6 +14336,7 @@
               "lessons",
               "submissions",
               "on_time",
+              "practice",
               "xp"
             ]
           },
@@ -13964,6 +14614,41 @@
           "userId",
           "startsAt",
           "endsAt"
+        ]
+      },
+      "CreateCardDto": {
+        "type": "object",
+        "properties": {
+          "front": {
+            "type": "string"
+          },
+          "back": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "front",
+          "back"
+        ]
+      },
+      "ReviewCardDto": {
+        "type": "object",
+        "properties": {
+          "quality": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "0 blackout … 5 perfect (SM-2)"
+          },
+          "durationMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "quality"
         ]
       }
     }

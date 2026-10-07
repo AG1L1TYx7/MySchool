@@ -300,6 +300,18 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   ),
   f('planner.view', 'Weekly planner', 'Teaching', STAFF),
   f('classes.substitutes', 'Grant substitute access', 'Classes', STAFF),
+  f(
+    'learning.view',
+    'Practice cards, mastery and learning curves',
+    'Learning',
+    ALL,
+  ),
+  f(
+    'learning.records',
+    'Learning records (xAPI) for a class or school',
+    'Learning',
+    STAFF_AND_COUNSELOR,
+  ),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

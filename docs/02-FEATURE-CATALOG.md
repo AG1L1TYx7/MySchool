@@ -208,12 +208,16 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/XAPI` (20), `/api/H5PxAPI` (17). Dropped: `/api/test/h5p-xapi` (11), `/api/test/h5p-auto-xapi` (2).
 **Status.** Partial. Statements and analytics were real; the automatic hooks from completion to XP, spaced repetition and cognitive load were never wired and are scheduled in Phase 5.
 
+**Release 2 (slice 16).** Rebuilt on `XapiStatements`: every H5P result, lesson completion, assignment submission, posted grade and practice review becomes an xAPI 1.0.3 statement (actor account on the school, verb IRI, object IRI, scaled score, success, completion, ISO-8601 duration, class and assignment context, registration). Query at `GET /xapi/statements` (own school; staff and counselors), a student timeline at `GET /students/{id}/learning/records`, per-content analytics at `GET /h5p/contents/{id}/analytics`, and a resumable full export for an external record store at `GET /organizations/{id}/xapi/export?since=` (administrators, audited). Statements are written by a listener after the action, so a failure never blocks the student. Voiding and external statement ingestion are not built.
+
 ## 25. Learning science
 
 **Capabilities.** Spaced repetition with SM-2 (cards, batch creation from content, due queue, review with quality 0 to 5, preview, history, statistics, mastery, struggling and mastered lists); mastery levels per topic with prerequisite mapping; cognitive load metrics per session with break recommendations; learning curves with retention rate, trend and next review; AI card generation from content.
 **Entities.** `SpacedRepetitionCards`, `ReviewSessions`, `MasteryLevels`, `CognitiveLoadMetrics`, `LearningCurves`.
 **Routes.** `/api/v1/srs` (17), `/api/Mastery` (8), `/api/CognitiveLoad` (9), `/api/LearningCurve` (8).
 **Status.** Real.
+
+**Release 2 (slice 16).** Rebuilt as `SrsCards`, `SrsReviews` and `MasteryLevels`: SM-2 practice cards (own cards, or every card of a published Dialogcards set once), a due-then-new queue, reviews rated 0 to 5 with the next interval and easiness stored per review, pause and delete, statistics (mastered at interval 21 days and three repetitions, struggling at three lapses or easiness 1.5, retention over 30 days, practice days); mastery per standard recomputed from the evidence the school already holds (grades and standard scores weight 1, H5P practice 0.6, lesson completion 0.3, half-life 30 days, trend from the last two pieces against the rest; bands advanced, proficient, developing, beginning); learning curves per student and per class (weekly average scaled score and practice recall over twelve weeks). Ten reviews in a day and any completed H5P result award practice XP. Cognitive-load metrics, prerequisite mapping and AI card generation are not built.
 
 ## 26. Social-emotional learning and emotion detection
 

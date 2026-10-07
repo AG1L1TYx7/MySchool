@@ -16,6 +16,8 @@ import {
   organizationScope,
   resolveOrganizationId,
 } from '../access/scope';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { domainEvent } from '../../common/events/domain-event';
 import { AuditService } from '../audit/audit.service';
 import { AssignmentsService } from '../assignments/assignments.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -87,6 +89,7 @@ export class H5pService {
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
     private readonly assignments: AssignmentsService,
+    private readonly events: EventEmitter2,
   ) {}
 
   libraries() {
@@ -425,6 +428,27 @@ export class H5pService {
         assignmentId: dto.assignmentId ?? null,
       },
     });
+    // Learning records, mastery and practice XP hang off this event (slice 16).
+    this.events.emit(
+      'h5p.result.recorded',
+      domainEvent({
+        eventType: 'h5p.result.recorded',
+        entityType: 'H5PContentResult',
+        entityId: result.id,
+        organizationId: row.organizationId,
+        actorId: actor.id,
+        data: {
+          resultId: result.id,
+          contentId: id,
+          studentId: student?.id ?? null,
+          assignmentId: dto.assignmentId ?? null,
+          score: dto.score,
+          maxScore: dto.maxScore,
+          completed: dto.completed ?? true,
+          timeSpentSeconds: dto.timeSpentSeconds ?? null,
+        },
+      }),
+    );
     return {
       id: result.id,
       score: Number(result.score),

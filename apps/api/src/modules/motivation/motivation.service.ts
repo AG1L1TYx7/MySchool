@@ -115,6 +115,7 @@ interface Grant {
 }
 
 const AUTO_REASONS: XpReason[] = [
+  'practice.completed',
   'lesson.completed',
   'assignment.submitted',
   'assignment.on_time',

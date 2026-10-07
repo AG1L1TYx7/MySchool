@@ -1159,6 +1159,26 @@ async function seedGrading(organizationId: string): Promise<void> {
           `${klass.name}: weekly homework, a quiz every other Friday, and a test at the end of each unit.`,
       },
     });
+    // Lessons of the class's course teach the same standard, so mastery per skill (slice 16) has evidence.
+    const lessonStandard = standardIdByCode.get(
+      klass.name.startsWith('Algebra')
+        ? 'CCSS.MATH.CONTENT.7.EE.B.4'
+        : 'CCSS.ELA-LITERACY.RL.7.3',
+    );
+    if (lessonStandard) {
+      const lessons = await prisma.lesson.findMany({
+        where: { module: { courseId: klass.courseId } },
+        select: { id: true },
+      });
+      for (const l of lessons)
+        await prisma.lessonStandard.upsert({
+          where: {
+            lessonId_standardId: { lessonId: l.id, standardId: lessonStandard },
+          },
+          update: {},
+          create: { lessonId: l.id, standardId: lessonStandard },
+        });
+    }
     const assignments = await prisma.assignment.findMany({
       where: { classId: klass.id, deletedAt: null },
     });

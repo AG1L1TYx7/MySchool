@@ -239,6 +239,23 @@ GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY
 ```
 Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
 
+### Learning records and science (Release 2 slice 16)
+```
+GET    /practice/queue?limit=20             due cards (oldest first) then new ones for the signed-in student; due, newCards, reviewedToday
+GET    /practice/cards?status=              all of the student's cards with status new|learning|mastered|struggling; POST { front, back, hint? } -> 201
+POST   /practice/cards/from-content/{contentId}   every card of a published Dialogcards set, once per card -> 201 { created, skipped, title }
+POST   /practice/cards/{id}/review          { quality 0..5, durationMs? } -> card after SM-2, reviewedToday, sessionGoal 10, reward (practice XP on the tenth review of the day)
+POST   /practice/cards/{id}/suspend         { suspended } ; DELETE /practice/cards/{id} -> 204
+GET    /me/practice | /me/mastery | /me/learning/curve        the student's own statistics, mastery per standard (bands, strongest, weakest), twelve weekly points
+GET    /students/{id}/mastery | learning/curve | learning/records?limit= | practice   family, the student's teachers, counselors and administrators
+GET    /courses/{id}/mastery?studentId=     mastery rings per module (the signed-in student, or a child or taught student)
+GET    /classes/{id}/mastery                learning.records: per standard the class average, band counts and who needs help; /classes/{id}/learning/curve
+GET    /h5p/contents/{id}/analytics         attempts, completion and pass rates, average score and time, distinct students
+GET    /xapi/statements?studentId&objectId&objectType&verb&since&until&limit   learning.records, own school
+GET    /organizations/{id}/xapi/export?since&limit    organizations.structure, audited: full xAPI statements oldest first; next is the last stored time
+```
+Events: `h5p.result.recorded` (new), `lesson.completed`, `assignment.submitted`, `grade.posted` feed the listener. Statements use `https://smartschool.local` as the actor account home page and the activity IRI base until a public hostname is configured.
+
 ### Teacher assistant (Release 2 slice 15)
 ```
 GET    /assistant/lesson-plans              mine (administrators: the school's); POST { topic, classId?, courseId?, lessonId?, durationMinutes, standard?, language? } -> 202 AI job, resultId is the plan

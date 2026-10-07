@@ -74,4 +74,4 @@ export interface ClassConsole {
   badges: Array<{ code: string; name: string; description: string; icon: string }>;
 }
 
-export const QUEST_METRICS = ['lessons', 'submissions', 'on_time', 'xp'] as const;
+export const QUEST_METRICS = ['lessons', 'submissions', 'on_time', 'practice', 'xp'] as const;

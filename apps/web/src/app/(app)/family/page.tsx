@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MotionItem, MotionList, PillGroup, ProgressRing, SkeletonRows } from '@/components/motion';
+import { FamilyLearningCard } from '@/components/learning-cards';
 import { FamilyMotivationCard } from '@/components/motivation-cards';
 import { NotForYou } from '@/components/not-for-you';
 import { Alert, Button, Card } from '@/components/ui';
@@ -105,6 +106,7 @@ export default function FamilyPage() {
         </Card>
 
         <FamilyMotivationCard studentId={s.id} firstName={s.firstName} />
+        <FamilyLearningCard studentId={s.id} firstName={s.firstName} />
 
         <Card title={t('fam.classes')} description={t('fam.classesDesc')}>
           <MotionList className="divide-y divide-slate-100">

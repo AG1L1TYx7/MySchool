@@ -142,6 +142,10 @@ Students earn XP for finishing lessons (the Mark lesson finished button at the e
 
 Teachers open Teacher assistant in the sidebar. Lesson plans: name a topic and a class, get a timed plan built from the course outline, edit it, publish it and put it on a date; it then shows on the Planner. Grading: pick an assignment, press Suggest grades, and the AI scores each text submission against the rubric with quoted evidence and a confidence; approve, change or reject each one, or approve all the confident ones at once; anything the AI is unsure about waits for you. Families: draft an email to a family (in Spanish if the family prefers) from that student's own numbers and send it as a message, or draft a report-card narrative and apply it to the draft report card. Differentiation: adapt a lesson to support, core and extension levels and create them as unpublished lessons. Class insight: build this week's briefing from the tutor's traces, missing work, scores and attendance, then make a practice set on the stuck topic. On a class page, Substitutes gives a colleague the class until a date; access ends by itself.
 
+## 4h. Learning records and practice
+
+Sign in as the student and open Practice. Add cards from the published flashcard set (or write your own), then review: show the answer and rate it 0 to 5. The tenth review of the day earns practice XP. The Progress tab shows mastery by skill and the learning curve. Finish a lesson on a course page to see a module ring fill on the course page and a skill appear under mastery. As the teacher, open a class and choose Learning for the class curve, the standards with band bars and who needs help. As the principal, `GET /api/v1/organizations/{id}/xapi/export` returns the full statements for an external record store.
+
 ## 5. Backups
 
 ```bash

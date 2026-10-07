@@ -10,6 +10,7 @@ export const XP = {
   ON_TIME_BONUS: 10,
   SCORE_IMPROVED: 15,
   PERFECT_SCORE: 25,
+  PRACTICE: 10,
 } as const;
 
 export type XpReason =
@@ -18,6 +19,7 @@ export type XpReason =
   | 'assignment.on_time'
   | 'score.improved'
   | 'score.perfect'
+  | 'practice.completed'
   | 'quest.completed'
   | 'teacher.award';
 
@@ -364,16 +366,18 @@ export function newlyEarnedBadges(
 // Quests
 // ---------------------------------------------------------------------------
 
-export type QuestMetric = 'lessons' | 'submissions' | 'on_time' | 'xp';
+export type QuestMetric =
+  'lessons' | 'submissions' | 'on_time' | 'practice' | 'xp';
 export const QUEST_METRICS: readonly QuestMetric[] = [
   'lessons',
   'submissions',
   'on_time',
+  'practice',
   'xp',
 ];
 
 export interface LearningAction {
-  kind: 'lesson' | 'submission' | 'xp';
+  kind: 'lesson' | 'submission' | 'practice' | 'xp';
   onTime?: boolean;
   amount?: number;
 }
@@ -387,6 +391,8 @@ export function questIncrement(metric: string, action: LearningAction): number {
       return action.kind === 'submission' ? 1 : 0;
     case 'on_time':
       return action.kind === 'submission' && action.onTime ? 1 : 0;
+    case 'practice':
+      return action.kind === 'practice' ? 1 : 0;
     case 'xp':
       return action.kind === 'xp' ? (action.amount ?? 0) : 0;
     default:

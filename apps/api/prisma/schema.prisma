@@ -378,6 +378,9 @@ model Organization {
   lessonPlans   LessonPlan[]
   teacherDrafts TeacherDraft[]
 
+  xapiStatements XapiStatement[]
+  srsCards       SrsCard[]
+
   @@index([name])
   @@index([isActive, deletedAt])
   @@map("Organizations")
@@ -466,6 +469,8 @@ model User {
   classInsights      ClassInsight[]
   substituteAccess   SubstituteAccess[]  @relation("SubstituteUser")
   substitutesGranted SubstituteAccess[]  @relation("SubstituteGrantedBy")
+
+  xapiStatements XapiStatement[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -573,6 +578,11 @@ model Student {
 
   gradingSuggestions GradingSuggestion[]
   teacherDrafts      TeacherDraft[]
+
+  xapiStatements XapiStatement[]
+  srsCards       SrsCard[]
+  srsReviews     SrsReview[]
+  mastery        MasteryLevel[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -1643,6 +1653,8 @@ model Standard {
   lessons     LessonStandard[]
   scores      StandardScore[]
 
+  mastery MasteryLevel[]
+
   @@unique([setId, code])
   @@index([setId, gradeLevels])
   @@map("Standards")
@@ -2204,4 +2216,105 @@ model SubstituteAccess {
   @@index([classId, endsAt])
   @@index([userId, endsAt])
   @@map("SubstituteAccess")
+}
+
+// ---------------------------------------------------------------------------
+// Learning records and science (Release 2 slice 16, docs/02 sections 24 and 25)
+// ---------------------------------------------------------------------------
+
+model XapiStatement {
+  id               String    @id @map("Id") @db.Char(36)
+  organizationId   String    @map("OrganizationId") @db.Char(36)
+  actorUserId      String    @map("ActorUserId") @db.Char(36)
+  studentId        String?   @map("StudentId") @db.Char(36)
+  verb             String    @map("Verb") @db.VarChar(40)
+  objectType       String    @map("ObjectType") @db.VarChar(40)
+  objectId         String    @map("ObjectId") @db.Char(36)
+  objectName       String    @map("ObjectName") @db.VarChar(200)
+  resultScaled     Decimal?  @map("ResultScaled") @db.Decimal(4, 3)
+  resultRaw        Decimal?  @map("ResultRaw") @db.Decimal(9, 2)
+  resultMax        Decimal?  @map("ResultMax") @db.Decimal(9, 2)
+  resultSuccess    Boolean?  @map("ResultSuccess")
+  resultCompletion Boolean?  @map("ResultCompletion")
+  durationSeconds  Int?      @map("DurationSeconds")
+  contextClassId   String?   @map("ContextClassId") @db.Char(36)
+  contextParentId  String?   @map("ContextParentId") @db.Char(36)
+  registration     String?   @map("Registration") @db.Char(36)
+  statement        String    @map("Statement") @db.Text
+  timestamp        DateTime  @map("Timestamp") @db.DateTime(6)
+  storedAt         DateTime  @default(now()) @map("StoredAt") @db.DateTime(6)
+  voidedAt         DateTime? @map("VoidedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User         @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  student      Student?     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, timestamp])
+  @@index([objectType, objectId, timestamp])
+  @@index([organizationId, timestamp])
+  @@map("XapiStatements")
+}
+
+model SrsCard {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  studentId      String    @map("StudentId") @db.Char(36)
+  sourceType     String    @default("manual") @map("SourceType") @db.VarChar(30)
+  sourceId       String?   @map("SourceId") @db.Char(36)
+  front          String    @map("Front") @db.Text
+  back           String    @map("Back") @db.Text
+  hint           String?   @map("Hint") @db.Text
+  easiness       Decimal   @default(2.5) @map("Easiness") @db.Decimal(4, 2)
+  intervalDays   Int       @default(0) @map("IntervalDays")
+  repetitions    Int       @default(0) @map("Repetitions")
+  lapses         Int       @default(0) @map("Lapses")
+  dueOn          DateTime  @map("DueOn") @db.Date
+  lastReviewedAt DateTime? @map("LastReviewedAt") @db.DateTime(6)
+  suspended      Boolean   @default(false) @map("Suspended")
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reviews      SrsReview[]
+
+  @@index([studentId, suspended, dueOn])
+  @@index([studentId, sourceType, sourceId])
+  @@map("SrsCards")
+}
+
+model SrsReview {
+  id             String   @id @map("Id") @db.Char(36)
+  cardId         String   @map("CardId") @db.Char(36)
+  studentId      String   @map("StudentId") @db.Char(36)
+  quality        Int      @map("Quality")
+  intervalBefore Int      @map("IntervalBefore")
+  intervalAfter  Int      @map("IntervalAfter")
+  easinessAfter  Decimal  @map("EasinessAfter") @db.Decimal(4, 2)
+  durationMs     Int?     @map("DurationMs")
+  reviewedAt     DateTime @default(now()) @map("ReviewedAt") @db.DateTime(6)
+
+  card    SrsCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, reviewedAt])
+  @@map("SrsReviews")
+}
+
+model MasteryLevel {
+  id             String    @id @map("Id") @db.Char(36)
+  studentId      String    @map("StudentId") @db.Char(36)
+  standardId     String    @map("StandardId") @db.Char(36)
+  level          Decimal   @map("Level") @db.Decimal(4, 3)
+  evidenceCount  Int       @default(0) @map("EvidenceCount")
+  trend          String    @default("flat") @map("Trend") @db.VarChar(10)
+  lastEvidenceAt DateTime? @map("LastEvidenceAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  standard Standard @relation(fields: [standardId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, standardId])
+  @@index([standardId, level])
+  @@map("MasteryLevels")
 }

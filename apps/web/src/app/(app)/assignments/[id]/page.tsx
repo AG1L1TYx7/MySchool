@@ -16,7 +16,7 @@ import { label } from '@/lib/students';
 
 export default function AssignmentPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [a, setA] = useState<Assignment | null>(null);
   const [state, setState] = useState<{ error?: string; ok?: string; busy?: boolean }>({});
 
@@ -124,7 +124,17 @@ export default function AssignmentPage() {
         </Card>
       )}
 
-      {a.canManage ? <TeacherSubmissions assignment={a} /> : <LearnerView assignment={a} canSubmit={isStudent} onChange={load} />}
+      {a.canManage ? (
+        can('assignments.grade') ? (
+          <TeacherSubmissions assignment={a} />
+        ) : (
+          <Card title="Submissions">
+            <p className="text-sm text-slate-600">Submissions and grading are handled by the class teacher.</p>
+          </Card>
+        )
+      ) : (
+        <LearnerView assignment={a} canSubmit={isStudent} onChange={load} />
+      )}
     </div>
   );
 }

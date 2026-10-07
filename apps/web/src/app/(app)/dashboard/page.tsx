@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MotionItem, MotionList, ProgressRing, SkeletonRows } from '@/components/motion';
 import { AnnouncementCard } from '@/components/announcement-card';
+import { LearningCard } from '@/components/learning-cards';
 import { ProgressCard } from '@/components/motivation-cards';
 import { Alert, Card } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -199,6 +200,7 @@ export default function DashboardPage() {
 
       <ThisWeek />
       <ProgressCard />
+      <LearningCard />
       <AttendanceOwed />
       <div className="focus-hide">
         <LatestAnnouncements />
