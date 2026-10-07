@@ -395,8 +395,8 @@ describe('District (e2e)', () => {
         .get(`/api/v1/district/state-exports/${kind}.csv`)
         .set(as('supB'))
         .expect(200);
-      expect(res.text.split('\n')[0]).toMatch(
-        /^﻿?School code,School,Student number/,
+      expect(res.text.split('\n')[0].replace(/^\W+/, '')).toMatch(
+        /^School code,School,Student number/,
       );
     }
     const enrollment = await request(server)
