@@ -41,7 +41,7 @@ CREATE TABLE `SecurityIncidents` (
     `ContainedAt` DATETIME(6) NULL,
     `NotifiedAt` DATETIME(6) NULL,
     `ClosedAt` DATETIME(6) NULL,
-    `Timeline` TEXT NOT NULL DEFAULT '[]',
+    `Timeline` TEXT NOT NULL,
     `ReportedById` CHAR(36) NOT NULL,
     `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `UpdatedAt` DATETIME(6) NOT NULL,

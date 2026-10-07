@@ -54,7 +54,7 @@ jobs:
       - run: pnpm --filter @smartschool/api prisma:deploy
       - run: pnpm --filter @smartschool/api test
       - run: pnpm --filter @smartschool/api db:seed
-      - run: pnpm --filter @smartschool/api test:e2e -- --maxWorkers=2
+      - run: pnpm --filter @smartschool/api test:e2e -- --runInBand
       - run: pnpm audit --audit-level=high
 
   web:

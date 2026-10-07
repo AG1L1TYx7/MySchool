@@ -2464,7 +2464,7 @@ model SecurityIncident {
   containedAt    DateTime? @map("ContainedAt") @db.DateTime(6)
   notifiedAt     DateTime? @map("NotifiedAt") @db.DateTime(6)
   closedAt       DateTime? @map("ClosedAt") @db.DateTime(6)
-  timeline       String    @default("[]") @map("Timeline") @db.Text
+  timeline       String    @map("Timeline") @db.Text
   reportedById   String    @map("ReportedById") @db.Char(36)
   createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
