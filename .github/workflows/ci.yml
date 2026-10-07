@@ -54,7 +54,20 @@ jobs:
       - run: pnpm --filter @smartschool/api prisma:deploy
       - run: pnpm --filter @smartschool/api test
       - run: pnpm --filter @smartschool/api db:seed
-      - run: pnpm --filter @smartschool/api test:e2e -- --runInBand
+      - name: End-to-end tests (failures are copied to the job summary)
+        run: |
+          status=0
+          pnpm --filter @smartschool/api test:e2e --runInBand > e2e.log 2>&1 || status=$?
+          grep -avE '^\{"level"' e2e.log | tail -150
+          {
+            echo '## End-to-end'
+            grep -aE '^Tests:|^Test Suites:' e2e.log
+            echo
+            echo '```'
+            grep -a -A 25 -E '● .* ›|● Test suite' e2e.log | grep -avE '^\s+at ' | head -400
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
       - run: pnpm audit --audit-level=high
 
   web:
