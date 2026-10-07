@@ -26,6 +26,15 @@ const lower = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
 
 export class CreateOrganizationDto {
+  @ApiProperty({
+    required: false,
+    format: 'uuid',
+    description:
+      'Platform administrators only: the tenant the school belongs to',
+  })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
   @ApiProperty() @IsString() @Length(2, 200) name!: string;
   @ApiProperty({ required: false })
   @IsOptional()

@@ -257,6 +257,23 @@ POST   /compliance/incidents/{id}/notify              every administrator and di
 ```
 Nightly jobs: retention at 03:40, due erasures at 03:50. Everything here writes the audit log.
 
+### District and tenants (Release 3 slice 20)
+
+```
+GET    /branding?tenant=                     public: { tenant: { id, slug, name, status } | null, displayName, primaryColor, logoUrl, supportEmail } for this host (TENANT_BASE_DOMAIN) or the named slug
+GET    /tenants                              tenants.manage: paged { id, name, slug, status, customDomain, domainVerifiedAt, verification: { name, value } | null, branding, policies, schools, createdAt }
+POST   /tenants                              { name, slug?, status?, branding? } -> 201 (tenants.manage); slug made from the name; www, api, admin refused
+GET    /tenants/{id}                         district.view: own tenant for a superintendent, any for the platform administrator
+PATCH  /tenants/{id}                         { name?, slug?, status?, customDomain? ("" removes), branding? } (district.manage; a superintendent may change only name and branding of their own tenant)
+POST   /tenants/{id}/domain/verify           looks up the TXT record _smartschool.<domain> -> { verified, expected, found[] } (tenants.manage)
+GET    /tenants/{id}/policies                district.view -> { tenantId, policies: { aiEnabled, aiDisabledSchools[], studentMessagingAllowed, disabledFeatures[], retention{} } }
+PUT    /tenants/{id}/policies                partial update (district.manage); every aiDisabledSchools id must belong to the tenant
+GET    /district/overview?tenantId=          district.view: { tenant, generatedAt, totals, schools[] } (tenantId only for the platform administrator)
+GET    /district/reports/{kind}.csv          schools | enrollment_by_grade | attendance_daily | ai_usage (district.view, audited)
+GET    /district/state-exports/{kind}.csv    enrollment | attendance | discipline | grades (?year=) (district.manage, audited district.state_export)
+Errors: feature.disabled_by_district (403) from any route whose feature the district switched off; ai.disabled_by_district (403) from AI routes
+```
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

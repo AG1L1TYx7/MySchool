@@ -12074,6 +12074,304 @@
         ]
       }
     },
+    "/api/v1/branding": {
+      "get": {
+        "operationId": "TenantsController_branding_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Name, colour and logo for the sign-in page of this host (or ?tenant=slug); public",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/tenants": {
+      "get": {
+        "operationId": "TenantsController_list_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tenants"
+        ]
+      },
+      "post": {
+        "operationId": "TenantsController_create_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/tenants/{id}": {
+      "get": {
+        "operationId": "TenantsController_get_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tenants"
+        ]
+      },
+      "patch": {
+        "operationId": "TenantsController_update_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Platform administrators change anything; a superintendent renames and brands their own district",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/tenants/{id}/domain/verify": {
+      "post": {
+        "operationId": "TenantsController_verify_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Look up the DNS TXT record for the custom domain and mark it verified when present",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/tenants/{id}/policies": {
+      "get": {
+        "operationId": "TenantsController_policies_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tenants"
+        ]
+      },
+      "put": {
+        "operationId": "TenantsController_setPolicies_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePoliciesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "District switches: AI on or off (and per school), student messaging, disabled features, retention defaults",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/district/overview": {
+      "get": {
+        "operationId": "DistrictController_overview_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every school of the district on one page, with totals; the platform administrator may name a tenantId",
+        "tags": [
+          "District"
+        ]
+      }
+    },
+    "/api/v1/district/reports/{kind}.csv": {
+      "get": {
+        "operationId": "DistrictController_report_api/v1",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cross-school CSV: schools | enrollment_by_grade | attendance_daily | ai_usage",
+        "tags": [
+          "District"
+        ]
+      }
+    },
+    "/api/v1/district/state-exports/{kind}.csv": {
+      "get": {
+        "operationId": "DistrictController_stateExport_api/v1",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "State reporting export, student level: enrollment | attendance | discipline | grades (?year= for grades); audited",
+        "tags": [
+          "District"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -12508,6 +12806,11 @@
       "CreateOrganizationDto": {
         "type": "object",
         "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Platform administrators only: the tenant the school belongs to"
+          },
           "name": {
             "type": "string"
           },
@@ -12535,6 +12838,11 @@
       "UpdateOrganizationDto": {
         "type": "object",
         "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Platform administrators only: the tenant the school belongs to"
+          },
           "name": {
             "type": "string"
           },
@@ -15998,6 +16306,103 @@
           "note": {
             "type": "string",
             "description": "A timeline entry"
+          }
+        }
+      },
+      "BrandingDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "primaryColor": {
+            "type": "string",
+            "description": "Hex colour, for example #1e40af"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "supportEmail": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateTenantDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Subdomain label; made from the name when absent"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "trial",
+              "suspended"
+            ]
+          },
+          "branding": {
+            "$ref": "#/components/schemas/BrandingDto"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateTenantDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "trial",
+              "suspended"
+            ]
+          },
+          "customDomain": {
+            "type": "string",
+            "description": "Empty string removes the domain"
+          },
+          "branding": {
+            "$ref": "#/components/schemas/BrandingDto"
+          }
+        }
+      },
+      "UpdatePoliciesDto": {
+        "type": "object",
+        "properties": {
+          "aiEnabled": {
+            "type": "boolean"
+          },
+          "aiDisabledSchools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "studentMessagingAllowed": {
+            "type": "boolean"
+          },
+          "disabledFeatures": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "retention": {
+            "type": "object",
+            "description": "Retention days by switch; applied to schools without their own setting"
           }
         }
       }

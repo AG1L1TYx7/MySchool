@@ -72,11 +72,11 @@ Costs: Google, Microsoft, ClassLink and Clever Instant Login are free to integra
 - Substitute access with an expiry date; weekly planner view.
 - Export to Google Classroom and Canvas; LTI 1.3 tool so SmartSchool runs inside Canvas or Schoology where a district already has one.
 
-## 9. Principals and districts (slices 17 and 18)
+## 9. Principals and districts (slices 17 and 20)
 
 - Principal dashboard: attendance today, missing work by grade level, students failing by class, gradebook completeness, AI usage. **Done in slice 17** (`/insight`, scheduled CSV reports by email, PDF transcripts).
-- District dashboard and cross-school reports; state reporting exports.
-- District policy switches: AI features on or off per school, which roles may use which features, retention periods.
+- District dashboard and cross-school reports; state reporting exports. **Done in slice 20** (`/district`: every school on one page, four cross-school CSVs, four student-level state exports in a state-neutral layout that the district maps to its state template; each export audited).
+- District policy switches: AI features on or off per school, which roles may use which features, retention periods. **Done in slice 20** (`/district`, Policies: AI for the district or per school, student-to-student messaging, feature codes switched off district-wide, retention defaults; a district is a tenant, hosted on a subdomain or its own verified domain with its name and colour on the sign-in page).
 
 ## 10. Compliance (every slice, audited in slice 19)
 

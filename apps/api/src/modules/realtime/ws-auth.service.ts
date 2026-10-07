@@ -42,6 +42,7 @@ export class WsAuthService {
             organizationId: true,
             status: true,
             deletedAt: true,
+            organization: { select: { tenantId: true } },
           },
         },
       },
@@ -64,6 +65,7 @@ export class WsAuthService {
       organizationId: session.user.organizationId,
       sessionId: session.id,
       mfaSetupRequired: false,
+      tenantId: session.user.organization?.tenantId ?? null,
     };
   }
 }

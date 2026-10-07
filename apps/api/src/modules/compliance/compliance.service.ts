@@ -14,6 +14,7 @@ import { assertOrganizationAccess, isDistrictRole } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TenantsService } from '../tenants/tenants.service';
 import {
   CreateDeletionRequestDto,
   CreateIncidentDto,
@@ -56,6 +57,7 @@ export class ComplianceService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly tenants: TenantsService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -186,14 +188,19 @@ export class ComplianceService {
   private async policyFor(organizationId: string): Promise<RetentionPolicy> {
     const org = await this.prisma.organization.findFirst({
       where: { id: organizationId, deletedAt: null },
-      select: { retentionPolicy: true },
+      select: { retentionPolicy: true, tenantId: true },
     });
     if (!org)
       throw new NotFoundException({
         code: 'resource.not_found',
         detail: 'Organisation not found.',
       });
-    return parseRetention(org.retentionPolicy);
+    // The district's defaults apply wherever the school has not set its own number.
+    const district = (await this.tenants.policiesFor(org.tenantId)).retention;
+    const own = org.retentionPolicy
+      ? (JSON.parse(org.retentionPolicy) as Record<string, unknown>)
+      : {};
+    return parseRetention(JSON.stringify({ ...district, ...own }));
   }
 
   /** Runs the school's retention policy now and says what went. */

@@ -20,6 +20,7 @@ import {
   ROLES_KEY,
 } from '../decorators/access.decorators';
 import { PermissionService } from '../permission.service';
+import { TenantsService } from '../../tenants/tenants.service';
 
 /**
  * Runs after JWT authentication. Applies, in order: feature flag gate (404 when off),
@@ -32,6 +33,7 @@ export class AccessGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly permissions: PermissionService,
+    private readonly tenants: TenantsService,
     private readonly flags: FeatureFlagService,
   ) {}
 
@@ -104,6 +106,15 @@ export class AccessGuard implements CanActivate {
         code: 'authz.forbidden',
         detail: 'Your role does not have enough authority for this action.',
       });
+    }
+    // A district may switch a feature off for everyone in it; the platform administrator is never blocked.
+    if (user.role !== 'SUPER_ADMIN') {
+      for (const code of [...(features ?? []), ...(anyFeatures ?? [])])
+        if (await this.tenants.isFeatureDisabled(user.tenantId, code))
+          throw new ForbiddenException({
+            code: 'feature.disabled_by_district',
+            detail: 'Your district has switched this feature off.',
+          });
     }
     if (anyFeatures?.length) {
       const effective = await this.permissions.effectiveFeatures(

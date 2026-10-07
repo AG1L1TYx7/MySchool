@@ -291,6 +291,7 @@ export class CalendarService {
   async ical(token: string): Promise<string> {
     const user = await this.prisma.user.findFirst({
       where: { icalToken: token, status: 'ACTIVE', deletedAt: null },
+      include: { organization: { select: { tenantId: true } } },
     });
     if (!user)
       throw new NotFoundException({
@@ -304,6 +305,7 @@ export class CalendarService {
       organizationId: user.organizationId,
       sessionId: 'ical',
       mfaSetupRequired: false,
+      tenantId: user.organization?.tenantId ?? null,
     };
     const from = new Date(Date.now() - 30 * 86_400_000)
       .toISOString()

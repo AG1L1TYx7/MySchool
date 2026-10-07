@@ -50,6 +50,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             status: true,
             deletedAt: true,
             twoFactorEnabled: true,
+            organization: { select: { tenantId: true } },
           },
         },
       },
@@ -65,11 +66,24 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         detail: 'Session is no longer valid.',
       });
     }
+    const tenantId = session.user.organization?.tenantId ?? null;
+    // A superintendent reaches every school of the district: resolved once per request, used by the scope helpers.
+    const tenantOrganizationIds =
+      session.user.role === 'SUPERINTENDENT' && tenantId
+        ? (
+            await this.prisma.organization.findMany({
+              where: { tenantId, deletedAt: null },
+              select: { id: true },
+            })
+          ).map((o) => o.id)
+        : undefined;
     return {
       id: session.user.id,
       email: session.user.email,
       role: session.user.role,
       organizationId: session.user.organizationId,
+      tenantId,
+      tenantOrganizationIds,
       sessionId: session.id,
       mfaSetupRequired:
         this.config.auth.mfaRequiredRoles.includes(

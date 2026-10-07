@@ -110,13 +110,14 @@ export function Card({ title, description, children, actions }: { title?: string
   );
 }
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, brand }: { className?: string; brand?: { displayName?: string | null; primaryColor?: string | null } | null }) {
+  const name = brand?.displayName?.trim() || 'SmartSchool';
   return (
     <Link href="/" className={cx('inline-flex items-center gap-2 font-semibold text-slate-900', className)}>
-      <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white" aria-hidden>
-        S
+      <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white" style={brand?.primaryColor ? { backgroundColor: brand.primaryColor } : undefined} aria-hidden>
+        {name.charAt(0).toUpperCase()}
       </span>
-      SmartSchool
+      {name}
     </Link>
   );
 }

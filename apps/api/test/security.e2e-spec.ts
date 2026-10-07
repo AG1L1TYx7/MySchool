@@ -57,6 +57,7 @@ const FEATURELESS_OK = [
 ];
 const PUBLIC_PREFIXES = [
   /^\/health/,
+  /^\/branding/,
   /^\/metrics/,
   /^\/auth\/(register|verify-email|resend-verification|login|2fa\/challenge|refresh|forgot-password|reset-password|sso)/,
   /^\/calendar\/ical\//,
@@ -180,6 +181,7 @@ describe('Security (e2e)', () => {
     const org = await prisma.organization.create({
       data: {
         id: newId(),
+        tenantId: '00000000-0000-7000-8000-000000000001',
         name: `Pentest School ${stamp}`,
         timezone: 'America/Chicago',
         joinCode: `PEN-${String(stamp).slice(-6)}`,
@@ -598,5 +600,50 @@ describe('Security (e2e)', () => {
       .get('/api/v1/files/..%2F..%2F.env/download')
       .set(as('teacher'))
       .expect((res) => expect([400, 404]).toContain(res.status));
+  });
+
+  it('keeps a superintendent out of another district (tenant) entirely', async () => {
+    const tenant = await prisma.tenant.create({
+      data: {
+        id: newId(),
+        name: `Other District ${stamp}`,
+        slug: `other-${stamp}`,
+      },
+    });
+    const other = await prisma.organization.create({
+      data: {
+        id: newId(),
+        tenantId: tenant.id,
+        name: `Other District School ${stamp}`,
+        timezone: 'America/Chicago',
+        joinCode: `OTH-${String(stamp).slice(-6)}`,
+      },
+    });
+    const sup = as('superintendent');
+    for (const path of [
+      `/api/v1/organizations/${other.id}`,
+      `/api/v1/organizations/${other.id}/members`,
+      `/api/v1/students?organizationId=${other.id}`,
+      `/api/v1/district/overview?tenantId=${tenant.id}`,
+      `/api/v1/tenants/${tenant.id}`,
+      `/api/v1/tenants/${tenant.id}/policies`,
+    ]) {
+      const res = await request(server).get(path).set(sup);
+      expect([path, res.status]).toEqual([path, 403]);
+    }
+    const list = await request(server)
+      .get('/api/v1/organizations?pageSize=100&includeInactive=true')
+      .set(sup)
+      .expect(200);
+    expect(
+      (list.body as { data: Array<{ id: string }> }).data.map((o) => o.id),
+    ).not.toContain(other.id);
+    await request(server)
+      .put(`/api/v1/tenants/${tenant.id}/policies`)
+      .set(sup)
+      .send({ aiEnabled: false })
+      .expect(403);
+    await prisma.organization.delete({ where: { id: other.id } });
+    await prisma.tenant.delete({ where: { id: tenant.id } });
   });
 });

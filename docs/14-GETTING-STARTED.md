@@ -158,6 +158,10 @@ There is no native app yet, but the API a phone would use is live: sign in, then
 
 Sign in as the principal and open Compliance. The Data map tab lists every table that holds personal data with live counts; Retention sets how long each kind of record is kept and Apply now runs the nightly job immediately; Deletion requests shows what families asked for, with approve, decline and erase now; Incidents opens a security incident on the breach clock and notifies every administrator. As the parent, the family home has Your records: download a copy of the records as a zip, or ask the school to erase them. On a student's page, Records and retention has the export and the legal hold. Press Tab on any page: the first stop is "Skip to main content".
 
+## 4l. District and tenants
+
+Sign in as the superintendent and open District. Overview shows every school in the district on one line with the totals above; Reports downloads the cross-school CSVs; Policies switches AI off for the district or for named schools, decides whether schools may allow student-to-student messaging, lists feature codes to switch off district-wide and sets retention defaults; State reporting downloads the enrollment, attendance, discipline and grades files. As the platform administrator, Tenants creates a district, gives it a custom domain and shows the DNS record to add before pressing Verify; the District page then has a district picker. The sign-in page takes its name and colour from the district behind the host: set `TENANT_BASE_DOMAIN` (default `localhost`) so `beta.<base domain>` resolves the tenant with slug `beta`, or open `/login` on a verified custom domain.
+
 ## 5. Backups
 
 ```bash

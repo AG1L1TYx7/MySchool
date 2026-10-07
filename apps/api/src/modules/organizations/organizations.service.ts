@@ -8,6 +8,7 @@ import type { Organization, Prisma, Role } from '../../generated/prisma/client';
 import { PagedResponse } from '../../common/dto/paged-response.dto';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { DEFAULT_TENANT_ID } from '../tenants/tenants.service';
 import { PermissionService } from '../access/permission.service';
 import { canAssignRole, ROLE_API_NAME, roleFromApi } from '../access/roles';
 import {
@@ -122,8 +123,18 @@ export class OrganizationsService {
         code: 'resource.conflict',
         detail: 'An organisation with this name already exists.',
       });
+    const tenantId =
+      actor.role === 'SUPER_ADMIN'
+        ? (dto.tenantId ?? DEFAULT_TENANT_ID)
+        : actor.tenantId;
+    if (!tenantId)
+      throw new ForbiddenException({
+        code: 'authz.forbidden',
+        detail: 'Your account is not attached to a district.',
+      });
     const org = await this.prisma.organization.create({
       data: {
+        tenantId,
         joinCode: generateJoinCode(),
         id: newId(),
         ...dto,

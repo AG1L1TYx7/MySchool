@@ -35,6 +35,7 @@ Format: context, decision, consequences. Status is Accepted unless stated. Dates
 **Date:** carried from the previous Phase 12, recorded 2026-09-30, timing amended by ADR-019
 **Decision.** One database; tenant-scoped tables carry `TenantId`; a request-scoped tenant context is set by middleware and enforced in data access; tenant status is checked at the edge.
 **Consequences.** Isolation depends on code discipline, so an automated two-tenant isolation test is mandatory from the day tenancy exists.
+**Status (7 Oct 2026).** Implemented in slice 20: `Tenants` table, `Organizations.TenantId` (expand-migrate-contract, default tenant `00000000-0000-7000-8000-000000000001`), tenant resolved into the authenticated user at token validation rather than by middleware, superintendent scope limited to the tenant's organisations, two-tenant isolation test in `test/district.e2e-spec.ts`. Tenant status is checked where the sign-in page asks for branding; a suspended tenant's branding is not served.
 
 ## ADR-006: Socket.IO for real-time with the documented event names
 

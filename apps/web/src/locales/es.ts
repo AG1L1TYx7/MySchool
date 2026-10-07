@@ -804,6 +804,11 @@ export const es: Record<MessageKey, string> = {
   'notif.lastSeen': 'Visto por última vez {when}',
   // Compliance (slice 19)
   'nav.compliance': 'Cumplimiento',
+  // District and tenants (slice 20)
+  'nav.district': 'Distrito',
+  'nav.tenants': 'Distritos alojados',
+  'category.district': 'Resumen del distrito, políticas e informes estatales',
+  'auth.hostedBy': 'Alojado para {name}',
   'category.compliance': 'Mapa de datos, retención y eliminación',
   'records.title': 'Sus registros',
   'records.desc': 'Bajo FERPA puede pedir una copia de los registros educativos que guarda la escuela y pedir que se borren.',

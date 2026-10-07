@@ -324,6 +324,16 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     'Compliance',
     ADMINS,
   ),
+  f('district.view', 'District overview and reports', 'District', DISTRICT),
+  f(
+    'district.manage',
+    'District policies, branding and state exports',
+    'District',
+    DISTRICT,
+  ),
+  f('tenants.manage', 'Create and host tenants (platform)', 'District', [
+    'SUPER_ADMIN',
+  ]),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

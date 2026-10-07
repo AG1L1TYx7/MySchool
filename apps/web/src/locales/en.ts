@@ -828,6 +828,11 @@ export const en = {
   'notif.lastSeen': 'Last seen {when}',
   // Compliance (slice 19)
   'nav.compliance': 'Compliance',
+  // District and tenants (slice 20)
+  'nav.district': 'District',
+  'nav.tenants': 'Tenants',
+  'category.district': 'District overview, policies and state reporting',
+  'auth.hostedBy': 'Hosted for {name}',
   'category.compliance': 'Data map, retention and deletion',
   'records.title': 'Your records',
   'records.desc': 'Under FERPA you can ask for a copy of the education records the school holds, and ask for them to be erased.',

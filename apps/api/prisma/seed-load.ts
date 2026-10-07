@@ -105,6 +105,7 @@ async function main(): Promise<void> {
     update: {},
     create: {
       id: newId(),
+      tenantId: '00000000-0000-7000-8000-000000000001',
       name: 'Load School',
       description: 'Synthetic school for load tests (10,000 students)',
       address: '1 Benchmark Way, Austin, TX',

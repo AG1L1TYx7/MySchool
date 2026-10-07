@@ -144,20 +144,43 @@ async function seedFlags(): Promise<void> {
 }
 
 async function seedOrganization(): Promise<string> {
+  const tenant = await prisma.tenant.upsert({
+    where: { id: '00000000-0000-7000-8000-000000000001' },
+    update: {
+      name: 'Demo District',
+      slug: 'demo',
+      branding: JSON.stringify({
+        displayName: 'Demo District',
+        primaryColor: '#1e40af',
+      }),
+    },
+    create: {
+      id: '00000000-0000-7000-8000-000000000001',
+      name: 'Demo District',
+      slug: 'demo',
+      branding: JSON.stringify({
+        displayName: 'Demo District',
+        primaryColor: '#1e40af',
+      }),
+    },
+  });
   const existing = await prisma.organization.findFirst({
     where: { name: 'Demo School', deletedAt: null },
   });
   if (existing) {
-    if (!existing.joinCode)
-      await prisma.organization.update({
-        where: { id: existing.id },
-        data: { joinCode: 'DEMO-2026' },
-      });
+    await prisma.organization.update({
+      where: { id: existing.id },
+      data: {
+        tenantId: tenant.id,
+        ...(existing.joinCode ? {} : { joinCode: 'DEMO-2026' }),
+      },
+    });
     return existing.id;
   }
   const org = await prisma.organization.create({
     data: {
       id: uuidv7(),
+      tenantId: tenant.id,
       name: 'Demo School',
       description: 'A demo school for development and evaluation',
       email: 'office@demo.smartschool.local',

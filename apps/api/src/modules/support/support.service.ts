@@ -14,6 +14,7 @@ import type {
 import { PagedResponse } from '../../common/dto/paged-response.dto';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { TenantsService } from '../tenants/tenants.service';
 import { ROLE_LEVEL } from '../access/roles';
 import { assertOrganizationAccess, organizationScope } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
@@ -89,6 +90,7 @@ type StudentRef = {
 export class SupportService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly tenants: TenantsService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
   ) {}
@@ -710,6 +712,14 @@ export class SupportService {
 
   /** Students must have consent before AI features; everyone else passes. */
   async assertAiAllowedFor(actor: AuthenticatedUser): Promise<void> {
+    if (
+      actor.organizationId &&
+      !(await this.tenants.aiAllowedForOrganization(actor.organizationId))
+    )
+      throw new ForbiddenException({
+        code: 'ai.disabled_by_district',
+        detail: 'AI features are switched off for this school by the district.',
+      });
     if (actor.role !== 'STUDENT') return;
     const student = await this.prisma.student.findFirst({
       where: { userId: actor.id, deletedAt: null },

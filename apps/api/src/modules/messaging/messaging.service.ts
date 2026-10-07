@@ -15,6 +15,7 @@ import type {
 import { domainEvent } from '../../common/events/domain-event';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { TenantsService } from '../tenants/tenants.service';
 import { ROLE_LEVEL } from '../access/roles';
 import { isDistrictRole } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
@@ -147,6 +148,7 @@ export class MessagingService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly tenants: TenantsService,
     private readonly audit: AuditService,
     private readonly events: EventEmitter2,
     private readonly files: FilesService,
@@ -171,11 +173,14 @@ export class MessagingService {
         actor.role === 'STUDENT' && actor.organizationId
           ? await this.prisma.organization.findUnique({
               where: { id: actor.organizationId },
-              select: { studentMessaging: true },
+              select: { studentMessaging: true, tenantId: true },
             })
           : null;
       where.role = { in: ['TEACHER', 'ASSISTANT', 'PRINCIPAL', 'COUNSELOR'] };
-      if (org?.studentMessaging) {
+      const districtAllows = org
+        ? (await this.tenants.policiesFor(org.tenantId)).studentMessagingAllowed
+        : false;
+      if (org?.studentMessaging && districtAllows) {
         where.OR = [
           { role: { in: ['TEACHER', 'ASSISTANT', 'PRINCIPAL', 'COUNSELOR'] } },
           {
@@ -707,9 +712,11 @@ export class MessagingService {
       return false;
     const org = await this.prisma.organization.findUnique({
       where: { id: actor.organizationId },
-      select: { studentMessaging: true },
+      select: { studentMessaging: true, tenantId: true },
     });
     if (!org?.studentMessaging) return false;
+    if (!(await this.tenants.policiesFor(org.tenantId)).studentMessagingAllowed)
+      return false;
     const shared = await this.prisma.class.count({
       where: {
         deletedAt: null,

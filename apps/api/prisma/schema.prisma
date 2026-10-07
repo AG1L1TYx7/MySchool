@@ -344,6 +344,7 @@ model Organization {
   studentMessaging       Boolean   @default(false) @map("StudentMessaging")
   motivationEnabled      Boolean   @default(true) @map("MotivationEnabled")
   retentionPolicy        String?   @map("RetentionPolicy") @db.Text
+  tenantId               String    @map("TenantId") @db.Char(36)
   createdAt              DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt              DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt              DateTime? @map("DeletedAt") @db.DateTime(6)
@@ -379,13 +380,16 @@ model Organization {
   lessonPlans   LessonPlan[]
   teacherDrafts TeacherDraft[]
 
-  xapiStatements    XapiStatement[]
-  reportSchedules   ReportSchedule[]
-  reportRuns        ReportRun[]
+  xapiStatements  XapiStatement[]
+  reportSchedules ReportSchedule[]
+  reportRuns      ReportRun[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
   deletionRequests  DeletionRequest[]
   securityIncidents SecurityIncident[]
   srsCards          SrsCard[]
 
+  @@index([tenantId])
   @@index([name])
   @@index([isActive, deletedAt])
   @@map("Organizations")
@@ -2474,4 +2478,24 @@ model SecurityIncident {
 
   @@index([organizationId, status])
   @@map("SecurityIncidents")
+}
+
+/// Tenancy (slice 20, ADR-005): a district or hosting customer that owns one or more schools, with its own
+/// domain, branding and policy switches. Every organisation belongs to exactly one tenant.
+model Tenant {
+  id               String    @id @map("Id") @db.Char(36)
+  name             String    @map("Name") @db.VarChar(200)
+  slug             String    @unique @map("Slug") @db.VarChar(63)
+  status           String    @default("active") @map("Status") @db.VarChar(12)
+  customDomain     String?   @unique @map("CustomDomain") @db.VarChar(253)
+  domainToken      String?   @map("DomainToken") @db.VarChar(64)
+  domainVerifiedAt DateTime? @map("DomainVerifiedAt") @db.DateTime(6)
+  branding         String?   @map("Branding") @db.Text
+  policies         String?   @map("Policies") @db.Text
+  createdAt        DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt        DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organizations Organization[]
+
+  @@map("Tenants")
 }
