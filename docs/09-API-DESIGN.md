@@ -239,6 +239,20 @@ GET    /organizations/{id}/support/settings behaviorVisibility ALL|POSITIVE_ONLY
 ```
 Errors: `403 ai.consent_required` from the tutor and content routes when a student under 13 lacks consent. The tutor escalation path (`ai.safety.escalated` audit) now also raises a wellness alert; the student still sees only the caring refusal.
 
+### Mobile and push (Release 2 slice 18)
+```
+GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements
+GET    /mobile/sync?since=                  classes, assignments, grades, announcements, notifications, conversations changed since the cursor; next = the cursor to send next time
+GET    /mobile/classes | /mobile/assignments?page&pageSize | /mobile/grades | /mobile/attendance?days=   slim lists; assignments sorted overdue first with state graded|submitted|missing|due|open
+GET    /me/devices                          { data, configured }; POST { platform ios|android|web, token, name?, appVersion?, locale? } -> 201 (same token = check-in); DELETE /me/devices/{id}
+POST   /me/devices/test                     { configured, devices, sent, simulated, failed }
+GET    /organizations/{id}/push/status      organizations.view: configured, devices, activeDevices, last7Days by status
+PUT    /notifications/preferences           each row now carries push (default true); push follows the in-app switch
+POST   /ai/tutor/conversations/{id}/messages   { content, stream?, clientMessageId? }; a known clientMessageId returns { userMessage, assistantMessage, replayed: true } as JSON even when stream was asked
+GET    /ai/tutor/conversations/{id}/messages?since=   messages after a time, oldest first, plus serverTime
+```
+Responses over 1 KB are gzip-compressed when the client accepts it. Push needs `FIREBASE_SERVICE_ACCOUNT_JSON` (docs/04); without it the API reports `configured: false` and logs pushes as simulated.
+
 ### Insight (Release 2 slice 17)
 ```
 GET    /organizations/{id}/insight/overview?date=    reports.view + administrator or counselor: attendance today, missing work by grade level, failing by class, gradebook completeness, AI usage, activity

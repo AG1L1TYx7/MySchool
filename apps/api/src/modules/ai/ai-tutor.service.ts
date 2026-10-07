@@ -218,15 +218,72 @@ export class AiTutorService {
   // ---------------------------------------------------------------------------
 
   /** Non-streaming: persist the user turn, call the AI service, persist the assistant turn. */
+  /** An offline client that replays a message with the same client id gets the stored turn back, never a second answer. */
+  async replay(
+    conversationId: string,
+    clientMessageId: string,
+    actor: AuthenticatedUser,
+  ): Promise<{
+    userMessage: PublicMessage;
+    assistantMessage: PublicMessage;
+    replayed: true;
+  } | null> {
+    await this.find(conversationId, actor);
+    const user = await this.prisma.aiMessage.findFirst({
+      where: { conversationId, clientMessageId, role: 'USER' },
+    });
+    if (!user) return null;
+    const assistant = await this.prisma.aiMessage.findFirst({
+      where: {
+        conversationId,
+        role: 'ASSISTANT',
+        createdAt: { gte: user.createdAt },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!assistant) return null;
+    return {
+      userMessage: toPublicMessage(user),
+      assistantMessage: toPublicMessage(assistant),
+      replayed: true,
+    };
+  }
+
+  /** Messages after a time, oldest first, so a phone can fill in what it missed while offline. */
+  async messagesSince(
+    conversationId: string,
+    since: string | undefined,
+    actor: AuthenticatedUser,
+  ): Promise<{ data: PublicMessage[]; serverTime: string }> {
+    await this.find(conversationId, actor);
+    const from = since ? new Date(since) : null;
+    const rows = await this.prisma.aiMessage.findMany({
+      where: {
+        conversationId,
+        ...(from && !Number.isNaN(from.getTime())
+          ? { createdAt: { gt: from } }
+          : {}),
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 500,
+    });
+    return {
+      data: rows.map(toPublicMessage),
+      serverTime: new Date().toISOString(),
+    };
+  }
+
   async send(
     conversationId: string,
     content: string,
     actor: AuthenticatedUser,
+    clientMessageId?: string,
   ): Promise<{ userMessage: PublicMessage; assistantMessage: PublicMessage }> {
     const { conversation, envelope, userMessage } = await this.prepare(
       conversationId,
       content,
       actor,
+      clientMessageId,
     );
     let result: ResultEnvelope;
     try {
@@ -258,11 +315,13 @@ export class AiTutorService {
     content: string,
     actor: AuthenticatedUser,
     res: Response,
+    clientMessageId?: string,
   ): Promise<void> {
     const { conversation, envelope, userMessage } = await this.prepare(
       conversationId,
       content,
       actor,
+      clientMessageId,
     );
     let body: ReadableStream<Uint8Array>;
     try {
@@ -440,6 +499,7 @@ export class AiTutorService {
     conversationId: string,
     content: string,
     actor: AuthenticatedUser,
+    clientMessageId?: string,
   ): Promise<{
     conversation: AiConversation;
     envelope: ContextEnvelope;
@@ -479,7 +539,13 @@ export class AiTutorService {
     ]);
 
     const userMessage = await this.prisma.aiMessage.create({
-      data: { id: newId(), conversationId, role: 'USER', content: text },
+      data: {
+        id: newId(),
+        conversationId,
+        role: 'USER',
+        content: text,
+        clientMessageId: clientMessageId ?? null,
+      },
     });
     const blocks: ContextEnvelope['context']['blocks'] = [];
     if (lesson?.content)

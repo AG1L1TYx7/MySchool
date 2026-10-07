@@ -17,6 +17,8 @@ export interface Preference {
   category: Category;
   inApp: boolean;
   email: boolean;
+  /** Push to registered phones; follows inApp (nothing pushed that is off in app). */
+  push?: boolean;
 }
 
 /** In-app on for everything; email off by default except security and system notices. */
@@ -25,17 +27,23 @@ export function defaultPreference(category: Category): Preference {
     category,
     inApp: true,
     email: category === 'SYSTEM' || category === 'DIGEST',
+    push: true,
   };
 }
 
 /** Every category, with stored overrides applied on top of the defaults. */
 export function mergePreferences(
-  stored: Array<Pick<Preference, 'category' | 'inApp' | 'email'>>,
+  stored: Array<Pick<Preference, 'category' | 'inApp' | 'email' | 'push'>>,
 ): Preference[] {
   return CATEGORIES.map((category) => {
     const found = stored.find((s) => s.category === category);
     return found
-      ? { category, inApp: found.inApp, email: found.email }
+      ? {
+          category,
+          inApp: found.inApp,
+          email: found.email,
+          push: found.push ?? true,
+        }
       : defaultPreference(category);
   });
 }
@@ -51,11 +59,14 @@ export interface DeliveryInput {
 export function deliveryFor(input: DeliveryInput): {
   inApp: boolean;
   email: boolean;
+  push: boolean;
 } {
   const pref = input.preference ?? defaultPreference(input.category);
+  const inApp = pref.inApp || !!input.forceEmail;
   return {
-    inApp: pref.inApp || !!input.forceEmail,
+    inApp,
     email: pref.email || !!input.forceEmail,
+    push: inApp && (pref.push ?? true),
   };
 }
 

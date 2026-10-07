@@ -110,6 +110,8 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/Notification` (9), `/api/PushNotification` (4). Jobs: delete-expired-notifications, push-notification-cleanup.
 **Status.** Real for in-app; push is disabled until a Firebase key exists.
 
+**Release 2 (slice 18).** Push rebuilt on `PushDevices` and `PushLogs`: a phone or browser registers its Firebase token at `POST /me/devices` (the same token again is a check-in; a token that moves to another account follows the person who signed in last), lists and removes its devices, and can send itself a test. Every notification fan-out also pushes to the recipient's active devices when the category's in-app and push switches are on (`NotificationPreferences.push`, on by default, editable under Notifications > Preferences). Delivery uses the Firebase Cloud Messaging v1 API with a service-account JWT signed in process, so no Firebase SDK is needed; without `FIREBASE_SERVICE_ACCOUNT_JSON` every push is logged as simulated and the interface says so. Dead tokens are switched off on the first failure, silent devices after ninety days, logs are kept sixty. Administrators see device and delivery counts at `GET /organizations/{id}/push/status`. Not built: APNS direct, web push through a service worker in the web app.
+
 ## 12. Messaging (real-time)
 
 **Capabilities.** Direct, group and class-group conversations; participants with roles, mute, leave; messages with replies, edits, deletes, read receipts, typing indicators; presence (online, away, busy, offline); file sharing through Files.
@@ -158,6 +160,8 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Capabilities.** Compact dashboard, offline sync payload, paginated classes, assignments, grades and attendance for mobile clients; response compression.
 **Routes.** `/api/v1/mobile` (6).
 **Status.** Real.
+
+**Release 2 (slice 18).** Rebuilt as six compact routes that compose the same services as the web, so permissions are identical and only the shapes are trimmed: `GET /mobile/home` (today's classes in period order, work split into overdue, due soon and recently graded, unread count, attendance still to take for teachers, XP and streak for students, children for families, three announcements), `GET /mobile/sync?since=` (classes, assignments, grades, announcements, notifications and tutor conversations changed since a cursor, with the next cursor set two seconds before now so nothing in flight is missed), `/mobile/classes`, `/mobile/assignments` (paged, sorted overdue first), `/mobile/grades`, `/mobile/attendance?days=`. Every response over a kilobyte is gzip-compressed. The tutor is offline-tolerant: a message carries a client id, a replay with the same id returns the stored answer instead of asking twice, and `GET /ai/tutor/conversations/{id}/messages?since=` fills in what a phone missed; the web client caches the transcript per conversation, queues messages written offline and replays them when the network returns.
 
 ## 18. AI tutor and AI content
 

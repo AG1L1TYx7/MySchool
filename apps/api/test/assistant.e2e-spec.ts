@@ -399,7 +399,18 @@ describe('Teacher assistant (e2e)', () => {
     const applied = await request(server)
       .post(`/api/v1/drafts/${job.resultId}/apply-to-report-card`)
       .set(as('teacher'));
-    if (hasDraftCard) {
+    // The gradebook suite generates, publishes and deletes Emma's cards in parallel; if the draft we saw is gone
+    // or no longer a draft by the time we apply, a 404 is the right answer.
+    const still = hasDraftCard
+      ? await prisma.reportCard.findUnique({ where: { id: hasDraftCard.id } })
+      : null;
+    if (
+      hasDraftCard &&
+      applied.status === 404 &&
+      (!still || still.status !== 'DRAFT')
+    ) {
+      expect((applied.body as Problem).code).toBe('assistant.no_report_card');
+    } else if (hasDraftCard) {
       expect(applied.status).toBe(200);
       const line = await prisma.reportCardLine.findFirst({
         where: { reportCardId: hasDraftCard.id, classId },

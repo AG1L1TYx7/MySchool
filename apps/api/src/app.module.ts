@@ -33,6 +33,8 @@ import { SummariesModule } from './modules/summaries/summaries.module';
 import { MotivationModule } from './modules/motivation/motivation.module';
 import { AssistantModule } from './modules/assistant/assistant.module';
 import { InsightModule } from './modules/insight/insight.module';
+import { MobileModule } from './modules/mobile/mobile.module';
+import { PushModule } from './modules/push/push.module';
 import { LearningModule } from './modules/learning/learning.module';
 import { H5pModule } from './modules/h5p/h5p.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
@@ -128,6 +130,8 @@ import { UsersModule } from './modules/users/users.module';
     AssistantModule,
     LearningModule,
     InsightModule,
+    PushModule,
+    MobileModule,
     HealthModule,
     MetricsModule,
   ],

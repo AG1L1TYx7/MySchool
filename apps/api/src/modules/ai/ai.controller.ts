@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Post,
   Res,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -111,11 +112,29 @@ export class AiTutorController {
     @CurrentUser() actor: AuthenticatedUser,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const replay = dto.clientMessageId
+      ? await this.tutor.replay(id, dto.clientMessageId, actor)
+      : null;
+    if (replay) return replay;
     if (dto.stream) {
-      await this.tutor.stream(id, dto.content, actor, res);
+      await this.tutor.stream(id, dto.content, actor, res, dto.clientMessageId);
       return;
     }
-    return this.tutor.send(id, dto.content, actor);
+    return this.tutor.send(id, dto.content, actor, dto.clientMessageId);
+  }
+
+  @Get('conversations/:id/messages')
+  @RequireFeature('ai.tutor.chat')
+  @ApiOperation({
+    summary:
+      'Messages after a time (since=ISO), for a phone that keeps the transcript offline',
+  })
+  async messagesSince(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('since') since: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tutor.messagesSince(id, since, actor);
   }
 
   @Post('messages/:id/feedback')

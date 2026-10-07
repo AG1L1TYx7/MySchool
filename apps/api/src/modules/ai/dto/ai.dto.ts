@@ -41,6 +41,15 @@ export class SendMessageDto {
   @ApiProperty() @IsString() @Length(1, 4000) content!: string;
   @ApiProperty({
     required: false,
+    format: 'uuid',
+    description:
+      'Set by the client; sending the same id again returns the stored reply instead of asking twice (offline replay)',
+  })
+  @IsOptional()
+  @IsUUID()
+  clientMessageId?: string;
+  @ApiProperty({
+    required: false,
     default: false,
     description: 'Stream tokens as text/event-stream',
   })

@@ -150,6 +150,10 @@ Sign in as the student and open Practice. Add cards from the published flashcard
 
 Sign in as the principal: the dashboard opens with a School today card, and Insight in the menu shows the overview (attendance taken, missing work by grade, failing students by class, gradebook completeness, AI usage, activity). The Reports tab downloads any report as CSV and lets you schedule one by email to staff addresses; Run now builds it immediately and says honestly whether a mail transport delivered it (set SMTP_HOST to send for real). Open a class and choose Insight for the class picture. On a student's page the Insight card has the transcript download; families get the same download on their home page.
 
+## 4j. Mobile and push
+
+There is no native app yet, but the API a phone would use is live: sign in, then call `GET /api/v1/mobile/home` and `GET /api/v1/mobile/sync` with the bearer token (Swagger lists them under Mobile). Register a device with `POST /api/v1/me/devices` and press "Send a test" on the Notifications page: without a Firebase key the test is recorded as simulated and the page says so; set `FIREBASE_SERVICE_ACCOUNT_JSON` to the service account JSON to send for real. To see the tutor work offline, open a conversation, switch the browser to offline in developer tools, send a message (it shows "Waiting to send"), then go back online: it is sent and answered once.
+
 ## 5. Backups
 
 ```bash

@@ -808,6 +808,24 @@ export const en = {
   'category.reports': 'Reports and insight',
   'fam.transcript': 'Download transcript (PDF)',
   'fam.transcriptDesc': 'Every published report card on one record, with the GPA per year.',
+  // Mobile and push (slice 18)
+  'tutor.noNetwork': 'You are offline. Your messages are saved here and will be sent when you are back online.',
+  'tutor.offlineCached': 'Showing the last conversation saved on this device.',
+  'tutor.queued.one': '{n} message waiting to send',
+  'tutor.queued.other': '{n} messages waiting to send',
+  'tutor.queuedBadge': 'Waiting to send',
+  'tutor.sentNow': 'Sent now that you are back online.',
+  'notif.push': 'Push',
+  'notif.pushShort': 'push to your phone',
+  'notif.devices': 'Your devices',
+  'notif.devicesDesc': 'Phones and browsers that receive push notifications. The SmartSchool app registers a device when you sign in on it.',
+  'notif.noDevices': 'No devices registered yet.',
+  'notif.pushNotConfigured': 'Push is not switched on for this school yet; the app shows notices when you open it.',
+  'notif.testPush': 'Send a test',
+  'notif.testSent': 'Test sent to {n} devices.',
+  'notif.testSimulated': 'Push is not configured, so the test was only recorded.',
+  'notif.removeDevice': 'Remove',
+  'notif.lastSeen': 'Last seen {when}',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -1,6 +1,7 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import helmet from 'helmet';
 
 /**
@@ -16,6 +17,7 @@ export function configureApp(
   app.useBodyParser('json', { limit: '5mb' });
   app.useBodyParser('urlencoded', { extended: true, limit: '5mb' });
   app.useBodyParser('text', { type: 'text/csv', limit: '10mb' });
+  app.use(compression({ threshold: 1024 }));
   app.use(cookieParser());
 
   app.use(helmet({ contentSecurityPolicy: false }));

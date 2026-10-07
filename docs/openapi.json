@@ -5523,6 +5523,129 @@
         ]
       }
     },
+    "/api/v1/me/devices": {
+      "get": {
+        "operationId": "PushController_devices_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Push"
+        ]
+      },
+      "post": {
+        "operationId": "PushController_register_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register (or refresh) a device token for push; the same token re-registered just checks in",
+        "tags": [
+          "Push"
+        ]
+      }
+    },
+    "/api/v1/me/devices/{id}": {
+      "delete": {
+        "operationId": "PushController_remove_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Push"
+        ]
+      }
+    },
+    "/api/v1/me/devices/test": {
+      "post": {
+        "operationId": "PushController_test_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a test push to your own devices; simulated when no Firebase key is configured",
+        "tags": [
+          "Push"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/push/status": {
+      "get": {
+        "operationId": "PushController_status_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Push"
+        ]
+      }
+    },
     "/api/v1/attendance": {
       "get": {
         "operationId": "AttendanceController_list_api/v1",
@@ -6380,6 +6503,33 @@
           }
         ],
         "summary": "Send a message; JSON reply, or text/event-stream (user, token*, assistant events) when stream=true",
+        "tags": [
+          "AI tutor"
+        ]
+      },
+      "get": {
+        "operationId": "AiTutorController_messagesSince_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Messages after a time (since=ISO), for a phone that keeps the transcript offline",
         "tags": [
           "AI tutor"
         ]
@@ -11346,6 +11496,122 @@
         ]
       }
     },
+    "/api/v1/mobile/home": {
+      "get": {
+        "operationId": "MobileController_home_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The first screen in one call: today, work due, unread, attendance to take, XP, children, announcements",
+        "tags": [
+          "Mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/sync": {
+      "get": {
+        "operationId": "MobileController_sync_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Changes since a cursor for offline caching; returns the next cursor",
+        "tags": [
+          "Mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/classes": {
+      "get": {
+        "operationId": "MobileController_classes_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/assignments": {
+      "get": {
+        "operationId": "MobileController_assignments_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/grades": {
+      "get": {
+        "operationId": "MobileController_grades_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Mobile"
+        ]
+      }
+    },
+    "/api/v1/mobile/attendance": {
+      "get": {
+        "operationId": "MobileController_attendance_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Mobile"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -13440,6 +13706,10 @@
           },
           "email": {
             "type": "boolean"
+          },
+          "push": {
+            "type": "boolean",
+            "default": true
           }
         },
         "required": [
@@ -13460,6 +13730,36 @@
         },
         "required": [
           "preferences"
+        ]
+      },
+      "RegisterDeviceDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "ios",
+              "android",
+              "web"
+            ]
+          },
+          "token": {
+            "type": "string",
+            "description": "The Firebase registration token"
+          },
+          "name": {
+            "type": "string"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "token"
         ]
       },
       "MarkAttendanceDto": {

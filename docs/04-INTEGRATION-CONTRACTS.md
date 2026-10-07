@@ -190,7 +190,7 @@ See the architecture document section 4.4 for the table. Contract: each job is i
 |---|---|---|---|
 | SMTP or SendGrid | password reset, scheduled reports, notifications | `SMTP_*` or `SENDGRID_API_KEY`, `MAIL_FROM`, `MAIL_FROM_NAME` | logs the email, returns success to callers |
 | Twilio | SMS notifications | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` | logs "Simulated SMS" |
-| Firebase Cloud Messaging | push notifications | `FIREBASE_SERVICE_ACCOUNT_JSON` | logs "Simulated push" |
+| Firebase Cloud Messaging | push notifications (FCM v1, service-account JWT signed in process, no SDK) | `FIREBASE_SERVICE_ACCOUNT_JSON` | logs "Simulated push" and records a `simulated` push log; the interface reports `configured: false` |
 | Stripe | tenant billing, invoices, webhooks | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | billing endpoints return records without charges |
 | Google reCAPTCHA v3 | registration bot protection | `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `RECAPTCHA_MIN_SCORE` | validation passes |
 | Ollama | all inference (AI service only) | `OLLAMA_HOST`, `OLLAMA_MODEL`, `OLLAMA_VISION_MODEL`, `OLLAMA_TIMEOUT` | AI service reports unhealthy; LMS AI endpoints return 503 |

@@ -9,11 +9,20 @@ import {
 } from './notification-rules';
 
 describe('notification rules', () => {
+  it('keeps the push switch when merging stored preferences', () => {
+    const merged = mergePreferences([
+      { category: 'GRADE', inApp: true, email: false, push: false },
+    ]);
+    expect(merged.find((p) => p.category === 'GRADE')?.push).toBe(false);
+    expect(merged.find((p) => p.category === 'MESSAGE')?.push).toBe(true);
+  });
+
   it('defaults to in-app for everything and email only for system notices', () => {
     expect(defaultPreference('GRADE')).toEqual({
       category: 'GRADE',
       inApp: true,
       email: false,
+      push: true,
     });
     expect(defaultPreference('SYSTEM').email).toBe(true);
     const merged = mergePreferences([
@@ -24,6 +33,7 @@ describe('notification rules', () => {
       category: 'GRADE',
       inApp: false,
       email: true,
+      push: true,
     });
     expect(merged.find((p) => p.category === 'MESSAGE')).toEqual(
       defaultPreference('MESSAGE'),
@@ -36,17 +46,30 @@ describe('notification rules', () => {
         category: 'ANNOUNCEMENT',
         preference: { category: 'ANNOUNCEMENT', inApp: false, email: false },
       }),
-    ).toEqual({ inApp: false, email: false });
+    ).toEqual({ inApp: false, email: false, push: false });
     expect(
       deliveryFor({
         category: 'ANNOUNCEMENT',
         preference: { category: 'ANNOUNCEMENT', inApp: false, email: false },
         forceEmail: true,
       }),
-    ).toEqual({ inApp: true, email: true });
+    ).toEqual({ inApp: true, email: true, push: true });
+    // Push follows the in-app switch and its own switch.
+    expect(
+      deliveryFor({
+        category: 'GRADE',
+        preference: {
+          category: 'GRADE',
+          inApp: true,
+          email: false,
+          push: false,
+        },
+      }).push,
+    ).toBe(false);
     expect(deliveryFor({ category: 'MESSAGE', preference: null })).toEqual({
       inApp: true,
       email: false,
+      push: true,
     });
   });
 

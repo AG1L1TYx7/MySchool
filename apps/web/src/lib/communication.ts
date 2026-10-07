@@ -44,6 +44,18 @@ export interface NotificationPreference {
   category: string;
   inApp: boolean;
   email: boolean;
+  push: boolean;
+}
+
+export interface PushDevice {
+  id: string;
+  platform: string;
+  name: string | null;
+  appVersion: string | null;
+  locale: string | null;
+  lastSeenAt: string;
+  active: boolean;
+  createdAt: string;
 }
 
 export const CATEGORY_LABELS: Record<string, string> = { announcement: 'Announcements', assignment: 'Assignments', grade: 'Grades', message: 'Messages', attendance: 'Attendance', system: 'Account and security', ai: 'AI tutor and content', digest: 'Weekly family summary', motivation: 'XP, streaks and badges' };

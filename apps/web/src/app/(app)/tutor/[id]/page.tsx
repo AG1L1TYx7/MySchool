@@ -8,6 +8,7 @@ import { Alert, Button } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { labelFor, useI18n, type Translate } from '@/lib/i18n';
 import { fadeRise, spring, useMotionVariants, useReducedMotion } from '@/lib/motion';
+import { cacheTranscript, cachedTranscript, dequeue, enqueue, isNetworkError, isOnline, newClientId, outbox, type OutboxItem } from '@/lib/offline';
 import { streamTutorMessage, type Conversation, type TutorMessage } from '@/lib/tutor';
 
 type Detail = Conversation & { messages: TutorMessage[] };
@@ -19,24 +20,80 @@ type Detail = Conversation & { messages: TutorMessage[] };
 export default function ConversationPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const t = useI18n().t;
+  const { t, n } = useI18n();
   const [conversation, setConversation] = useState<Detail | null>(null);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<{ user: string; partial: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [online, setOnline] = useState(true);
+  const [queued, setQueued] = useState<OutboxItem[]>([]);
+  const [fromCache, setFromCache] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const replaying = useRef(false);
 
   const load = useCallback(async () => {
     try {
-      setConversation(await api<Detail>(`/ai/tutor/conversations/${id}`));
+      const detail = await api<Detail>(`/ai/tutor/conversations/${id}`);
+      setConversation(detail);
+      setFromCache(false);
+      cacheTranscript(id, detail.messages);
     } catch (err) {
-      setError(errorMessage(err));
+      // Offline: show what this device saved last time, with the queue on top.
+      const cached = cachedTranscript(id);
+      if (isNetworkError(err) && cached.length) {
+        setConversation((c) => c ?? ({ id, title: t('nav.tutor'), mode: 'explain', courseId: null, lessonId: null, messageCount: cached.length, createdAt: '', updatedAt: '', messages: cached } as unknown as Detail));
+        setFromCache(true);
+      } else setError(errorMessage(err));
     }
-  }, [id]);
+  }, [id, t]);
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Replays whatever waited in the outbox once the network is back; each item carries its client id, so a
+  // message the server already answered comes back as that answer instead of being asked twice.
+  const replay = useCallback(async () => {
+    if (replaying.current || !isOnline()) return;
+    replaying.current = true;
+    try {
+      for (const item of outbox(id)) {
+        try {
+          const { user, assistant } = await streamTutorMessage(id, item.content, () => undefined, undefined, item.clientMessageId);
+          dequeue(item.clientMessageId);
+          setConversation((c) => (c ? { ...c, messages: [...c.messages.filter((m) => m.id !== `queued-${item.clientMessageId}`), user, assistant] } : c));
+          setNotice(t('tutor.sentNow'));
+        } catch (err) {
+          if (isNetworkError(err)) break;
+          dequeue(item.clientMessageId);
+          setError(errorMessage(err));
+        }
+      }
+    } finally {
+      replaying.current = false;
+      setQueued(outbox(id));
+    }
+  }, [id, t]);
+  useEffect(() => {
+    setOnline(isOnline());
+    setQueued(outbox(id));
+    const up = () => {
+      setOnline(true);
+      void load().then(replay);
+    };
+    const down = () => setOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    if (isOnline() && outbox(id).length) void replay();
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
+  }, [id, load, replay]);
+  useEffect(() => {
+    if (conversation && !fromCache) cacheTranscript(id, conversation.messages);
+  }, [conversation, fromCache, id]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
@@ -48,14 +105,30 @@ export default function ConversationPage() {
     if (!text || pending || !conversation) return;
     setDraft('');
     setError(null);
+    setNotice(null);
+    const clientMessageId = newClientId();
+    const queue = () => {
+      enqueue({ conversationId: id, clientMessageId, content: text, queuedAt: new Date().toISOString() });
+      setQueued(outbox(id));
+      setConversation((c) => (c ? { ...c, messages: [...c.messages, { id: `queued-${clientMessageId}`, role: 'user', content: text, status: 'ok', promptVersion: null, model: null, citations: [], nextSteps: [], safety: null, feedback: null, createdAt: '' }] } : c));
+    };
+    if (!isOnline()) {
+      queue();
+      return;
+    }
     setPending({ user: text, partial: '' });
     try {
-      const { user, assistant } = await streamTutorMessage(id, text, (token) => setPending((p) => (p ? { ...p, partial: p.partial + token } : p)));
+      const { user, assistant } = await streamTutorMessage(id, text, (token) => setPending((p) => (p ? { ...p, partial: p.partial + token } : p)), undefined, clientMessageId);
       setConversation((c) => (c ? { ...c, messageCount: c.messageCount + 2, messages: [...c.messages, user, assistant] } : c));
     } catch (err) {
-      setError(errorMessage(err));
-      setDraft(text);
-      await load();
+      if (isNetworkError(err)) {
+        queue();
+        setOnline(false);
+      } else {
+        setError(errorMessage(err));
+        setDraft(text);
+        await load();
+      }
     } finally {
       setPending(null);
       inputRef.current?.focus();
@@ -97,7 +170,7 @@ export default function ConversationPage() {
         {conversation.messages.length === 0 && !pending && <Opening mode={conversation.mode} onPick={(q) => setDraft(q)} />}
         <AnimatePresence initial={false}>
           {conversation.messages.map((m) => (
-            <Bubble key={m.id} message={m} onRate={rate} />
+            <Bubble key={m.id} message={m} onRate={rate} queued={m.id.startsWith('queued-')} />
           ))}
           {pending && (
             <>
@@ -109,6 +182,14 @@ export default function ConversationPage() {
         <div ref={endRef} />
       </div>
 
+      {(!online || queued.length > 0 || fromCache || notice) && (
+        <div className="pt-2 text-xs" role="status">
+          {!online && <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-900">{t('tutor.noNetwork')}</p>}
+          {fromCache && <p className="mt-1 text-slate-600">{t('tutor.offlineCached')}</p>}
+          {queued.length > 0 && <p className="mt-1 text-slate-600">{n('tutor.queued', queued.length)}</p>}
+          {notice && <p className="mt-1 text-green-700">{notice}</p>}
+        </div>
+      )}
       {error && (
         <div className="pt-2">
           <Alert>{error}</Alert>
@@ -162,7 +243,7 @@ function Opening({ mode, onPick }: { mode: Conversation['mode']; onPick: (q: str
   );
 }
 
-function Bubble({ message, streaming, onRate }: { message: TutorMessage; streaming?: boolean; onRate?: (m: TutorMessage, r: 1 | -1) => Promise<void> }) {
+function Bubble({ message, streaming, onRate, queued }: { message: TutorMessage; streaming?: boolean; onRate?: (m: TutorMessage, r: 1 | -1) => Promise<void>; queued?: boolean }) {
   const t = useI18n().t;
   const variants = useMotionVariants(fadeRise);
   const prefersReduced = useReducedMotion();
@@ -178,6 +259,7 @@ function Bubble({ message, streaming, onRate }: { message: TutorMessage; streami
             {message.status === 'degraded' && <span className="rounded bg-slate-200 px-1.5 py-0.5 font-medium normal-case tracking-normal text-slate-700">{t('tutor.partial')}</span>}
           </p>
         )}
+        {queued && <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-100">{t('tutor.queuedBadge')}</p>}
         <div className="whitespace-pre-wrap leading-relaxed">
           {message.content}
           {streaming && (

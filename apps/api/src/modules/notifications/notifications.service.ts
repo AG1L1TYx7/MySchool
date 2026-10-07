@@ -19,6 +19,7 @@ import {
   type Preference,
 } from './notification-rules';
 import { NotificationsGateway } from './notifications.gateway';
+import { PushService } from '../push/push.service';
 
 export interface PublicNotification {
   id: string;
@@ -57,6 +58,7 @@ export class NotificationsService {
     private readonly gateway: NotificationsGateway,
     private readonly mail: MailService,
     private readonly config: AppConfigService,
+    private readonly push: PushService,
   ) {}
 
   /** Fan-out to many recipients; returns how many in-app rows were written. */
@@ -79,11 +81,13 @@ export class NotificationsService {
           category: p.category,
           inApp: p.inApp,
           email: p.email,
+          push: p.push,
         } satisfies Preference,
       ]),
     );
     const rows: Prisma.NotificationCreateManyInput[] = [];
     const emails: Array<{ to: string; firstName: string }> = [];
+    const pushTo: string[] = [];
     const now = new Date();
     for (const user of users) {
       const delivery = deliveryFor({
@@ -105,7 +109,21 @@ export class NotificationsService {
         });
       if (delivery.email)
         emails.push({ to: user.email, firstName: user.firstName });
+      if (delivery.push) pushTo.push(user.id);
     }
+    if (pushTo.length)
+      void this.push
+        .send(pushTo, {
+          title: input.title,
+          body: input.body ?? null,
+          link: input.link ?? null,
+          category: input.category.toLowerCase(),
+        })
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `Push fan-out failed: ${err instanceof Error ? err.message : String(err)}`,
+          ),
+        );
     if (rows.length) {
       await this.prisma.notification.createMany({ data: rows });
       for (const row of rows) {
@@ -226,7 +244,9 @@ export class NotificationsService {
 
   async preferences(
     actor: AuthenticatedUser,
-  ): Promise<Array<{ category: string; inApp: boolean; email: boolean }>> {
+  ): Promise<
+    Array<{ category: string; inApp: boolean; email: boolean; push: boolean }>
+  > {
     const stored = await this.prisma.notificationPreference.findMany({
       where: { userId: actor.id },
     });
@@ -235,8 +255,13 @@ export class NotificationsService {
         category: s.category,
         inApp: s.inApp,
         email: s.email,
+        push: s.push,
       })),
-    ).map((p) => ({ ...p, category: p.category.toLowerCase() }));
+    ).map((p) => ({
+      ...p,
+      push: p.push ?? true,
+      category: p.category.toLowerCase(),
+    }));
   }
 
   async setPreferences(dto: SetPreferencesDto, actor: AuthenticatedUser) {
@@ -250,8 +275,9 @@ export class NotificationsService {
           category,
           inApp: p.inApp,
           email: p.email,
+          push: p.push ?? true,
         },
-        update: { inApp: p.inApp, email: p.email },
+        update: { inApp: p.inApp, email: p.email, push: p.push ?? true },
       });
     }
     return this.preferences(actor);

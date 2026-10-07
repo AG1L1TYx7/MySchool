@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { MotionItem, MotionList, PillGroup, SkeletonRows } from '@/components/motion';
 import { Alert, Button, Card } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
+import { DevicesCard } from '@/components/devices-card';
 import type { Notification, NotificationPreference } from '@/lib/communication';
 import { labelFor, timeAgo, useI18n } from '@/lib/i18n';
 import type { Paged } from '@/lib/students';
@@ -40,7 +41,7 @@ export default function NotificationsPage() {
     await api(`/notifications/${n.id}/read`, { method: 'POST' }).catch(() => undefined);
   }
 
-  async function toggle(category: string, key: 'inApp' | 'email') {
+  async function toggle(category: string, key: 'inApp' | 'email' | 'push') {
     if (!prefs) return;
     const next = prefs.map((p) => (p.category === category ? { ...p, [key]: !p[key] } : p));
     setPrefs(next);
@@ -114,15 +115,16 @@ export default function NotificationsPage() {
                 <th className="py-1">{t('notif.category')}</th>
                 <th className="py-1 text-center">{t('notif.inApp')}</th>
                 <th className="py-1 text-center">{t('notif.email')}</th>
+                <th className="py-1 text-center">{t('notif.push')}</th>
               </tr>
             </thead>
             <tbody>
               {prefs.map((p) => (
                 <tr key={p.category} className="border-t border-slate-100">
                   <td className="py-2 text-slate-800">{labelFor('category', p.category, t)}</td>
-                  {(['inApp', 'email'] as const).map((k) => (
+                  {(['inApp', 'email', 'push'] as const).map((k) => (
                     <td key={k} className="py-2 text-center">
-                      <input type="checkbox" checked={p[k]} onChange={() => void toggle(p.category, k)} aria-label={`${labelFor('category', p.category, t)} ${k === 'inApp' ? t('notif.inAppShort') : t('notif.byEmail')}`} className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                      <input type="checkbox" checked={p[k]} onChange={() => void toggle(p.category, k)} aria-label={`${labelFor('category', p.category, t)} ${k === 'inApp' ? t('notif.inAppShort') : k === 'email' ? t('notif.byEmail') : t('notif.pushShort')}`} className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
                     </td>
                   ))}
                 </tr>
@@ -132,6 +134,8 @@ export default function NotificationsPage() {
         )}
         <p className="mt-3 text-xs text-slate-500">{t('notif.always')}</p>
       </Card>
+
+      <DevicesCard />
     </div>
   );
 }

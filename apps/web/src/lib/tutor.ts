@@ -49,18 +49,22 @@ export interface TutorStatus {
  * Sends a message and streams the reply. `onToken` receives text as it arrives; the stored
  * assistant message (with citations and status) is resolved at the end.
  */
-export async function streamTutorMessage(conversationId: string, content: string, onToken: (text: string) => void, signal?: AbortSignal): Promise<{ user: TutorMessage; assistant: TutorMessage }> {
+export async function streamTutorMessage(conversationId: string, content: string, onToken: (text: string) => void, signal?: AbortSignal, clientMessageId?: string): Promise<{ user: TutorMessage; assistant: TutorMessage }> {
   if (!tokenStore.access) await tryRefresh();
   const send = () =>
     fetch(`/api/v1/ai/tutor/conversations/${conversationId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'text/event-stream', 'x-requested-with': 'SmartSchool', authorization: `Bearer ${tokenStore.access ?? ''}` },
-      body: JSON.stringify({ content, stream: true }),
+      body: JSON.stringify({ content, stream: true, clientMessageId }),
       credentials: 'same-origin',
       signal,
     });
   let res = await send();
   if (res.status === 401 && (await tryRefresh())) res = await send();
+  if (res.ok && (res.headers.get('content-type') ?? '').includes('application/json')) {
+    const replay = (await res.json()) as { userMessage: TutorMessage; assistantMessage: TutorMessage };
+    return { user: replay.userMessage, assistant: replay.assistantMessage };
+  }
   if (!res.ok || !res.body) {
     const problem = (await res.json().catch(() => ({}))) as Partial<ProblemDetails>;
     throw new ApiError({ type: problem.type ?? 'about:blank', title: problem.title ?? res.statusText, status: problem.status ?? res.status, detail: problem.detail ?? 'The tutor could not be reached.', code: problem.code ?? `http.${res.status}`, errors: problem.errors, traceId: problem.traceId });

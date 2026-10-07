@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
+import argon2 from 'argon2';
 import request from 'supertest';
 import { AI_STUB_PORT, AI_STUB_TOKEN } from './ai-env';
 import { AppModule } from '../src/app.module';
@@ -84,14 +85,16 @@ describe('Insight (e2e)', () => {
   let orgId = '';
   let classId = '';
   let emmaId = '';
+  let ownUserId = '';
+  let periodId = '';
   let otherStudentId = '';
   let reportCardId = '';
   let scheduleId = '';
 
-  const login = async (role: string) => {
+  const login = async (role: string, email = `${role}@smartschool.local`) => {
     const res = await request(server)
       .post('/api/v1/auth/login')
-      .send({ email: `${role}@smartschool.local`, password: PASSWORD })
+      .send({ email, password: PASSWORD })
       .expect(200);
     tokens[role] = (res.body as { accessToken: string }).accessToken;
   };
@@ -120,13 +123,56 @@ describe('Insight (e2e)', () => {
     });
     classId = klass.id;
     orgId = klass.organizationId;
-    const emma = await prisma.student.findFirstOrThrow({
-      where: { studentNumber: 'S2026-000001' },
-    });
-    emmaId = emma.id;
     const parent = await prisma.user.findUniqueOrThrow({
       where: { email: 'parent@smartschool.local' },
     });
+    // A student of our own, in the class and guarded by the demo parent: the gradebook suite deletes Emma's cards.
+    const passwordHash = await argon2.hash(PASSWORD, {
+      type: argon2.argon2id,
+      memoryCost: 19_456,
+      timeCost: 2,
+      parallelism: 1,
+    });
+    const email = `insight-student-${stamp}@smartschool.local`;
+    const user = await prisma.user.create({
+      data: {
+        id: newId(),
+        email,
+        passwordHash,
+        passwordChangedAt: new Date(),
+        firstName: 'Ivy',
+        lastName: 'Insight',
+        role: 'STUDENT',
+        organizationId: orgId,
+        emailVerifiedAt: new Date(),
+      },
+    });
+    ownUserId = user.id;
+    const own = await prisma.student.create({
+      data: {
+        id: newId(),
+        organizationId: orgId,
+        userId: user.id,
+        studentNumber: `E2E-I-${stamp}`,
+        firstName: 'Ivy',
+        lastName: 'Insight',
+        gradeLevel: '7',
+        enrollmentStatus: 'ACTIVE',
+      },
+    });
+    emmaId = own.id;
+    await prisma.classEnrollment.create({
+      data: { id: newId(), classId, studentId: emmaId, status: 'ENROLLED' },
+    });
+    await prisma.studentGuardian.create({
+      data: {
+        id: newId(),
+        studentId: emmaId,
+        guardianUserId: parent.id,
+        relationship: 'GUARDIAN',
+      },
+    });
+    await login('student', email);
     const other = await prisma.student.findFirstOrThrow({
       where: {
         organizationId: orgId,
@@ -144,12 +190,23 @@ describe('Insight (e2e)', () => {
         term: { academicYear: { organizationId: orgId, name: '2026-2027' } },
       },
     });
+    const period = await prisma.gradingPeriod.create({
+      data: {
+        id: newId(),
+        termId: q1.termId,
+        name: `E2E-I ${stamp}`,
+        startDate: q1.startDate,
+        endDate: q1.endDate,
+        sortOrder: 99,
+      },
+    });
+    periodId = period.id;
     const card = await prisma.reportCard.create({
       data: {
         id: newId(),
         organizationId: orgId,
         studentId: emmaId,
-        gradingPeriodId: q1.id,
+        gradingPeriodId: periodId,
         kind: 'REPORT_CARD',
         status: 'PUBLISHED',
         gpa: 3.5,
@@ -182,6 +239,10 @@ describe('Insight (e2e)', () => {
         name: { startsWith: `E2E report ${stamp}` },
       },
     });
+    if (periodId)
+      await prisma.gradingPeriod.deleteMany({ where: { id: periodId } });
+    await prisma.student.deleteMany({ where: { id: emmaId } });
+    await prisma.user.deleteMany({ where: { id: ownUserId } });
     await app.close();
     stub.server.close();
   });

@@ -44,6 +44,10 @@ export class PreferenceDto {
   @ApiProperty({ enum: CATEGORY_API }) @IsIn(CATEGORY_API) category!: string;
   @ApiProperty() @IsBoolean() inApp!: boolean;
   @ApiProperty() @IsBoolean() email!: boolean;
+  @ApiProperty({ required: false, default: true })
+  @IsOptional()
+  @IsBoolean()
+  push?: boolean;
 }
 
 export class SetPreferencesDto {
