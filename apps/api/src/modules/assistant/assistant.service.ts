@@ -1609,10 +1609,10 @@ export class AssistantService {
     });
     if (stillActive > 0) return;
     // Only rows a substitute grant created: never a real co-teacher who was assigned before any grant.
-    const earliestGrant = await this.prisma.auditLog.findFirst({
-      where: { action: 'classes.substitute.granted', entityId: classId },
-      orderBy: { timestamp: 'asc' },
-      select: { timestamp: true },
+    const earliestGrant = await this.prisma.substituteAccess.findFirst({
+      where: { classId },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
     });
     const row = await this.prisma.classTeacher.findUnique({
       where: { classId_teacherId: { classId, teacherId: userId } },
@@ -1622,7 +1622,7 @@ export class AssistantService {
       !shouldRevokeTeacherRow({
         stillActiveAccess: stillActive,
         row,
-        earliestGrantAt: earliestGrant?.timestamp ?? null,
+        earliestGrantAt: earliestGrant?.createdAt ?? null,
       })
     )
       return;

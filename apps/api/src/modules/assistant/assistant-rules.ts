@@ -171,6 +171,9 @@ export function topTopics(
  * A substitute's co-teacher row goes only when no access is still active, the row is not the primary teacher,
  * and the row was assigned after the first substitute grant for the class (a real co-teacher assigned earlier stays).
  */
+/** How far before the first recorded grant a teacher row may have been written by that same grant. */
+export const GRANT_SLACK_MS = 60_000;
+
 export function shouldRevokeTeacherRow(input: {
   stillActiveAccess: number;
   row: { isPrimary: boolean; assignedAt: Date } | null;
@@ -178,7 +181,13 @@ export function shouldRevokeTeacherRow(input: {
 }): boolean {
   if (input.stillActiveAccess > 0 || !input.row || input.row.isPrimary)
     return false;
-  if (input.earliestGrantAt && input.row.assignedAt < input.earliestGrantAt)
+  // The grant creates the access row and the teacher row in the same request, so a row assigned within
+  // a minute before the earliest grant still belongs to a substitute, never to a real co-teacher.
+  if (
+    input.earliestGrantAt &&
+    input.row.assignedAt.getTime() <
+      input.earliestGrantAt.getTime() - GRANT_SLACK_MS
+  )
     return false;
   return true;
 }

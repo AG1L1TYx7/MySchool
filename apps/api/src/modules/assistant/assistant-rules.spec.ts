@@ -205,6 +205,27 @@ describe('assistant rules', () => {
         earliestGrantAt: grant,
       }),
     ).toBe(false);
+    // The first grant on a class writes its teacher row moments before the grant is recorded.
+    expect(
+      shouldRevokeTeacherRow({
+        stillActiveAccess: 0,
+        row: {
+          isPrimary: false,
+          assignedAt: new Date(grant.getTime() - 10_000),
+        },
+        earliestGrantAt: grant,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRevokeTeacherRow({
+        stillActiveAccess: 0,
+        row: {
+          isPrimary: false,
+          assignedAt: new Date(grant.getTime() - 120_000),
+        },
+        earliestGrantAt: grant,
+      }),
+    ).toBe(false);
     expect(
       shouldRevokeTeacherRow({
         stillActiveAccess: 0,

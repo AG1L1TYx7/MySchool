@@ -183,15 +183,16 @@ describe('Learning records and science (e2e)', () => {
         deletedAt: null,
         id: { not: studentId },
         guardians: { none: { guardianUserId: parent.id } },
+        studentNumber: { startsWith: 'S2026-' }, // seeded, so no parallel suite deletes them
         enrollments: { none: { classId } },
       },
     });
     otherStudentId = other.id;
     // A published lesson of the course, tagged with a seeded standard so completing it is mastery evidence.
-    // A lesson of our own in the first published module: other suites retag the seeded first lesson.
+    // A lesson of our own at the end of the course: other suites retag the seeded first lesson and the motivation suite completes the first three.
     const firstModule = await prisma.module.findFirstOrThrow({
       where: { courseId, isPublished: true },
-      orderBy: { sortOrder: 'asc' },
+      orderBy: { sortOrder: 'desc' }, // the last module, past the lessons the motivation suite takes
     });
     const lesson = await prisma.lesson.create({
       data: {
@@ -200,7 +201,7 @@ describe('Learning records and science (e2e)', () => {
         title: `Solving two-step equations (e2e ${stamp})`,
         lessonType: 'TEXT',
         content: 'Undo addition first, then undo multiplication.',
-        sortOrder: 99,
+        sortOrder: 999,
         isPublished: true,
       },
     });

@@ -157,6 +157,7 @@ describe('Motivation (e2e)', () => {
         deletedAt: null,
         id: { notIn: [emma.id, studentId] },
         guardians: { none: { guardianUserId: parent.id } },
+        studentNumber: { startsWith: 'S2026-' }, // seeded, so no parallel suite deletes them
       },
     });
     otherStudentId = other.id;

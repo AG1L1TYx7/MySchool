@@ -266,8 +266,9 @@ describe('School structure, attendance and calendar (e2e)', () => {
   });
 
   it('creates a class tied to a term and period', async () => {
+    // A seeded course: picking any course can land on the curriculum suite's own course, which it then cannot delete.
     const course = await prisma.course.findFirstOrThrow({
-      where: { organizationId: orgId, deletedAt: null },
+      where: { organizationId: orgId, courseCode: 'ELA-7', deletedAt: null },
     });
     const res = await request(server)
       .post('/api/v1/classes')

@@ -163,7 +163,8 @@ describe('Gradebook, standards and report cards (e2e)', () => {
       await prisma.gradingPeriod.findFirstOrThrow({
         where: {
           name: 'Q1',
-          term: { academicYear: { organizationId: orgId } },
+          // The seeded year: the school suite adds a 2031 year with its own Q1 and removes it again.
+          term: { academicYear: { organizationId: orgId, name: '2026-2027' } },
         },
       })
     ).id;
