@@ -2,6 +2,7 @@
 
 import { StudentInsightCard } from '@/components/insight-cards';
 import { StudentRecordsCard } from '@/components/records-card';
+import { StudentPathsCard } from '@/components/paths-cards';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
@@ -96,6 +97,7 @@ export default function StudentDetailPage() {
       </Card>
 
       {student.canSupport && <StudentInsightCard studentId={id} />}
+      {student.canSupport && can('learning.records') && <StudentPathsCard studentId={id} />}
       <StudentRecordsCard studentId={id} lastName={student.lastName} legalHold={!!student.legalHold} onChanged={load} />
       <Guardians studentId={id} canManage={can('students.guardians.manage')} />
       {student.canSupport && <AccommodationCard studentId={id} />}

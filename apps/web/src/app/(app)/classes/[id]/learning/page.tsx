@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { CurveChart, bandName } from '@/components/learning-cards';
 import { MotionItem, MotionList, SkeletonRows } from '@/components/motion';
 import { NotForYou } from '@/components/not-for-you';
+import { ClassPathsCard } from '@/components/paths-cards';
 import { Alert, Card } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -89,6 +90,7 @@ export default function ClassLearningPage() {
             )}
           </Card>
         </div>
+        <ClassPathsCard classId={id} />
         <Card title="Needs help" description="Students below the developing band on at least one standard. Open their profile for the full picture.">
           {needsHelp.size === 0 ? (
             <p className="text-sm text-slate-500">Nobody is below the developing band right now.</p>

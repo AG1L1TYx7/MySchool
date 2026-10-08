@@ -159,7 +159,7 @@ Headers: `X-Webhook-Event`, `X-Webhook-Id`, `X-Webhook-Signature` (`sha256=` HMA
 
 Event types: `student.enrolled`, `student.updated`, `assignment.created`, `assignment.submitted`, `assignment.completed`, `grade.posted`, `attendance.marked`, `achievement.unlocked`, `ai.intervention.triggered`, `user.created`, `user.updated`, `course.created`, `enrollment.changed`.
 
-**As built (slice 21).** Routes live under `/api/v1/organizations/{id}/webhooks`; the envelope is `{ id, eventType, entityType, entityId, organizationId, occurredAt, data }`; the signature header is `sha256=` HMAC of `<X-Webhook-Timestamp>.<raw body>` with the secret; retries 1, 2, 4, 8, 16 minutes up to the subscription's retry limit (default 5); event types are the thirteen domain events of section 6 plus `webhook.test`. Tenant webhooks are not built.
+**As built (slice 21).** Routes live under `/api/v1/organizations/{id}/webhooks`; the envelope is `{ id, eventType, entityType, entityId, organizationId, occurredAt, data }`; the signature header is `sha256=` HMAC of `<X-Webhook-Timestamp>.<raw body>` with the secret; retries 1, 2, 4, 8, 16 minutes up to the subscription's retry limit (default 5); event types are the thirteen domain events of section 6, `practice.reviewed` (slice 23) and `webhook.test`. Tenant webhooks are not built.
 
 **LTI 1.3 (slice 21).** As a tool: `/api/v1/lti/login`, `/api/v1/lti/launch`, `/api/v1/lti/jwks`, `/api/v1/lti/config.json`; the launch is a resource-link request whose `custom.path` (or `?path=` on the target link) chooses the page. As a platform: `/api/v1/lti/platform/auth` issues the id_token; custom parameters always include `smartschool_user_id` and, from a class, `smartschool_class_id`. `API_PUBLIC_URL` is the issuer.
 

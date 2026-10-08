@@ -116,9 +116,9 @@ export function CurveChart({ curve, height = 120 }: { curve: LearningCurve; heig
 export function StandardRow({ s }: { s: MasteryStandard }) {
   const { t, n } = useI18n();
   return (
-    <MotionItem className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-      <div className="min-w-0 flex-1">
-        <p className="font-medium text-slate-900">
+    <MotionItem className="flex flex-col gap-2 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="w-full min-w-0 sm:flex-1">
+        <p className="break-all font-medium text-slate-900">
           {s.code}
           <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${bandClass(s.band)}`}>{bandName(s.band, t)}</span>
         </p>
@@ -126,7 +126,7 @@ export function StandardRow({ s }: { s: MasteryStandard }) {
           {s.description}
         </p>
       </div>
-      <div className="text-right text-xs text-slate-600">
+      <div className="w-full min-w-0 text-xs text-slate-600 sm:w-auto sm:text-right [overflow-wrap:anywhere]">
         <p className="text-base font-semibold text-slate-900">{percent(s.level)}%</p>
         <p>
           <span aria-hidden>{trendMark(s.trend)} </span>
@@ -196,7 +196,7 @@ export function FamilyLearningCard({ studentId, firstName }: { studentId: string
   return (
     <Card title={t('learn.mastery.title')} description={t('learn.mastery.famDesc', { name: firstName })}>
       <div className="grid gap-6 md:grid-cols-2">
-        <div>
+        <div className="min-w-0">
           {mastery && mastery.standards.length > 0 ? (
             <>
               <div className="flex flex-wrap gap-2 text-xs">
@@ -216,7 +216,7 @@ export function FamilyLearningCard({ studentId, firstName }: { studentId: string
             <p className="text-sm text-slate-500">{t('learn.mastery.empty')}</p>
           )}
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">{t('learn.curve.title')}</p>
           {curve ? <CurveChart curve={curve} height={110} /> : <p className="text-sm text-slate-500">{t('learn.curve.empty')}</p>}
         </div>

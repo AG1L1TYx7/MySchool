@@ -327,6 +327,22 @@ GET    /library/moderation                            library.moderate: { pendin
 POST   /library/flags/{id}/resolve                    { action: dismiss | unpublish, note? }
 ```
 
+### Learning paths (Release 3 slice 23)
+
+```
+GET    /me/learning/profile                       learning.view (students): { student, health { score, band, parts[] }, mastery, attendance, work, practice, ai, flags, gaps[], recommendations[], paths[] }
+GET    /students/{id}/learning/profile            the same for family, the student's teachers and school staff
+GET    /me/learning/paths | /students/{id}/learning/paths   paths with steps, progress and hrefs
+POST   /students/{id}/learning/paths/generate     learning.records: { subject? } -> 201 path built from gaps; paths.no_gaps | paths.no_content (400)
+POST   /students/{id}/learning/paths              { title, goal?, steps: [{ kind, refId?, title, reason?, standardCode? }] } -> 201
+GET    /learning/paths/{id}                       PATCH { title?, goal?, status? } (learning.records); DELETE 204
+POST   /learning/paths/{id}/steps                 learning.records: add a step at the end
+PATCH  /learning/paths/{id}/steps/{sid}           { status?, position?, title?, reason? }; students may send status done | skipped only
+DELETE /learning/paths/{id}/steps/{sid}           learning.records
+GET    /classes/{id}/learning/paths               learning.records: every active and completed path in the class with progress
+Event  practice.reviewed                          emitted after a practice card review (also available to webhooks)
+```
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

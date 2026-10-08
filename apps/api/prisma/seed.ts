@@ -1370,6 +1370,32 @@ async function seedMotivation(organizationId: string): Promise<void> {
   );
 }
 
+/** The demo student is weak on one ELA standard, so the learning path demo (slice 23) has a gap to build from. */
+async function seedLearningGap(): Promise<void> {
+  const emma = await prisma.student.findFirst({
+    where: { studentNumber: 'S2026-000001' },
+  });
+  const standard = await prisma.standard.findFirst({
+    where: { code: 'CCSS.ELA-LITERACY.RL.7.3' },
+  });
+  if (!emma || !standard) return;
+  await prisma.masteryLevel.upsert({
+    where: {
+      studentId_standardId: { studentId: emma.id, standardId: standard.id },
+    },
+    update: {},
+    create: {
+      id: uuidv7(),
+      studentId: emma.id,
+      standardId: standard.id,
+      level: 0.3,
+      evidenceCount: 3,
+      trend: 'down',
+      lastEvidenceAt: new Date(),
+    },
+  });
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedH5pLibraries();
@@ -1383,6 +1409,7 @@ async function main(): Promise<void> {
   await seedGrading(orgId);
   await seedSupport(orgId);
   await seedMotivation(orgId);
+  await seedLearningGap();
 }
 
 main()

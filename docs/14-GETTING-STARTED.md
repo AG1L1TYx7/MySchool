@@ -170,6 +170,10 @@ Sign in as the principal and open Integrations. Webhooks: add an https endpoint 
 
 Sign in as the teacher and open Library. My items has the add form: pick a kind (interactive content from your own content, a document to upload, a web link, or one of your lesson plans), give it a subject, grade, topics and standards, choose who can see it, and press Add item; open the item and press Publish. School items go live at once; district and public items wait for a review, which the principal (district) or the superintendent (public) gives under Review. Browse searches by meaning when the AI service is running and by words otherwise. On an item, readers rate it, report a problem, copy it to their school, download the document or open the activity; curators add it to a collection, keep versions and restore an older one.
 
+## 4o. Learning paths
+
+Sign in as the student and open My learning: the health score with its five parts, where to focus, and ranked next steps. Sign in as the teacher, open Students, pick Emma Johnson and press Build a path from mastery: the path lists lessons, activities and library items for her weakest standards, with a practice step per standard. The student ticks steps on My learning, and steps also finish on their own when the lesson is completed, the activity is passed, the work is handed in or a practice session is done. The class page under Learning lists every path in the class.
+
 ## 5. Backups
 
 ```bash

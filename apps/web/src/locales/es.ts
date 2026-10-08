@@ -813,6 +813,9 @@ export const es: Record<MessageKey, string> = {
   'nav.integrations': 'Integraciones',
   // Library (slice 22)
   'nav.library': 'Biblioteca',
+  // Learning paths (slice 23)
+  'nav.paths': 'Mi aprendizaje',
+  'category.paths': 'Salud del aprendizaje, próximos pasos y rutas',
   'category.library': 'Contenido compartido, colecciones y revisión',
   'category.integrations': 'Webhooks, claves de API y LTI',
   'category.compliance': 'Mapa de datos, retención y eliminación',

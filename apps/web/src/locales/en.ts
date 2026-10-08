@@ -837,6 +837,9 @@ export const en = {
   'nav.integrations': 'Integrations',
   // Library (slice 22)
   'nav.library': 'Library',
+  // Learning paths (slice 23)
+  'nav.paths': 'My learning',
+  'category.paths': 'Learning health, next steps and paths',
   'category.library': 'Shared content, collections and review',
   'category.integrations': 'Webhooks, API keys and LTI',
   'category.compliance': 'Data map, retention and deletion',

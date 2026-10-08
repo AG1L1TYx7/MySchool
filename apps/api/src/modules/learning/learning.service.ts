@@ -1,3 +1,4 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ForbiddenException,
   Injectable,
@@ -5,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { domainEvent } from '../../common/events/domain-event';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ROLE_LEVEL } from '../access/roles';
@@ -70,6 +72,7 @@ export class LearningService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly motivation: MotivationService,
+    private readonly events: EventEmitter2,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -667,6 +670,17 @@ export class LearningService {
         },
       }),
     ]);
+    this.events.emit(
+      'practice.reviewed',
+      domainEvent({
+        eventType: 'practice.reviewed',
+        entityType: 'SrsCard',
+        entityId: card.id,
+        organizationId: student.organizationId,
+        actorId: actor.id,
+        data: { cardId: card.id, studentId: student.id, quality: dto.quality },
+      }),
+    );
     const actorUser = await this.prisma.user.findUnique({
       where: { id: actor.id },
       select: { firstName: true, lastName: true },

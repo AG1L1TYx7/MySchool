@@ -201,6 +201,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Entities.** `StudentProfiles`, `PerformanceRecords`, `LearningPaths`, `LearningPathSteps`, `ContentRecommendations`, `AssessmentResults`, `InterventionPlans`, `InterventionActions` (written by the AI service, read by the LMS).
 **Routes.** `/api/ContentRecommendations` (22). AI service: `/api/ai/profile/*`, `/api/ai/predict/*`, `/api/ai/analytics/*`, `/api/ai/path/*`, `/api/ai/personalize/*`, `/api/ai/recommend/*`.
 **Status.** Real.
+**Release 3 (slice 23).** Learning paths rebuilt on `LearningPaths` and `LearningPathSteps` (kind lesson | h5p | library | practice | assignment | tutor, order, reason, standard, status pending | in_progress | done | skipped, evidence). `POST /students/{id}/learning/paths/generate` builds a path from the student's weakest standards (below 60% with evidence) and the content that teaches them: published lessons of their courses carrying the standard, the lesson's activity, and library items naming the code; then a practice step per standard. Teachers also build paths by hand, add, reorder, retitle and remove steps; students tick steps done or skipped; lesson completions, passing activity results, submissions, grades and practice sessions finish matching steps on their own; a path completes when nothing is left. Recommendations (`GET /me/learning/profile`) are ranked without a model: missing work first, then content for the weakest gaps (or the tutor when nothing teaches the standard yet), due practice, the next lesson. Not rebuilt: the AI service's profile, prediction and personalisation endpoints, intervention plans (the counselor caseload covers interventions).
 
 ## 23. H5P interactive content
 
@@ -257,6 +258,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Capabilities.** A holistic student view combining mastery, spaced repetition, cognitive load, SEL and accessibility into a learning health score with AI recommendations; cross-feature analytics.
 **Routes.** `/api/v1/integrated` (29).
 **Status.** Partial. Some insights were simulated and one metric was a constant; target computes from the underlying tables and calls the AI analytics endpoints.
+**Release 3 (slice 23).** Rebuilt as the integrated learning profile at `GET /me/learning/profile` and `GET /students/{id}/learning/profile`: a learning health score out of 100 from five weighted parts (mastery 35%, attendance 20%, work 25%, practice 10%, engagement 10%), each with its score and a sentence saying what it counted; parts without evidence score a neutral 60 and say so, so nobody is "thriving" or "needs support" by accident. Around it: mastery summary, attendance, missing and late work, failing classes, practice due and reviews, AI conversations, risk flags, gaps, ranked next steps and active paths. Nothing is simulated; every number comes from the tables the other slices fill. Not rebuilt: SEL, cognitive load and accessibility signals inside the score (wellness stays with the counselor caseload).
 
 ## 30. Content library, collections and analytics
 

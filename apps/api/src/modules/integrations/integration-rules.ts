@@ -30,6 +30,7 @@ export const WEBHOOK_EVENT_TYPES = [
   'announcement.published',
   'message.sent',
   'lesson.completed',
+  'practice.reviewed',
 ] as const;
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 

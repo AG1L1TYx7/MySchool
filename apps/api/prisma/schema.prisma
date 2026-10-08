@@ -396,6 +396,8 @@ model Organization {
   libraryItems       LibraryItem[]
   libraryCollections LibraryCollection[]
 
+  learningPaths LearningPath[]
+
   @@index([tenantId])
   @@index([name])
   @@index([isActive, deletedAt])
@@ -501,6 +503,8 @@ model User {
   libraryFlags       LibraryFlag[]
   libraryCollections LibraryCollection[]
   libraryFollows     LibraryCollectionFollower[]
+
+  learningPathsCreated LearningPath[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -615,6 +619,8 @@ model Student {
   srsReviews       SrsReview[]
   mastery          MasteryLevel[]
   deletionRequests DeletionRequest[]
+
+  learningPaths LearningPath[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -2812,4 +2818,51 @@ model LibraryCollectionFollower {
 
   @@unique([collectionId, userId])
   @@map("LibraryCollectionFollowers")
+}
+
+/// Learning paths (slice 23): a sequence of steps for one student, built from mastery gaps or by a teacher,
+/// with each step tied to a lesson, interactive content, a library item, practice or an assignment.
+model LearningPath {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  studentId      String    @map("StudentId") @db.Char(36)
+  createdById    String?   @map("CreatedById") @db.Char(36)
+  title          String    @map("Title") @db.VarChar(200)
+  goal           String?   @map("Goal") @db.Text
+  source         String    @default("generated") @map("Source") @db.VarChar(16)
+  status         String    @default("active") @map("Status") @db.VarChar(16)
+  rationale      String?   @map("Rationale") @db.Text
+  completedAt    DateTime? @map("CompletedAt") @db.DateTime(6)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  student      Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy    User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  steps        LearningPathStep[]
+
+  @@index([studentId, status])
+  @@index([organizationId, status, updatedAt])
+  @@map("LearningPaths")
+}
+
+model LearningPathStep {
+  id           String    @id @map("Id") @db.Char(36)
+  pathId       String    @map("PathId") @db.Char(36)
+  sortOrder    Int       @map("SortOrder")
+  kind         String    @map("Kind") @db.VarChar(16)
+  refId        String?   @map("RefId") @db.Char(36)
+  title        String    @map("Title") @db.VarChar(200)
+  reason       String?   @map("Reason") @db.VarChar(500)
+  standardCode String?   @map("StandardCode") @db.VarChar(80)
+  status       String    @default("pending") @map("Status") @db.VarChar(16)
+  evidence     String?   @map("Evidence") @db.VarChar(500)
+  completedAt  DateTime? @map("CompletedAt") @db.DateTime(6)
+  createdAt    DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  path LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  @@index([pathId, sortOrder])
+  @@index([kind, refId])
+  @@map("LearningPathSteps")
 }

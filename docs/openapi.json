@@ -14437,6 +14437,423 @@
         ]
       }
     },
+    "/api/v1/me/learning/profile": {
+      "get": {
+        "operationId": "PathsController_myProfile_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My integrated learning profile: health score with its parts, gaps, next steps and active paths",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/me/learning/paths": {
+      "get": {
+        "operationId": "PathsController_myPaths_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My learning paths",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/learning/profile": {
+      "get": {
+        "operationId": "PathsController_profile_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's integrated learning profile (family, their teachers and school staff)",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/learning/paths": {
+      "get": {
+        "operationId": "PathsController_list_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's learning paths",
+        "tags": [
+          "Learning paths"
+        ]
+      },
+      "post": {
+        "operationId": "PathsController_create_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a path by hand with its steps",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/learning/paths/generate": {
+      "post": {
+        "operationId": "PathsController_generate_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeneratePathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Build a path from the weakest standards and the content that teaches them (optional { subject })",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/learning/paths/{id}": {
+      "get": {
+        "operationId": "PathsController_get_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One path with its steps and progress",
+        "tags": [
+          "Learning paths"
+        ]
+      },
+      "patch": {
+        "operationId": "PathsController_update_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename, set the goal or change the status of a path",
+        "tags": [
+          "Learning paths"
+        ]
+      },
+      "delete": {
+        "operationId": "PathsController_remove_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a path",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/learning/paths/{id}/steps": {
+      "post": {
+        "operationId": "PathsController_addStep_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a step at the end",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/learning/paths/{id}/steps/{stepId}": {
+      "patch": {
+        "operationId": "PathsController_updateStep_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stepId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStepDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Students: mark a step done or skipped. Staff: also retitle, reorder (position) or reset it",
+        "tags": [
+          "Learning paths"
+        ]
+      },
+      "delete": {
+        "operationId": "PathsController_removeStep_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stepId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a step",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/learning/paths": {
+      "get": {
+        "operationId": "PathsController_classPaths_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every active and completed path of the students in a class",
+        "tags": [
+          "Learning paths"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -18500,7 +18917,8 @@
                 "report_card.published",
                 "announcement.published",
                 "message.sent",
-                "lesson.completed"
+                "lesson.completed",
+                "practice.reviewed"
               ]
             }
           },
@@ -18960,6 +19378,113 @@
         "required": [
           "action"
         ]
+      },
+      "GeneratePathDto": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Limit the gaps to one subject"
+          }
+        }
+      },
+      "StepInputDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "lesson",
+              "h5p",
+              "library",
+              "practice",
+              "assignment",
+              "tutor"
+            ]
+          },
+          "refId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Lesson, interactive content, library item or assignment id"
+          },
+          "title": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "standardCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title"
+        ]
+      },
+      "CreatePathDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepInputDto"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "steps"
+        ]
+      },
+      "UpdatePathDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "archived"
+            ]
+          }
+        }
+      },
+      "UpdateStepDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "done",
+              "skipped"
+            ]
+          },
+          "position": {
+            "type": "number",
+            "description": "Move to this position (1-based)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
       }
     }
   }

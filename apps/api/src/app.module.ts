@@ -36,6 +36,7 @@ import { ComplianceModule } from './modules/compliance/compliance.module';
 import { DistrictModule } from './modules/district/district.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { LibraryModule } from './modules/library/library.module';
+import { PathsModule } from './modules/paths/paths.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { InsightModule } from './modules/insight/insight.module';
 import { MobileModule } from './modules/mobile/mobile.module';
@@ -143,6 +144,7 @@ import { UsersModule } from './modules/users/users.module';
     DistrictModule,
     IntegrationsModule,
     LibraryModule,
+    PathsModule,
     HealthModule,
     MetricsModule,
   ],
