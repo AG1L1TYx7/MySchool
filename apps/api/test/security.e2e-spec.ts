@@ -244,6 +244,8 @@ describe('Security (e2e)', () => {
 
   afterAll(async () => {
     await prisma.organization.deleteMany({ where: { id: orgB } });
+    // Drop pooled sockets first so the listening server can close at once.
+    keepAlive.destroy();
     await app.close();
     stub.server.close();
   });

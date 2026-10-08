@@ -9,6 +9,7 @@ jobs:
   api:
     name: API on ${{ matrix.db.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +58,7 @@ jobs:
       - name: End-to-end tests (failures are copied to the job summary)
         run: |
           status=0
-          pnpm --filter @smartschool/api test:e2e --runInBand > e2e.log 2>&1 || status=$?
+          pnpm --filter @smartschool/api test:e2e --runInBand --forceExit > e2e.log 2>&1 || status=$?
           grep -avE '^\{"level"' e2e.log | tail -150
           {
             echo '## End-to-end'
