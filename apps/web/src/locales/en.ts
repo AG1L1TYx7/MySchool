@@ -835,6 +835,9 @@ export const en = {
   'auth.hostedBy': 'Hosted for {name}',
   // Integrations (slice 21)
   'nav.integrations': 'Integrations',
+  // Library (slice 22)
+  'nav.library': 'Library',
+  'category.library': 'Shared content, collections and review',
   'category.integrations': 'Webhooks, API keys and LTI',
   'category.compliance': 'Data map, retention and deletion',
   'records.title': 'Your records',

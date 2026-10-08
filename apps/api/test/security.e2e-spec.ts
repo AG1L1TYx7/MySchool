@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import type { Server } from 'node:http';
+import { Agent, type Server } from 'node:http';
 import argon2 from 'argon2';
 import request from 'supertest';
 import { AI_STUB_PORT, AI_STUB_TOKEN } from './ai-env';
@@ -12,6 +12,8 @@ import { PrismaService } from '../src/infra/prisma/prisma.service';
 import { routeCatalog } from './route-catalog';
 import { startAiStub } from './ai-stub';
 
+// The sweeps make thousands of requests; one pooled connection set keeps Windows from running out of ports.
+const keepAlive = new Agent({ keepAlive: true, maxSockets: 8 });
 const PASSWORD = 'SmartSchool!Demo2026';
 const ROLES = [
   'super_admin',
@@ -125,6 +127,8 @@ describe('Security (e2e)', () => {
       }),
     );
     await app.init();
+    // Listen once: supertest otherwise opens and closes a listening port for every request, which exhausts Windows ephemeral ports.
+    await app.listen(0);
     server = app.getHttpServer() as Server;
     prisma = app.get(PrismaService);
     for (const r of ROLES) await login(r, DEMO_EMAIL[r]);
@@ -265,6 +269,7 @@ describe('Security (e2e)', () => {
       if (PUBLIC_PREFIXES.some((re) => re.test(r.path))) continue;
       const res = await request(server)
         [r.method](`/api/v1${fill(r.path)}`)
+        .agent(keepAlive)
         .send({});
       if (res.status !== 401)
         failures.push(`${r.method.toUpperCase()} ${r.path} -> ${res.status}`);
@@ -299,6 +304,7 @@ describe('Security (e2e)', () => {
           const url = `/api/v1${fill(r.path)}`;
           const res = await request(server)
             [r.method](url)
+            .agent(keepAlive)
             .set(as(role))
             .send(body);
           const id = `${r.method.toUpperCase()} ${r.path} as ${role}`;

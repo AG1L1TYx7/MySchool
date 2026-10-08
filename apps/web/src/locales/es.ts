@@ -811,6 +811,9 @@ export const es: Record<MessageKey, string> = {
   'auth.hostedBy': 'Alojado para {name}',
   // Integrations (slice 21)
   'nav.integrations': 'Integraciones',
+  // Library (slice 22)
+  'nav.library': 'Biblioteca',
+  'category.library': 'Contenido compartido, colecciones y revisión',
   'category.integrations': 'Webhooks, claves de API y LTI',
   'category.compliance': 'Mapa de datos, retención y eliminación',
   'records.title': 'Sus registros',

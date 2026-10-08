@@ -132,6 +132,25 @@ export class FilesService {
     };
   }
 
+  /** Where a stored file lives, for callers that have already decided the person may have it (the library). */
+  async pathFor(
+    id: string,
+  ): Promise<{ absolutePath: string; fileName: string; mimeType: string }> {
+    const row = await this.prisma.fileUpload.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!row)
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'File not found.',
+      });
+    return {
+      absolutePath: path.resolve(this.config.get('UPLOAD_DIR'), row.storedPath),
+      fileName: row.originalName,
+      mimeType: row.mimeType,
+    };
+  }
+
   /** Soft delete in the database; the bytes are removed best-effort. */
   async remove(id: string, actor: AuthenticatedUser): Promise<void> {
     const row = await this.prisma.fileUpload.findFirst({
@@ -223,7 +242,12 @@ export class FilesService {
         actor.role === 'ASSISTANT')
     )
       return row;
-    if (await this.hasFeature(actor, 'files.manage')) return row;
+    // A file manager reaches every file of their own organisation, never another school's (security pass 3).
+    if (
+      sameOrganization(row, actor) &&
+      (await this.hasFeature(actor, 'files.manage'))
+    )
+      return row;
     const viaMessage = await this.prisma.messageFile.count({
       where: {
         fileId: id,

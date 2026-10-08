@@ -20,6 +20,7 @@ const NAV: Array<{ href: string; label: MessageKey; feature: string; roles?: str
   { href: '/motivation', label: 'nav.motivation', feature: 'motivation.view', roles: ['student'] },
   { href: '/practice', label: 'nav.practice', feature: 'learning.view', roles: ['student'] },
   { href: '/family', label: 'nav.family', feature: 'family.view' },
+  { href: '/library', label: 'nav.library', feature: 'library.view' },
   { href: '/courses', label: 'nav.courses', feature: 'courses.view' },
   { href: '/classes', label: 'nav.classes', feature: 'classes.view' },
   { href: '/assignments', label: 'nav.assignments', feature: 'assignments.view' },

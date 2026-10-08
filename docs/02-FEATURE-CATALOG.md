@@ -102,6 +102,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Entities.** `FileUploads`, `DigitalResources`, `ResourceClassAccess`, `ResourceRatings`.
 **Routes.** `/api/File` (5), `/api/v1/library` (13).
 **Status.** Real; storage is local disk.
+**Release 3 (slice 22).** Library rebuilt as `LibraryItems` (kind h5p | document | link | lesson_plan; subject, grade, topics, standards, keywords; visibility private | school | district | public; status draft | pending_review | published | rejected | archived; version, featured, view, download and copy counts, rating sum and count, source item for copies, reviewer and note) with `LibraryItemVersions` (a snapshot per content change, restorable), `LibraryRatings` (one per person), `LibraryFlags` (reports with a resolution), `LibraryCollections`, `LibraryCollectionItems` and `LibraryCollectionFollowers`. Documents are existing uploads; `GET /library/items/{id}/download` serves the file to anyone who may see the item and counts it. Not rebuilt: class access grants and the featured flag as a separate list (featured is a field).
 
 ## 11. Notifications and push
 
@@ -264,6 +265,7 @@ Route paths in this catalog describe the previous implementation; the target rou
 **Routes.** `/api/ContentLibrary` (29), `/api/ContentCollections` (34), `/api/ContentAnalytics` (19).
 **AI.** `/api/ai/search/semantic`, `/api/ai/embed/content`, `/api/ai/tag/auto`, generation endpoints.
 **Status.** Real.
+**Release 3 (slice 22).** The content library is the same `/library` catalogue (section 10): visibility and review (`library-rules.ts`: school items publish at once, district items need a school administrator, public items a district role; lowering reach never needs review; creators and school administrators always see their items), versions on every content change with restore, ratings, reports with a moderation queue (`GET /library/moderation`, approve or reject, dismiss or take down), copies into another school (interactive content is duplicated through the H5P service, documents and links point at the same source; the original counts the copy), collections with followers, and semantic search: published items are embedded through the AI service (`/v1/rag/index`) in a per-district namespace and, when public, a shared one; `GET /library/items/search` merges the nearest matches with keyword matches and says whether the AI service answered. Not rebuilt: comments, creator profiles, trending and effectiveness analytics, curated learning paths (slice 23).
 
 ## 31. Community and forums
 

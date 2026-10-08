@@ -304,6 +304,29 @@ GET    /classes/{id}/exports/common-cartridge.imscc     assignments.view + class
 GET    /audit-logs/export.csv                           audit.logs.view: same filters as the list, 50,000 rows at most (audited audit.export)
 ```
 
+### Library (Release 3 slice 22)
+
+```
+GET    /library/meta                                  kinds, visibilities, flag reasons
+GET    /library/items                                 library.view: paged, filters q | kind | subject | gradeLevel | featured | collectionId; mine=true (+status) for your own in any state
+GET    /library/items/search?q=&kind=&limit=          { query, semantic, data: items with score } (meaning through the AI service, merged with keyword matches)
+POST   /library/items                                 library.create: { kind, title, description?, subject?, gradeLevel?, topics[]?, standards[]?, keywords?, visibility?, h5pContentId | fileId | url | lessonPlanId } -> 201 draft
+GET    /library/items/{id}                            item with versions, myRating, collections; counts a view
+PATCH  /library/items/{id}                            fields above + parameters? (interactive) + versionNote?; content changes add a version; widening reach may set pending_review
+DELETE /library/items/{id}                            204 (soft delete, removed from the index)
+POST   /library/items/{id}/publish | unpublish | archive
+POST   /library/items/{id}/review                     library.moderate: { decision: approve | reject, note? } (district reach: school administrator; public reach: district role)
+POST   /library/items/{id}/flag                       { reason: inaccurate | inappropriate | copyright | broken | other, details? }
+POST   /library/items/{id}/rate                       { stars 1..5, comment? }; library.own_item (400) for the creator
+POST   /library/items/{id}/copy                       library.create: private draft copy in your school (interactive content duplicated)
+GET    /library/items/{id}/versions                   newest first, with snapshots
+POST   /library/items/{id}/versions/{n}/restore       the old version becomes the newest
+GET    /library/items/{id}/download                   the document behind the item
+GET    /library/collections                           POST { title, description?, visibility? }; GET/PATCH/DELETE /{id}; POST /{id}/items { itemId }; DELETE /{id}/items/{itemId}; POST|DELETE /{id}/follow
+GET    /library/moderation                            library.moderate: { pending[], flags[] }
+POST   /library/flags/{id}/resolve                    { action: dismiss | unpublish, note? }
+```
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

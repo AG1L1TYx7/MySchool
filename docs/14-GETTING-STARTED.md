@@ -166,6 +166,10 @@ Sign in as the superintendent and open District. Overview shows every school in 
 
 Sign in as the principal and open Integrations. Webhooks: add an https endpoint (http is allowed on localhost while developing), tick the events, copy the secret shown once, press Send test and open Deliveries to see the attempt; a receiver checks `X-Webhook-Signature` as the sha256 HMAC of `timestamp.body`. API keys: name the key, tick its scopes, copy the key shown once and call the API with `X-Api-Key`; revoke it from the list. LTI 1.3: the first card shows the URLs to register SmartSchool in Canvas (or use `/api/v1/lti/config.json?organizationId=`), then add the platform's issuer, client id, authorization and JWKS URLs; under Tools register an outside tool and give it the details shown, after which Open appears on every class page. On a gradebook, For Canvas and For Google Classroom download grade sheets in those layouts. On the audit log, Export CSV downloads the filtered trail. Set `API_PUBLIC_URL` to the address platforms and tools reach the API at.
 
+## 4n. Library
+
+Sign in as the teacher and open Library. My items has the add form: pick a kind (interactive content from your own content, a document to upload, a web link, or one of your lesson plans), give it a subject, grade, topics and standards, choose who can see it, and press Add item; open the item and press Publish. School items go live at once; district and public items wait for a review, which the principal (district) or the superintendent (public) gives under Review. Browse searches by meaning when the AI service is running and by words otherwise. On an item, readers rate it, report a problem, copy it to their school, download the document or open the activity; curators add it to a collection, keep versions and restore an older one.
+
 ## 5. Backups
 
 ```bash

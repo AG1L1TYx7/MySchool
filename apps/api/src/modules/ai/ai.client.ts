@@ -305,4 +305,55 @@ export class AiClient {
       this.recordFailure(err);
     }
   }
+
+  /** Nearest chunks for a query inside one namespace (an organisation id or a library namespace). */
+  async ragSearch(
+    query: string,
+    organizationId: string,
+    k = 20,
+  ): Promise<
+    Array<{ docId: string; title: string; text: string; score: number }>
+  > {
+    this.assertCircuitClosed();
+    try {
+      const res = await fetch(`${this.baseUrl}/v1/rag/search`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({ query, organizationId, k }),
+        signal: AbortSignal.timeout(this.config.get('AI_SERVICE_TIMEOUT_MS')),
+      });
+      if (!res.ok) throw new Error(`AI service responded ${res.status}`);
+      this.consecutiveFailures = 0;
+      const body = (await res.json()) as {
+        data: Array<{
+          docId: string;
+          title: string;
+          text: string;
+          score: number;
+        }>;
+      };
+      return body.data;
+    } catch (err) {
+      this.recordFailure(err);
+    }
+  }
+
+  async ragDelete(docId: string): Promise<void> {
+    this.assertCircuitClosed();
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/v1/rag/documents/${encodeURIComponent(docId)}`,
+        {
+          method: 'DELETE',
+          headers: this.headers(),
+          signal: AbortSignal.timeout(this.config.get('AI_SERVICE_TIMEOUT_MS')),
+        },
+      );
+      if (!res.ok && res.status !== 404)
+        throw new Error(`AI service responded ${res.status}`);
+      this.consecutiveFailures = 0;
+    } catch (err) {
+      this.recordFailure(err);
+    }
+  }
 }

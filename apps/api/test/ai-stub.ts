@@ -14,6 +14,10 @@ export function startAiStub(
 }> {
   const calls: Array<Record<string, unknown>> = [];
   const jobs: Record<string, Record<string, unknown>> = {};
+  const ragDocs = new Map<
+    string,
+    { organizationId: string; title: string; text: string }
+  >();
   const server = createServer((req, res) => {
     let body = '';
     req.on('data', (c: Buffer) => (body += c.toString()));
@@ -77,7 +81,63 @@ export function startAiStub(
         res.end(JSON.stringify(job ?? { code: 'resource.not_found' }));
         return;
       }
+      if (
+        req.method === 'DELETE' &&
+        req.url?.startsWith('/v1/rag/documents/')
+      ) {
+        const id = decodeURIComponent(
+          req.url.slice('/v1/rag/documents/'.length),
+        );
+        const deleted = ragDocs.delete(id) ? 1 : 0;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ deleted }));
+        return;
+      }
+      if (req.url === '/v1/rag/search') {
+        const q = envelope as {
+          query: string;
+          organizationId: string;
+          k?: number;
+        };
+        const words = q.query
+          .toLowerCase()
+          .split(/\W+/)
+          .filter((w) => w.length > 2);
+        const data = [...ragDocs.entries()]
+          .filter(([, d]) => d.organizationId === q.organizationId)
+          .map(([docId, d]) => {
+            const hay = `${d.title} ${d.text}`.toLowerCase();
+            const score =
+              words.filter((w) => hay.includes(w)).length /
+              Math.max(1, words.length);
+            return {
+              chunkId: `${docId}:0`,
+              docId,
+              lessonId: null,
+              title: d.title,
+              text: d.text.slice(0, 200),
+              score,
+            };
+          })
+          .filter((h) => h.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, q.k ?? 20);
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ data }));
+        return;
+      }
       if (req.url === '/v1/rag/index') {
+        for (const d of envelope.documents as Array<{
+          docId: string;
+          organizationId: string;
+          title: string;
+          text: string;
+        }>)
+          ragDocs.set(d.docId, {
+            organizationId: d.organizationId,
+            title: d.title,
+            text: d.text,
+          });
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(
           JSON.stringify({

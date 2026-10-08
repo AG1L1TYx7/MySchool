@@ -38,6 +38,10 @@ Everything else the suite checks already held: every other route guarded, 401 wi
 
 The route catalogue grew by the learning, insight, mobile, push and compliance routes and every one is covered by the role matrix and the second-school probes automatically. New probes: school B's family and staff against school A's records export, deletion requests, legal hold and incidents; a device token registered by one person cannot be removed by another; a replayed tutor message with a known client id never produces a second answer. Found and fixed: a principal or counselor of another school could read a class's mastery summary and learning curve (the learning module checked the school only for counselors); the records export is limited in the service to the family, counselors and administrators even though record readers can reach the route. No new vulnerability class was found.
 
+## 2c. Third pass (7 October 2026, slice 22)
+
+The id-based probe in `test/security.e2e-spec.ts` caught a real gap once the library spec left a teacher's upload in school A: a principal of school B could read `GET /files/{id}` for that file, because the file-manager branch of `findAccessible` checked the feature but not the organisation. Fixed by requiring the same organisation on that branch (district roles keep their reach). The library routes themselves were added to the catalogue check and the per-role feature sweep with no findings; library visibility is decided by `canSee` in `library-rules.ts`, unit-tested for every reach and role.
+
 ## 3. Not tested yet, and honest about it
 
 - **A human penetration test.** The suite is systematic but it only asks the questions we thought of. A third party should attack the pilot deployment before a district signs the data-privacy agreement (docs/13 section 10).

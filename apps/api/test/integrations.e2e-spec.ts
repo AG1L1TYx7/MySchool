@@ -35,6 +35,7 @@ interface Webhook {
 }
 interface Delivery {
   id: string;
+  eventId: string;
   eventType: string;
   status: string;
   attempts: number;
@@ -277,7 +278,11 @@ describe('Integrations (e2e)', () => {
     const row = await until(
       () =>
         prisma.webhookDelivery.findFirst({
-          where: { subscriptionId: webhookId, eventType: 'assignment.created' },
+          where: {
+            subscriptionId: webhookId,
+            eventType: 'assignment.created',
+            payload: { contains: assignmentId },
+          },
         }),
       (v) => v !== null,
     );
@@ -285,7 +290,9 @@ describe('Integrations (e2e)', () => {
     const sent = await app.get(WebhooksService).deliverDue();
     expect(sent).toBeGreaterThanOrEqual(1);
     const hit = received.find(
-      (r) => r.headers['x-webhook-event'] === 'assignment.created',
+      (r) =>
+        r.headers['x-webhook-event'] === 'assignment.created' &&
+        (JSON.parse(r.body) as { entityId: string }).entityId === assignmentId,
     );
     expect(hit).toBeDefined();
     expect(JSON.parse(hit?.body ?? '{}')).toMatchObject({
@@ -297,7 +304,7 @@ describe('Integrations (e2e)', () => {
       .set(as('principal'))
       .expect(200);
     const rows = (deliveries.body as { data: Delivery[] }).data;
-    expect(rows.find((d) => d.eventType === 'assignment.created')?.status).toBe(
+    expect(rows.find((d) => d.eventId === row?.eventId)?.status).toBe(
       'delivered',
     );
     // Events outside the filter never queue.
@@ -310,7 +317,12 @@ describe('Integrations (e2e)', () => {
     const res = await request(server)
       .post(`/api/v1/organizations/${orgId}/webhooks`)
       .set(as('principal'))
-      .send({ name: `Flaky ${stamp}`, url: `${localBase}/fail`, retryLimit: 1 })
+      .send({
+        name: `Flaky ${stamp}`,
+        events: ['lesson.completed'],
+        url: `${localBase}/fail`,
+        retryLimit: 1,
+      })
       .expect(201);
     const id = (res.body as Webhook).id;
     const first = await request(server)
@@ -323,7 +335,7 @@ describe('Integrations (e2e)', () => {
       responseCode: 500,
     });
     const row = await prisma.webhookDelivery.findFirstOrThrow({
-      where: { subscriptionId: id },
+      where: { subscriptionId: id, eventType: 'webhook.test' },
     });
     expect(row.nextAttemptAt.getTime()).toBeGreaterThan(Date.now() + 30_000);
     await prisma.webhookDelivery.update({

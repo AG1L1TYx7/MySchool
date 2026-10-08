@@ -341,6 +341,14 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     ADMINS,
   ),
   f('lti.launch', 'Open external LTI tools', 'Integrations', ALL),
+  f('library.view', 'Browse the library', 'Library', ALL),
+  f(
+    'library.create',
+    'Add to the library and curate collections',
+    'Library',
+    STAFF_AND_ASSISTANT,
+  ),
+  f('library.moderate', 'Review and moderate library items', 'Library', ADMINS),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

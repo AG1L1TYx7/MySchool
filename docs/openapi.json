@@ -13443,6 +13443,1000 @@
         ]
       }
     },
+    "/api/v1/library/meta": {
+      "get": {
+        "operationId": "LibraryController_meta_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Kinds, visibilities and flag reasons",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items": {
+      "get": {
+        "operationId": "LibraryController_list_api/v1",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated fields; prefix with - for descending, e.g. -createdAt,lastName",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Words in the title, description or keywords",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "h5p",
+                "document",
+                "link",
+                "lesson_plan"
+              ]
+            }
+          },
+          {
+            "name": "subject",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gradeLevel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mine",
+            "required": false,
+            "in": "query",
+            "description": "true: only items I created, any status",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "With mine=true: filter by status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "pending_review",
+                "published",
+                "rejected",
+                "archived"
+              ]
+            }
+          },
+          {
+            "name": "featured",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "collectionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Browse items you may see (filters: q, kind, subject, gradeLevel, featured, collectionId; mine=true for your own)",
+        "tags": [
+          "Library"
+        ]
+      },
+      "post": {
+        "operationId": "LibraryController_create_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLibraryItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add an item (interactive content, document, link or lesson plan) as a private draft",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/search": {
+      "get": {
+        "operationId": "LibraryController_search_api/v1",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "fractions practice for fifth grade",
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "h5p",
+                "document",
+                "link",
+                "lesson_plan"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search by meaning through the AI service, merged with keyword matches",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}": {
+      "get": {
+        "operationId": "LibraryController_get_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One item with its versions, your rating and the collections it is in",
+        "tags": [
+          "Library"
+        ]
+      },
+      "patch": {
+        "operationId": "LibraryController_update_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLibraryItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change an item; content changes become a new version; widening reach may need review",
+        "tags": [
+          "Library"
+        ]
+      },
+      "delete": {
+        "operationId": "LibraryController_remove_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove an item from the library (soft delete)",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/publish": {
+      "post": {
+        "operationId": "LibraryController_publish_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publish, or submit for review when the reach needs an approver",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/unpublish": {
+      "post": {
+        "operationId": "LibraryController_unpublish_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Back to draft",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/archive": {
+      "post": {
+        "operationId": "LibraryController_archive_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archive (kept for the record, no longer listed)",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/review": {
+      "post": {
+        "operationId": "LibraryController_review_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve or reject an item waiting for review",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/flag": {
+      "post": {
+        "operationId": "LibraryController_flag_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report an item to its moderators",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/rate": {
+      "post": {
+        "operationId": "LibraryController_rate_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RateItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rate an item one to five stars (one rating per person, replaced on repeat)",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/copy": {
+      "post": {
+        "operationId": "LibraryController_copy_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Copy an item into your own school as a private draft (remix)",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/versions": {
+      "get": {
+        "operationId": "LibraryController_versions_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Version history with snapshots",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/versions/{version}/restore": {
+      "post": {
+        "operationId": "LibraryController_restore_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring an earlier version back as a new version",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/items/{id}/download": {
+      "get": {
+        "operationId": "LibraryController_download_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download the document behind an item",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/collections": {
+      "get": {
+        "operationId": "LibraryController_collections_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Collections you may see",
+        "tags": [
+          "Library"
+        ]
+      },
+      "post": {
+        "operationId": "LibraryController_createCollection_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCollectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a collection",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/collections/{id}": {
+      "get": {
+        "operationId": "LibraryController_collection_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A collection with its items",
+        "tags": [
+          "Library"
+        ]
+      },
+      "patch": {
+        "operationId": "LibraryController_updateCollection_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCollectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a collection",
+        "tags": [
+          "Library"
+        ]
+      },
+      "delete": {
+        "operationId": "LibraryController_removeCollection_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a collection",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/collections/{id}/items": {
+      "post": {
+        "operationId": "LibraryController_addItem_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCollectionItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add an item to a collection",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/collections/{id}/items/{itemId}": {
+      "delete": {
+        "operationId": "LibraryController_removeItem_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take an item out of a collection",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/collections/{id}/follow": {
+      "post": {
+        "operationId": "LibraryController_follow_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Follow a collection",
+        "tags": [
+          "Library"
+        ]
+      },
+      "delete": {
+        "operationId": "LibraryController_unfollow_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stop following a collection",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/moderation": {
+      "get": {
+        "operationId": "LibraryController_moderation_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Items waiting for your review and open reports",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
+    "/api/v1/library/flags/{id}/resolve": {
+      "post": {
+        "operationId": "LibraryController_resolveFlag_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveFlagDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Close a report: dismiss it or take the item down",
+        "tags": [
+          "Library"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -17694,6 +18688,278 @@
             "type": "boolean"
           }
         }
+      },
+      "CreateLibraryItemDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "string"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "standards": {
+            "description": "Standard codes, for example CCSS.MATH.5.NF.1",
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "keywords": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "school",
+              "district",
+              "public"
+            ]
+          },
+          "h5pContentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string"
+          },
+          "lessonPlanId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "featured": {
+            "type": "boolean",
+            "description": "Administrators: pin to the top"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "h5p",
+              "document",
+              "link",
+              "lesson_plan"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UpdateLibraryItemDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "string"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "standards": {
+            "description": "Standard codes, for example CCSS.MATH.5.NF.1",
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "keywords": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "school",
+              "district",
+              "public"
+            ]
+          },
+          "h5pContentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string"
+          },
+          "lessonPlanId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "featured": {
+            "type": "boolean",
+            "description": "Administrators: pin to the top"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Interactive content only: new parameters stored as a version"
+          },
+          "versionNote": {
+            "type": "string"
+          }
+        }
+      },
+      "ReviewItemDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "FlagItemDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "inaccurate",
+              "inappropriate",
+              "copyright",
+              "broken",
+              "other"
+            ]
+          },
+          "details": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "RateItemDto": {
+        "type": "object",
+        "properties": {
+          "stars": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stars"
+        ]
+      },
+      "CreateCollectionDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "school",
+              "district",
+              "public"
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "UpdateCollectionDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "school",
+              "district",
+              "public"
+            ]
+          },
+          "featured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AddCollectionItemDto": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "itemId"
+        ]
+      },
+      "ResolveFlagDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "dismiss",
+              "unpublish"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ]
       }
     }
   }

@@ -393,6 +393,9 @@ model Organization {
   securityIncidents SecurityIncident[]
   srsCards          SrsCard[]
 
+  libraryItems       LibraryItem[]
+  libraryCollections LibraryCollection[]
+
   @@index([tenantId])
   @@index([name])
   @@index([isActive, deletedAt])
@@ -492,6 +495,12 @@ model User {
 
   apiKeys      ApiKey[]
   ltiUserLinks LtiUserLink[]
+
+  libraryItems       LibraryItem[]
+  libraryRatings     LibraryRating[]
+  libraryFlags       LibraryFlag[]
+  libraryCollections LibraryCollection[]
+  libraryFollows     LibraryCollectionFollower[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -852,6 +861,8 @@ model FileUpload {
   submissionFiles SubmissionFile[]
   messageFiles    MessageFile[]
 
+  libraryItems LibraryItem[]
+
   @@index([organizationId, category, deletedAt])
   @@index([uploaderId])
   @@map("FileUploads")
@@ -1117,6 +1128,8 @@ model H5PContent {
   createdBy    User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
   assignments  Assignment[]
   results      H5PContentResult[]
+
+  libraryItems LibraryItem[]
 
   @@index([organizationId, status, deletedAt])
   @@map("H5PContents")
@@ -2140,6 +2153,8 @@ model LessonPlan {
   course       Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
   lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
 
+  libraryItems LibraryItem[]
+
   @@index([organizationId, authorId, updatedAt])
   @@index([classId, scheduledOn])
   @@map("LessonPlans")
@@ -2644,4 +2659,157 @@ model LtiKey {
   createdAt  DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
 
   @@map("LtiKeys")
+}
+
+/// Library (slice 22): one shared catalogue of interactive content, documents, links and lesson plans,
+/// with versions, ratings, flags, collections, visibility by school, district or everyone, and moderation.
+model LibraryItem {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  createdById    String?   @map("CreatedById") @db.Char(36)
+  kind           String    @map("Kind") @db.VarChar(20)
+  title          String    @map("Title") @db.VarChar(200)
+  description    String?   @map("Description") @db.Text
+  subject        String?   @map("Subject") @db.VarChar(100)
+  gradeLevel     String?   @map("GradeLevel") @db.VarChar(16)
+  topics         String?   @map("Topics") @db.Text
+  standards      String?   @map("Standards") @db.Text
+  keywords       String?   @map("Keywords") @db.VarChar(500)
+  visibility     String    @default("private") @map("Visibility") @db.VarChar(16)
+  status         String    @default("draft") @map("Status") @db.VarChar(20)
+  h5pContentId   String?   @map("H5PContentId") @db.Char(36)
+  fileId         String?   @map("FileId") @db.Char(36)
+  url            String?   @map("Url") @db.VarChar(500)
+  lessonPlanId   String?   @map("LessonPlanId") @db.Char(36)
+  version        Int       @default(1) @map("Version")
+  featured       Boolean   @default(false) @map("Featured")
+  viewCount      Int       @default(0) @map("ViewCount")
+  downloadCount  Int       @default(0) @map("DownloadCount")
+  copyCount      Int       @default(0) @map("CopyCount")
+  ratingSum      Int       @default(0) @map("RatingSum")
+  ratingCount    Int       @default(0) @map("RatingCount")
+  sourceItemId   String?   @map("SourceItemId") @db.Char(36)
+  publishedAt    DateTime? @map("PublishedAt") @db.DateTime(6)
+  reviewedById   String?   @map("ReviewedById") @db.Char(36)
+  reviewedAt     DateTime? @map("ReviewedAt") @db.DateTime(6)
+  reviewNote     String?   @map("ReviewNote") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt      DateTime? @map("DeletedAt") @db.DateTime(6)
+
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?                   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  h5pContent      H5PContent?             @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
+  file            FileUpload?             @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  lessonPlan      LessonPlan?             @relation(fields: [lessonPlanId], references: [id], onDelete: SetNull)
+  versions        LibraryItemVersion[]
+  ratings         LibraryRating[]
+  flags           LibraryFlag[]
+  collectionItems LibraryCollectionItem[]
+
+  @@index([organizationId, status, deletedAt])
+  @@index([visibility, status, publishedAt])
+  @@index([subject, gradeLevel])
+  @@index([createdById])
+  @@map("LibraryItems")
+}
+
+model LibraryItemVersion {
+  id          String   @id @map("Id") @db.Char(36)
+  itemId      String   @map("ItemId") @db.Char(36)
+  version     Int      @map("Version")
+  title       String   @map("Title") @db.VarChar(200)
+  description String?  @map("Description") @db.Text
+  snapshot    String   @map("Snapshot") @db.LongText
+  note        String?  @map("Note") @db.VarChar(300)
+  createdById String?  @map("CreatedById") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  item LibraryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, version])
+  @@map("LibraryItemVersions")
+}
+
+model LibraryRating {
+  id        String   @id @map("Id") @db.Char(36)
+  itemId    String   @map("ItemId") @db.Char(36)
+  userId    String   @map("UserId") @db.Char(36)
+  stars     Int      @map("Stars")
+  comment   String?  @map("Comment") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  item LibraryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+  @@map("LibraryRatings")
+}
+
+model LibraryFlag {
+  id           String    @id @map("Id") @db.Char(36)
+  itemId       String    @map("ItemId") @db.Char(36)
+  userId       String    @map("UserId") @db.Char(36)
+  reason       String    @map("Reason") @db.VarChar(500)
+  status       String    @default("open") @map("Status") @db.VarChar(16)
+  resolvedById String?   @map("ResolvedById") @db.Char(36)
+  resolvedAt   DateTime? @map("ResolvedAt") @db.DateTime(6)
+  resolution   String?   @map("Resolution") @db.VarChar(500)
+  createdAt    DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  item LibraryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([itemId])
+  @@map("LibraryFlags")
+}
+
+model LibraryCollection {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  createdById    String?   @map("CreatedById") @db.Char(36)
+  title          String    @map("Title") @db.VarChar(200)
+  description    String?   @map("Description") @db.Text
+  visibility     String    @default("private") @map("Visibility") @db.VarChar(16)
+  featured       Boolean   @default(false) @map("Featured")
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  deletedAt      DateTime? @map("DeletedAt") @db.DateTime(6)
+
+  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?                       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  items        LibraryCollectionItem[]
+  followers    LibraryCollectionFollower[]
+
+  @@index([organizationId, visibility, deletedAt])
+  @@map("LibraryCollections")
+}
+
+model LibraryCollectionItem {
+  id           String   @id @map("Id") @db.Char(36)
+  collectionId String   @map("CollectionId") @db.Char(36)
+  itemId       String   @map("ItemId") @db.Char(36)
+  sortOrder    Int      @default(0) @map("SortOrder")
+  addedAt      DateTime @default(now()) @map("AddedAt") @db.DateTime(6)
+
+  collection LibraryCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  item       LibraryItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, itemId])
+  @@map("LibraryCollectionItems")
+}
+
+model LibraryCollectionFollower {
+  id           String   @id @map("Id") @db.Char(36)
+  collectionId String   @map("CollectionId") @db.Char(36)
+  userId       String   @map("UserId") @db.Char(36)
+  createdAt    DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  collection LibraryCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, userId])
+  @@map("LibraryCollectionFollowers")
 }
