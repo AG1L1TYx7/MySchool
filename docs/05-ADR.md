@@ -82,6 +82,7 @@ Format: context, decision, consequences. Status is Accepted unless stated. Dates
 
 **Date:** 2026-09-30
 **Decision.** Code execution goes to an isolated runner (Piston container, or a JavaScript-only isolate) with CPU, memory and time limits, or the feature returns 501.
+**Status (8 Oct 2026).** Implemented in slice 24 as the JavaScript-only isolate: `modules/careers/code-runner.service.ts` runs student code in a worker thread (64 MB old space, 2 s wall clock, terminated) inside a V8 context created from an object with no prototype into which nothing from the host realm is placed; print() and console are defined by code run in the context; code generation from strings is off. The unit spec proves require, process, fetch and timers are undefined and that the this.constructor.constructor route cannot reach the host. A Piston runner for other languages is not built; `available()` reports whether runs are on and the API answers `code.sandbox_unavailable` when they are not.
 
 ## ADR-014: Redis and RabbitMQ are optional accelerators
 

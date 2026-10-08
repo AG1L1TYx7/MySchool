@@ -839,6 +839,10 @@ export const en = {
   'nav.library': 'Library',
   // Learning paths (slice 23)
   'nav.paths': 'My learning',
+  // Careers and portfolio (slice 24)
+  'nav.portfolio': 'My portfolio',
+  'nav.code': 'Code lessons',
+  'category.portfolio': 'Portfolio, skills, career plans and code lessons',
   'category.paths': 'Learning health, next steps and paths',
   'category.library': 'Shared content, collections and review',
   'category.integrations': 'Webhooks, API keys and LTI',

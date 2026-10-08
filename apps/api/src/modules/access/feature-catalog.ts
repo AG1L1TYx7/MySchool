@@ -349,6 +349,21 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     STAFF_AND_ASSISTANT,
   ),
   f('library.moderate', 'Review and moderate library items', 'Library', ADMINS),
+  f('portfolio.view', 'Portfolios, skills and resumes', 'Careers', ALL),
+  f('portfolio.review', 'Give feedback and endorse skills', 'Careers', [
+    ...STAFF_AND_COUNSELOR,
+    'ASSISTANT',
+    'STUDENT',
+  ]),
+  f(
+    'portfolio.skills.manage',
+    'Add school skills to the catalogue',
+    'Careers',
+    STAFF_AND_COUNSELOR,
+  ),
+  f('career.view', 'Career and college readiness', 'Careers', ALL),
+  f('code.learn', 'Code lessons in the sandbox', 'Careers', ALL),
+  f('code.manage', 'Write school code lessons', 'Careers', STAFF),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

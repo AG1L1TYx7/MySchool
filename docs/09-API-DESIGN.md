@@ -343,6 +343,31 @@ GET    /classes/{id}/learning/paths               learning.records: every active
 Event  practice.reviewed                          emitted after a practice card review (also available to webhooks)
 ```
 
+### Careers and portfolio (Release 3 slice 24)
+
+```
+GET    /me/portfolio                               portfolio.view (students): portfolio, every project, skills; PATCH { headline?, about?, visibility?, slug? }
+GET    /me/portfolio/evidence                      my submissions a project may cite
+POST   /me/portfolio/projects                      { title, summary?, description?, kind?, skills[]?, reflection?, externalUrl?, completedOn?, sourceSubmissionId?, fileIds[]?, featured?, status? } -> 201 draft
+PATCH  /me/portfolio/projects/{id}                 same fields; DELETE 204; POST /reviews/{rid}/hide
+GET    /students/{id}/portfolio                    family and the student's teachers always; counselors and administrators of the school; others by visibility (403 otherwise)
+POST   /portfolio/projects/{id}/reviews            portfolio.review: { comment, stars? }; portfolio.own_project (400); parents 403
+GET    /p/{slug}                                   public; published projects and skills of a public portfolio
+GET    /skills                                     catalogue; POST { name, category, description? } (portfolio.skills.manage)
+PUT    /me/skills                                  { skillId, level 1..4, note? }; DELETE /me/skills/{skillId}
+POST   /students/{id}/skills/{skillId}/endorse     portfolio.review: { comment? } once per person
+GET    /career/inventory | /career/clusters        the statements and the sixteen clusters
+GET    /me/career | /students/{id}/career          career.view: goals, interests (scores, top, code, clusters), pathways, collegePlans, checklist, readiness, canCounsel
+POST   /me/career/inventory                        { answers: { id: 1..5 } } (all eighteen)
+PATCH  /students/{id}/career                       { goals?, pathways[]?, collegePlans[]? } (the student or their counselor)
+POST   /students/{id}/career/checklist             { key, done } (students their own items, counselors any)
+GET    /students/{id}/resume | /resume.pdf         resume data | PDF (audited resume.pdf)
+GET    /code/lessons                               code.learn: { available, lessons[] with best result }; POST (code.manage) { title, description, level?, starter, tests: [{ expr, expected }] }
+GET    /code/lessons/{id}                          starter, tests (label, expected), last submission
+POST   /code/lessons/{id}/run                      { source } -> { status, passed, total, outcomes[], output, error, runtimeMs }; code.sandbox_unavailable when off
+GET    /students/{id}/code/progress                solved, attempted, per lesson
+```
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

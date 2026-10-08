@@ -10,6 +10,10 @@ import { PrismaClient, Role } from '../src/generated/prisma/client';
 import type { EnrollmentStatus } from '../src/generated/prisma/client';
 import argon2 from 'argon2';
 import { newId as uuidv7 } from '../src/common/utils/ids';
+import {
+  PLATFORM_CODE_LESSONS,
+  PLATFORM_SKILLS,
+} from '../src/modules/careers/careers-rules';
 import { FEATURE_CATALOG } from '../src/modules/access/feature-catalog';
 import { H5P_LIBRARIES } from '../src/modules/h5p/h5p-libraries';
 import { BADGES } from '../src/modules/motivation/motivation-rules';
@@ -1396,6 +1400,48 @@ async function seedLearningGap(): Promise<void> {
   });
 }
 
+/** Platform skills and code lessons (slice 24), the same for every school. */
+async function seedCareers(): Promise<void> {
+  for (const skill of PLATFORM_SKILLS) {
+    const existing = await prisma.skill.findFirst({
+      where: { organizationId: null, name: skill.name },
+    });
+    if (!existing)
+      await prisma.skill.create({
+        data: {
+          id: uuidv7(),
+          organizationId: null,
+          name: skill.name,
+          category: skill.category,
+          description: skill.description,
+        },
+      });
+  }
+  let order = 0;
+  for (const lesson of PLATFORM_CODE_LESSONS) {
+    order += 1;
+    const existing = await prisma.codeLesson.findFirst({
+      where: { organizationId: null, title: lesson.title },
+    });
+    if (!existing)
+      await prisma.codeLesson.create({
+        data: {
+          id: uuidv7(),
+          organizationId: null,
+          title: lesson.title,
+          description: lesson.description,
+          level: lesson.level,
+          sortOrder: order,
+          starter: lesson.starter,
+          tests: JSON.stringify(lesson.tests),
+        },
+      });
+  }
+  console.log(
+    `careers: ${PLATFORM_SKILLS.length} platform skills and ${PLATFORM_CODE_LESSONS.length} code lessons present`,
+  );
+}
+
 async function main(): Promise<void> {
   await seedFeatures();
   await seedH5pLibraries();
@@ -1410,6 +1456,7 @@ async function main(): Promise<void> {
   await seedSupport(orgId);
   await seedMotivation(orgId);
   await seedLearningGap();
+  await seedCareers();
 }
 
 main()

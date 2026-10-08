@@ -3,6 +3,7 @@
 import { StudentInsightCard } from '@/components/insight-cards';
 import { StudentRecordsCard } from '@/components/records-card';
 import { StudentPathsCard } from '@/components/paths-cards';
+import { StudentCareersCard } from '@/components/careers-cards';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Card, Input, Select } from '@/components/ui';
@@ -16,7 +17,7 @@ import { RELATIONSHIPS, label, type Guardian, type Student } from '@/lib/student
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { can } = useAuth();
+  const { user, can } = useAuth();
   const [student, setStudent] = useState<Student | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -98,6 +99,7 @@ export default function StudentDetailPage() {
 
       {student.canSupport && <StudentInsightCard studentId={id} />}
       {student.canSupport && can('learning.records') && <StudentPathsCard studentId={id} />}
+      {student.canSupport && can('portfolio.view') && <StudentCareersCard studentId={id} canCounsel={user?.role === 'counselor' || user?.role === 'principal' || user?.role === 'superintendent' || user?.role === 'super_admin'} />}
       <StudentRecordsCard studentId={id} lastName={student.lastName} legalHold={!!student.legalHold} onChanged={load} />
       <Guardians studentId={id} canManage={can('students.guardians.manage')} />
       {student.canSupport && <AccommodationCard studentId={id} />}

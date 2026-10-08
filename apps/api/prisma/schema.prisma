@@ -398,6 +398,10 @@ model Organization {
 
   learningPaths LearningPath[]
 
+  portfolios  Portfolio[]
+  skills      Skill[]
+  codeLessons CodeLesson[]
+
   @@index([tenantId])
   @@index([name])
   @@index([isActive, deletedAt])
@@ -505,6 +509,9 @@ model User {
   libraryFollows     LibraryCollectionFollower[]
 
   learningPathsCreated LearningPath[]
+
+  portfolioReviews  PortfolioReview[]
+  skillEndorsements SkillEndorsement[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -621,6 +628,11 @@ model Student {
   deletionRequests DeletionRequest[]
 
   learningPaths LearningPath[]
+
+  portfolio       Portfolio?
+  studentSkills   StudentSkill[]
+  careerProfile   CareerProfile?
+  codeSubmissions CodeSubmission[]
 
   @@unique([organizationId, studentNumber])
   @@index([organizationId, enrollmentStatus, deletedAt])
@@ -869,6 +881,8 @@ model FileUpload {
 
   libraryItems LibraryItem[]
 
+  portfolioMedia PortfolioMedia[]
+
   @@index([organizationId, category, deletedAt])
   @@index([uploaderId])
   @@map("FileUploads")
@@ -961,6 +975,8 @@ model AssignmentSubmission {
   grade      Grade?
 
   suggestion GradingSuggestion?
+
+  portfolioProjects PortfolioProject[]
 
   @@unique([assignmentId, studentId, attemptNumber])
   @@index([studentId, submittedAt])
@@ -2865,4 +2881,190 @@ model LearningPathStep {
   @@index([pathId, sortOrder])
   @@index([kind, refId])
   @@map("LearningPathSteps")
+}
+
+/// Careers and portfolio (slice 24): a student's portfolio of projects with media and feedback,
+/// skills with endorsements, a career profile with an interest inventory and a readiness checklist,
+/// and code lessons run in a sandbox (ADR-013).
+model Portfolio {
+  id             String   @id @map("Id") @db.Char(36)
+  studentId      String   @unique @map("StudentId") @db.Char(36)
+  organizationId String   @map("OrganizationId") @db.Char(36)
+  headline       String?  @map("Headline") @db.VarChar(200)
+  about          String?  @map("About") @db.Text
+  visibility     String   @default("private") @map("Visibility") @db.VarChar(16)
+  slug           String?  @unique @map("Slug") @db.VarChar(63)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  student      Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projects     PortfolioProject[]
+
+  @@index([organizationId, visibility])
+  @@map("Portfolios")
+}
+
+model PortfolioProject {
+  id                 String    @id @map("Id") @db.Char(36)
+  portfolioId        String    @map("PortfolioId") @db.Char(36)
+  title              String    @map("Title") @db.VarChar(200)
+  summary            String?   @map("Summary") @db.VarChar(500)
+  description        String?   @map("Description") @db.Text
+  kind               String    @default("project") @map("Kind") @db.VarChar(20)
+  status             String    @default("draft") @map("Status") @db.VarChar(16)
+  featured           Boolean   @default(false) @map("Featured")
+  sortOrder          Int       @default(0) @map("SortOrder")
+  skills             String?   @map("Skills") @db.Text
+  reflection         String?   @map("Reflection") @db.Text
+  externalUrl        String?   @map("ExternalUrl") @db.VarChar(500)
+  completedOn        DateTime? @map("CompletedOn") @db.Date
+  sourceSubmissionId String?   @map("SourceSubmissionId") @db.Char(36)
+  createdAt          DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt          DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  portfolio        Portfolio             @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  sourceSubmission AssignmentSubmission? @relation(fields: [sourceSubmissionId], references: [id], onDelete: SetNull)
+  media            PortfolioMedia[]
+  reviews          PortfolioReview[]
+
+  @@index([portfolioId, status, sortOrder])
+  @@map("PortfolioProjects")
+}
+
+model PortfolioMedia {
+  id        String   @id @map("Id") @db.Char(36)
+  projectId String   @map("ProjectId") @db.Char(36)
+  fileId    String   @map("FileId") @db.Char(36)
+  caption   String?  @map("Caption") @db.VarChar(300)
+  sortOrder Int      @default(0) @map("SortOrder")
+  createdAt DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  project PortfolioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  file    FileUpload       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, sortOrder])
+  @@map("PortfolioMedia")
+}
+
+model PortfolioReview {
+  id         String   @id @map("Id") @db.Char(36)
+  projectId  String   @map("ProjectId") @db.Char(36)
+  reviewerId String   @map("ReviewerId") @db.Char(36)
+  comment    String   @map("Comment") @db.Text
+  stars      Int?     @map("Stars")
+  hidden     Boolean  @default(false) @map("Hidden")
+  createdAt  DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  project  PortfolioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer User             @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, reviewerId])
+  @@map("PortfolioReviews")
+}
+
+/// Skills: a platform catalogue (organizationId null) plus a school's own additions.
+model Skill {
+  id             String   @id @map("Id") @db.Char(36)
+  organizationId String?  @map("OrganizationId") @db.Char(36)
+  name           String   @map("Name") @db.VarChar(100)
+  category       String   @map("Category") @db.VarChar(50)
+  description    String?  @map("Description") @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  organization  Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  studentSkills StudentSkill[]
+
+  @@unique([organizationId, name])
+  @@index([category])
+  @@map("Skills")
+}
+
+model StudentSkill {
+  id        String   @id @map("Id") @db.Char(36)
+  studentId String   @map("StudentId") @db.Char(36)
+  skillId   String   @map("SkillId") @db.Char(36)
+  level     Int      @default(1) @map("Level")
+  note      String?  @map("Note") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  student      Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skill        Skill              @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  endorsements SkillEndorsement[]
+
+  @@unique([studentId, skillId])
+  @@map("StudentSkills")
+}
+
+model SkillEndorsement {
+  id             String   @id @map("Id") @db.Char(36)
+  studentSkillId String   @map("StudentSkillId") @db.Char(36)
+  endorserId     String   @map("EndorserId") @db.Char(36)
+  comment        String?  @map("Comment") @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  studentSkill StudentSkill @relation(fields: [studentSkillId], references: [id], onDelete: Cascade)
+  endorser     User         @relation(fields: [endorserId], references: [id], onDelete: Cascade)
+
+  @@unique([studentSkillId, endorserId])
+  @@map("SkillEndorsements")
+}
+
+/// Career and college readiness, worked on with the counselor.
+model CareerProfile {
+  id           String    @id @map("Id") @db.Char(36)
+  studentId    String    @unique @map("StudentId") @db.Char(36)
+  goals        String?   @map("Goals") @db.Text
+  interests    String?   @map("Interests") @db.Text
+  pathways     String?   @map("Pathways") @db.Text
+  collegePlans String?   @map("CollegePlans") @db.Text
+  checklist    String?   @map("Checklist") @db.Text
+  inventoryAt  DateTime? @map("InventoryAt") @db.DateTime(6)
+  createdAt    DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt    DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("CareerProfiles")
+}
+
+/// Code lessons: a platform catalogue (organizationId null) plus a school's own; tests run in the sandbox.
+model CodeLesson {
+  id             String   @id @map("Id") @db.Char(36)
+  organizationId String?  @map("OrganizationId") @db.Char(36)
+  title          String   @map("Title") @db.VarChar(200)
+  description    String   @map("Description") @db.Text
+  language       String   @default("javascript") @map("Language") @db.VarChar(20)
+  level          Int      @default(1) @map("Level")
+  sortOrder      Int      @default(0) @map("SortOrder")
+  starter        String   @map("Starter") @db.Text
+  tests          String   @map("Tests") @db.Text
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  submissions  CodeSubmission[]
+
+  @@index([organizationId, sortOrder])
+  @@map("CodeLessons")
+}
+
+model CodeSubmission {
+  id        String   @id @map("Id") @db.Char(36)
+  lessonId  String   @map("LessonId") @db.Char(36)
+  studentId String   @map("StudentId") @db.Char(36)
+  source    String   @map("Source") @db.Text
+  status    String   @map("Status") @db.VarChar(16)
+  passed    Int      @default(0) @map("Passed")
+  total     Int      @default(0) @map("Total")
+  output    String?  @map("Output") @db.Text
+  runtimeMs Int      @default(0) @map("RuntimeMs")
+  createdAt DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  lesson  CodeLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, lessonId, createdAt])
+  @@map("CodeSubmissions")
 }

@@ -174,6 +174,10 @@ Sign in as the teacher and open Library. My items has the add form: pick a kind 
 
 Sign in as the student and open My learning: the health score with its five parts, where to focus, and ranked next steps. Sign in as the teacher, open Students, pick Emma Johnson and press Build a path from mastery: the path lists lessons, activities and library items for her weakest standards, with a practice step per standard. The student ticks steps on My learning, and steps also finish on their own when the lesson is completed, the activity is passed, the work is handed in or a practice session is done. The class page under Learning lists every path in the class.
 
+## 4p. Careers and portfolio
+
+Sign in as the student and open My portfolio: add a project with a file and a school submission as evidence, publish it, set who can see the portfolio (a public page appears at /p/<address>), add skills with a level, take the interest inventory under Career and college, pick pathways, keep a college list and tick the readiness items; Download my resume builds the PDF. As the teacher, open the student from Students: leave feedback on a published project and endorse a skill; the counselor also sees the career panel and ticks the counselor items. Code lessons: pick a lesson, change the code and press Run the tests; the tests say what they expected and what they got.
+
 ## 5. Backups
 
 ```bash

@@ -14854,6 +14854,856 @@
         ]
       }
     },
+    "/api/v1/me/portfolio": {
+      "get": {
+        "operationId": "CareersController_myPortfolio_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My portfolio with every project (any state) and my skills",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      },
+      "patch": {
+        "operationId": "CareersController_updatePortfolio_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePortfolioDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Headline, about, visibility (private | family | school | public) and public address",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/portfolio/evidence": {
+      "get": {
+        "operationId": "CareersController_evidence_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My submissions that a project may point at as evidence",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/portfolio/projects": {
+      "post": {
+        "operationId": "CareersController_createProject_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a project (draft unless status is published)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/portfolio/projects/{id}": {
+      "patch": {
+        "operationId": "CareersController_updateProject_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a project; fileIds replaces the media list",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      },
+      "delete": {
+        "operationId": "CareersController_removeProject_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a project",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/portfolio/projects/{id}/reviews/{reviewId}/hide": {
+      "post": {
+        "operationId": "CareersController_hideReview_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a piece of feedback from my project page",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/portfolio": {
+      "get": {
+        "operationId": "CareersController_portfolio_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's portfolio (family, their teachers and school staff always; others by its visibility)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/portfolio/projects/{id}/reviews": {
+      "post": {
+        "operationId": "CareersController_review_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leave feedback on a published project (one per person; replaced on repeat)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/p/{slug}": {
+      "get": {
+        "operationId": "CareersController_publicPortfolio_api/v1",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A public portfolio by its address, no sign-in",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/skills": {
+      "get": {
+        "operationId": "CareersController_skills_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The skill catalogue: the platform set plus this school's additions",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      },
+      "post": {
+        "operationId": "CareersController_createSkill_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSkillDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a school skill to the catalogue",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/skills": {
+      "put": {
+        "operationId": "CareersController_setSkill_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSkillDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add or change one of my skills: { skillId, level 1..4, note? }",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/skills/{skillId}": {
+      "delete": {
+        "operationId": "CareersController_removeSkill_api/v1",
+        "parameters": [
+          {
+            "name": "skillId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove one of my skills",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/skills/{skillId}/endorse": {
+      "post": {
+        "operationId": "CareersController_endorse_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skillId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Endorse a skill (teachers, counselors, administrators and classmates; once each)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/career/inventory": {
+      "get": {
+        "operationId": "CareersController_inventory_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The interest inventory statements and scale",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/career/clusters": {
+      "get": {
+        "operationId": "CareersController_clusters_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The sixteen career clusters with example careers",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/career": {
+      "get": {
+        "operationId": "CareersController_myCareer_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My career profile: goals, interests, pathways, college plans and the readiness checklist",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/me/career/inventory": {
+      "post": {
+        "operationId": "CareersController_takeInventory_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InventoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer the inventory: { answers: { statementId: 1..5 } } -> scores, top codes, matching clusters",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/career": {
+      "get": {
+        "operationId": "CareersController_career_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's career profile (family, their teachers, counselors and administrators)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      },
+      "patch": {
+        "operationId": "CareersController_updateCareer_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCareerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Goals, pathways and college plans (the student or their counselor)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/career/checklist": {
+      "post": {
+        "operationId": "CareersController_tick_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistTickDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tick or untick a readiness item: { key, done } (students their own items, counselors any)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/resume": {
+      "get": {
+        "operationId": "CareersController_resume_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The resume content as data",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/resume.pdf": {
+      "get": {
+        "operationId": "CareersController_resumePdf_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The resume as a PDF (audited)",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/code/lessons": {
+      "get": {
+        "operationId": "CareersController_codeLessons_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Code lessons with my best result per lesson",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      },
+      "post": {
+        "operationId": "CareersController_createCodeLesson_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCodeLessonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a school code lesson: { title, description, level?, starter, tests: [{ expr, expected }] }",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/code/lessons/{id}": {
+      "get": {
+        "operationId": "CareersController_codeLesson_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One lesson with its starter, tests and my last submission",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/code/lessons/{id}/run": {
+      "post": {
+        "operationId": "CareersController_runCode_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Run my code against the tests in the sandbox and record the attempt",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/code/progress": {
+      "get": {
+        "operationId": "CareersController_codeProgress_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A student's code lesson progress",
+        "tags": [
+          "Careers and portfolio"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -19485,6 +20335,346 @@
             "type": "string"
           }
         }
+      },
+      "UpdatePortfolioDto": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "type": "string"
+          },
+          "about": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "family",
+              "school",
+              "public"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "description": "Public address label; made from the name when public and empty"
+          }
+        }
+      },
+      "ProjectDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "writing",
+              "art",
+              "code",
+              "science",
+              "service",
+              "other"
+            ]
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "reflection": {
+            "type": "string"
+          },
+          "externalUrl": {
+            "type": "string"
+          },
+          "completedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "sourceSubmissionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A submission of yours to show as evidence"
+          },
+          "fileIds": {
+            "description": "Files you uploaded, in order",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "format": "uuid"
+            }
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "UpdateProjectDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "writing",
+              "art",
+              "code",
+              "science",
+              "service",
+              "other"
+            ]
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "reflection": {
+            "type": "string"
+          },
+          "externalUrl": {
+            "type": "string"
+          },
+          "completedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "sourceSubmissionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A submission of yours to show as evidence"
+          },
+          "fileIds": {
+            "description": "Files you uploaded, in order",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "format": "uuid"
+            }
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ]
+          }
+        }
+      },
+      "ReviewProjectDto": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "stars": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          }
+        },
+        "required": [
+          "comment"
+        ]
+      },
+      "CreateSkillDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "category"
+        ]
+      },
+      "SetSkillDto": {
+        "type": "object",
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "level": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "skillId",
+          "level"
+        ]
+      },
+      "EndorseDto": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          }
+        }
+      },
+      "InventoryDto": {
+        "type": "object",
+        "properties": {
+          "answers": {
+            "type": "object",
+            "description": "Answers by statement id, 1 (not me) to 5 (very much me)"
+          }
+        },
+        "required": [
+          "answers"
+        ]
+      },
+      "CollegePlanDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "interested",
+              "applied",
+              "accepted",
+              "enrolled",
+              "declined"
+            ]
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ]
+      },
+      "UpdateCareerDto": {
+        "type": "object",
+        "properties": {
+          "goals": {
+            "type": "string"
+          },
+          "pathways": {
+            "description": "Career cluster ids chosen to explore",
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "collegePlans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CollegePlanDto"
+            }
+          }
+        }
+      },
+      "ChecklistTickDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "done"
+        ]
+      },
+      "CreateCodeLessonDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "level": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "starter": {
+            "type": "string"
+          },
+          "tests": {
+            "description": "[{ expr, expected (JSON text), label? }]",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "starter",
+          "tests"
+        ]
+      },
+      "RunCodeDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source"
+        ]
       }
     }
   }
