@@ -58,7 +58,7 @@ export interface PushDevice {
   createdAt: string;
 }
 
-export const CATEGORY_LABELS: Record<string, string> = { announcement: 'Announcements', assignment: 'Assignments', grade: 'Grades', message: 'Messages', attendance: 'Attendance', system: 'Account and security', ai: 'AI tutor and content', digest: 'Weekly family summary', motivation: 'XP, streaks and badges' };
+export const CATEGORY_LABELS: Record<string, string> = { announcement: 'Announcements', assignment: 'Assignments', grade: 'Grades', message: 'Messages', attendance: 'Attendance', system: 'Account and security', ai: 'AI tutor and content', digest: 'Weekly family summary', motivation: 'XP, streaks and badges', community: 'Groups and discussions' };
 
 export interface Person {
   id: string;

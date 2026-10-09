@@ -364,6 +364,25 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   f('career.view', 'Career and college readiness', 'Careers', ALL),
   f('code.learn', 'Code lessons in the sandbox', 'Careers', ALL),
   f('code.manage', 'Write school code lessons', 'Careers', STAFF),
+  f('community.view', 'Read groups and discussions', 'Community', ALL),
+  f(
+    'community.post',
+    'Post in groups and class discussions',
+    'Community',
+    ALL.filter((r) => r !== 'PARENT'),
+  ),
+  f(
+    'community.manage',
+    'Create clubs and school-wide groups',
+    'Community',
+    STAFF_AND_COUNSELOR,
+  ),
+  f(
+    'community.moderate',
+    'Moderation queue, reports and held posts',
+    'Community',
+    [...STAFF_AND_COUNSELOR, 'ASSISTANT'],
+  ),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

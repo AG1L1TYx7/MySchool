@@ -5421,7 +5421,8 @@
                 "system",
                 "ai",
                 "digest",
-                "motivation"
+                "motivation",
+                "community"
               ]
             }
           },
@@ -15704,6 +15705,1121 @@
         ]
       }
     },
+    "/api/v1/community/meta": {
+      "get": {
+        "operationId": "CommunityController_meta_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Kinds, visibilities, join policies, reactions, report reasons and limits",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/feed": {
+      "get": {
+        "operationId": "CommunityController_feed_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Recent topics across your groups",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups": {
+      "get": {
+        "operationId": "CommunityController_listGroups_api/v1",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated fields; prefix with - for descending, e.g. -createdAt,lastName",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Words in the name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "class",
+                "club",
+                "school"
+              ]
+            }
+          },
+          {
+            "name": "mine",
+            "required": false,
+            "in": "query",
+            "description": "true: only groups you belong to",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Groups you can see or join (q, kind, mine=true)",
+        "tags": [
+          "Community"
+        ]
+      },
+      "post": {
+        "operationId": "CommunityController_createGroup_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a club or school-wide group; you become its first moderator",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/classes/{classId}": {
+      "get": {
+        "operationId": "CommunityController_classDiscussion_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The class discussion group (created on first open; members follow the roster)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups/{id}": {
+      "get": {
+        "operationId": "CommunityController_getGroup_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One group with your membership and what you may do",
+        "tags": [
+          "Community"
+        ]
+      },
+      "patch": {
+        "operationId": "CommunityController_updateGroup_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a group (moderators)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups/{id}/archive": {
+      "post": {
+        "operationId": "CommunityController_archive_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archive a group (moderators); members and moderators can still read it",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups/{id}/restore": {
+      "post": {
+        "operationId": "CommunityController_restore_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring an archived group back",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups/{id}/join": {
+      "post": {
+        "operationId": "CommunityController_join_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join an open group, or ask to join one that needs approval",
+        "tags": [
+          "Community"
+        ]
+      },
+      "delete": {
+        "operationId": "CommunityController_leave_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leave a group",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups/{id}/members": {
+      "get": {
+        "operationId": "CommunityController_members_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Members (and, for moderators, pending requests)",
+        "tags": [
+          "Community"
+        ]
+      },
+      "post": {
+        "operationId": "CommunityController_addMember_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a member (moderators)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups/{id}/members/{userId}": {
+      "patch": {
+        "operationId": "CommunityController_updateMember_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve, promote, demote or pause a member (moderators)",
+        "tags": [
+          "Community"
+        ]
+      },
+      "delete": {
+        "operationId": "CommunityController_removeMember_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a member (moderators)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/groups/{id}/topics": {
+      "get": {
+        "operationId": "CommunityController_topics_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated fields; prefix with - for descending, e.g. -createdAt,lastName",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Words in the title or body",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Topics in a group, pinned first then by latest activity (q to search)",
+        "tags": [
+          "Community"
+        ]
+      },
+      "post": {
+        "operationId": "CommunityController_createTopic_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTopicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a topic; a student topic the safety check holds waits for a teacher",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/topics/{id}": {
+      "get": {
+        "operationId": "CommunityController_topic_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A topic with its replies, reactions and your subscription",
+        "tags": [
+          "Community"
+        ]
+      },
+      "patch": {
+        "operationId": "CommunityController_updateTopic_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTopicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a topic within the window (author) or any time; pin and lock (moderators)",
+        "tags": [
+          "Community"
+        ]
+      },
+      "delete": {
+        "operationId": "CommunityController_deleteTopic_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a topic (author or moderator)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/topics/{id}/posts": {
+      "post": {
+        "operationId": "CommunityController_reply_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reply to a topic",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/topics/{id}/subscribe": {
+      "post": {
+        "operationId": "CommunityController_subscribe_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hear about new replies",
+        "tags": [
+          "Community"
+        ]
+      },
+      "delete": {
+        "operationId": "CommunityController_unsubscribe_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stop hearing about new replies",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/posts/{id}": {
+      "patch": {
+        "operationId": "CommunityController_updatePost_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a reply within the window (author) or any time (moderators)",
+        "tags": [
+          "Community"
+        ]
+      },
+      "delete": {
+        "operationId": "CommunityController_deletePost_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a reply (author or moderator)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/posts/{id}/reaction": {
+      "put": {
+        "operationId": "CommunityController_react_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "React to a reply (one reaction per person, replaced on repeat)",
+        "tags": [
+          "Community"
+        ]
+      },
+      "delete": {
+        "operationId": "CommunityController_unreact_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a reaction back",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/reports": {
+      "post": {
+        "operationId": "CommunityController_report_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report a topic or reply to the moderators",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/moderation": {
+      "get": {
+        "operationId": "CommunityController_moderation_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Held topics and replies plus open reports for the groups you moderate",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/topics/{id}/moderate": {
+      "post": {
+        "operationId": "CommunityController_moderateTopic_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve, hide, remove or restore a topic (audited)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/posts/{id}/moderate": {
+      "post": {
+        "operationId": "CommunityController_moderatePost_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve, hide, remove or restore a reply (audited)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/community/reports/{id}/resolve": {
+      "post": {
+        "operationId": "CommunityController_resolve_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Close a report: dismiss, warn the author, hide or remove the content (audited)",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -16203,27 +17319,19 @@
         "type": "object",
         "properties": {
           "userId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Existing user id; or give an email"
-          },
-          "email": {
             "type": "string"
           },
           "role": {
             "type": "string",
             "enum": [
-              "super_admin",
-              "superintendent",
-              "principal",
-              "teacher",
-              "student",
-              "parent",
-              "assistant"
-            ],
-            "description": "Change the user's role while linking"
+              "member",
+              "moderator"
+            ]
           }
-        }
+        },
+        "required": [
+          "userId"
+        ]
       },
       "ImportStudentsDto": {
         "type": "object",
@@ -17800,7 +18908,8 @@
               "system",
               "ai",
               "digest",
-              "motivation"
+              "motivation",
+              "community"
             ]
           },
           "inApp": {
@@ -20674,6 +21783,250 @@
         },
         "required": [
           "source"
+        ]
+      },
+      "CreateGroupDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "members",
+              "school"
+            ]
+          },
+          "joinPolicy": {
+            "type": "string",
+            "enum": [
+              "open",
+              "approval",
+              "invite"
+            ]
+          },
+          "studentsCanPost": {
+            "type": "boolean",
+            "description": "false: students read, staff write"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string",
+            "description": "District roles: which school the group belongs to"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "club",
+              "school"
+            ],
+            "default": "club"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateGroupDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "members",
+              "school"
+            ]
+          },
+          "joinPolicy": {
+            "type": "string",
+            "enum": [
+              "open",
+              "approval",
+              "invite"
+            ]
+          },
+          "studentsCanPost": {
+            "type": "boolean",
+            "description": "false: students read, staff write"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateMemberDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "member",
+              "moderator"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "removed"
+            ],
+            "description": "active approves a pending request"
+          },
+          "muteDays": {
+            "type": "number",
+            "description": "Mute for this many days (1 to 30); 0 lifts a mute"
+          }
+        }
+      },
+      "CreateTopicDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
+      },
+      "UpdateTopicDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "Moderators only"
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "Moderators only"
+          }
+        }
+      },
+      "CreatePostDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "UpdatePostDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "ReactDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "like",
+              "helpful",
+              "celebrate"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "ReportDto": {
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "topic",
+              "post"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "bullying",
+              "inappropriate",
+              "personal_info",
+              "spam",
+              "other"
+            ]
+          },
+          "details": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetType",
+          "targetId",
+          "reason"
+        ]
+      },
+      "ModerateDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "hide",
+              "remove",
+              "restore"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "ResolveReportDto": {
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "dismiss",
+              "hide",
+              "remove",
+              "warn"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution"
         ]
       }
     }

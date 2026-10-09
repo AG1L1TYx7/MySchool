@@ -178,6 +178,10 @@ Sign in as the student and open My learning: the health score with its five part
 
 Sign in as the student and open My portfolio: add a project with a file and a school submission as evidence, publish it, set who can see the portfolio (a public page appears at /p/<address>), add skills with a level, take the interest inventory under Career and college, pick pathways, keep a college list and tick the readiness items; Download my resume builds the PDF. As the teacher, open the student from Students: leave feedback on a published project and endorse a skill; the counselor also sees the career panel and ticks the counselor items. Code lessons: pick a lesson, change the code and press Run the tests; the tests say what they expected and what they got.
 
+## 4q. Community
+
+Sign in as the teacher, open a class and press Discussion: the class discussion exists from that moment with everyone on the roster, and you moderate it. Start a topic. As the student, Community shows the topic under Recent activity; reply, react, and try a reply with a phone number in it: it is held for a teacher and only you and the teachers see it. Back as the teacher, Community > Moderation lists it with the reason; approve, hide or remove it, and the student is told. Under Groups the teacher can create a club (who can read it, how people join, whether students post) and the student can join it; the parent can read the class discussion and report a topic but never posts. The principal closes reports from the same Moderation tab; every decision is in the audit log.
+
 ## 5. Backups
 
 ```bash

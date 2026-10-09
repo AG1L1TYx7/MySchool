@@ -842,6 +842,9 @@ export const en = {
   // Careers and portfolio (slice 24)
   'nav.portfolio': 'My portfolio',
   'nav.code': 'Code lessons',
+  // Community (slice 25)
+  'nav.community': 'Community',
+  'category.community': 'Groups, class discussions and moderation',
   'category.portfolio': 'Portfolio, skills, career plans and code lessons',
   'category.paths': 'Learning health, next steps and paths',
   'category.library': 'Shared content, collections and review',

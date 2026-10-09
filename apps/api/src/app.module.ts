@@ -38,6 +38,7 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { LibraryModule } from './modules/library/library.module';
 import { PathsModule } from './modules/paths/paths.module';
 import { CareersModule } from './modules/careers/careers.module';
+import { CommunityModule } from './modules/community/community.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { InsightModule } from './modules/insight/insight.module';
 import { MobileModule } from './modules/mobile/mobile.module';
@@ -147,6 +148,7 @@ import { UsersModule } from './modules/users/users.module';
     LibraryModule,
     PathsModule,
     CareersModule,
+    CommunityModule,
     HealthModule,
     MetricsModule,
   ],

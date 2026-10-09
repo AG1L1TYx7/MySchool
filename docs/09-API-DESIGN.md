@@ -368,6 +368,32 @@ POST   /code/lessons/{id}/run                      { source } -> { status, passe
 GET    /students/{id}/code/progress                solved, attempted, per lesson
 ```
 
+### Community (Release 3 slice 25)
+
+```
+GET    /community/meta                             kinds, visibilities, join policies, reactions, report reasons, resolutions, limits
+GET    /community/feed                             community.view: the twenty latest visible topics across your groups
+GET    /community/groups                           groups you belong to, may read or may join (q, kind, mine=true; paged)
+POST   /community/groups                           community.manage: { name, description?, kind club|school, visibility members|school, joinPolicy open|approval|invite, studentsCanPost?, organizationId? (district roles) } -> 201, you are its moderator
+GET    /community/classes/{classId}                the class discussion group, created on first open; members follow the roster (teachers moderate, parents read)
+GET    /community/groups/{id}                      group with membership, canPost (and why not), canModerate, joinOutcome; 403 community.members_only
+PATCH  /community/groups/{id}                      moderators: name, description, visibility, joinPolicy, studentsCanPost; POST /archive, /restore
+POST   /community/groups/{id}/join                 community.post: open -> active, approval -> pending (moderators told), invite -> 403 community.join_not_allowed; DELETE leaves (400 community.class_group for class groups)
+GET    /community/groups/{id}/members              members (moderators also see pending); POST { userId, role? }; PATCH /{userId} { role?, status active|removed?, muteDays 0..30? }; DELETE /{userId}
+GET    /community/groups/{id}/topics               pinned first then latest activity (q; paged); held and hidden ones for their author and moderators
+POST   /community/groups/{id}/topics               community.post: { title, body } -> 201 visible, or held with holdReason when the safety check stops a student; 403 community.{archived|not_member|muted|students_read_only|parent}
+GET    /community/topics/{id}                      topic, group, posts (with reactions and yours), subscribed, canReply, replyBlockedReason
+PATCH  /community/topics/{id}                      { title?, body? } within the edit window (author) or any time (moderators); { pinned?, locked? } moderators only; DELETE removes
+POST   /community/topics/{id}/posts                community.post: { body } -> 201 (visible or held); 403 community.locked
+POST   /community/topics/{id}/subscribe            DELETE to stop
+PATCH  /community/posts/{id}                       { body }; DELETE removes
+PUT    /community/posts/{id}/reaction              { kind like|helpful|celebrate } one per person; DELETE takes it back
+POST   /community/reports                          { targetType topic|post, targetId, reason, details? } -> 201 (moderators told)
+GET    /community/moderation                       community.moderate: held topics and replies plus open reports for the groups you moderate
+POST   /community/topics/{id}/moderate             community.moderate: { action approve|hide|remove|restore, note? } (audited, author told); same for /community/posts/{id}/moderate
+POST   /community/reports/{id}/resolve             community.moderate: { resolution dismiss|warn|hide|remove, note? } (audited; author and reporter told)
+```
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

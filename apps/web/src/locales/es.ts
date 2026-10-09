@@ -818,6 +818,9 @@ export const es: Record<MessageKey, string> = {
   // Careers and portfolio (slice 24)
   'nav.portfolio': 'Mi portafolio',
   'nav.code': 'Lecciones de código',
+  // Community (slice 25)
+  'nav.community': 'Comunidad',
+  'category.community': 'Grupos, discusiones de clase y moderación',
   'category.portfolio': 'Portafolio, habilidades, planes de carrera y lecciones de código',
   'category.paths': 'Salud del aprendizaje, próximos pasos y rutas',
   'category.library': 'Contenido compartido, colecciones y revisión',

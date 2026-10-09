@@ -30,7 +30,7 @@ Tokens live in `apps/web/src/lib/motion.ts` and Tailwind config.
 
 Patterns:
 
-- **Page transitions:** fade and 8 px rise on route change; shared-element move for a card that opens into its detail page (class card to class page, assignment row to assignment page).
+- **Page transitions:** fade and 8 px rise on route change (enter only since 9 Oct 2026, slice 25: the exit-then-enter sequence left the next page invisible whenever an exit was interrupted, and the first keystroke then remounted it); shared-element move for a card that opens into its detail page (class card to class page, assignment row to assignment page).
 - **Lists:** items enter with a 40 ms stagger; reorder (modules, lessons) animates position; delete collapses height.
 - **Feedback:** buttons scale 0.98 on press; success states tick-draw an icon; errors shake once (4 px, 300 ms) and announce via `aria-live`.
 - **Progress:** XP bars and progress rings animate from the previous value to the new one, never from zero; numbers count up.

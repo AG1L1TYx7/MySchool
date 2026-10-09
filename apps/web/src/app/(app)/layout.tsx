@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { MotionPage } from '@/components/motion';
 import { AccommodationsProvider } from '@/components/accommodations';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -24,6 +23,7 @@ const NAV: Array<{ href: string; label: MessageKey; feature: string; roles?: str
   { href: '/code', label: 'nav.code', feature: 'code.learn', roles: ['student', 'teacher'] },
   { href: '/family', label: 'nav.family', feature: 'family.view' },
   { href: '/library', label: 'nav.library', feature: 'library.view' },
+  { href: '/community', label: 'nav.community', feature: 'community.view' },
   { href: '/courses', label: 'nav.courses', feature: 'courses.view' },
   { href: '/classes', label: 'nav.classes', feature: 'classes.view' },
   { href: '/assignments', label: 'nav.assignments', feature: 'assignments.view' },
@@ -113,9 +113,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 md:px-8">
-          <AnimatePresence mode="wait" initial={false}>
-            <MotionPage key={pathname}>{children}</MotionPage>
-          </AnimatePresence>
+          {/* Enter-only: an exit-then-enter sequence (AnimatePresence mode="wait") left the next page at opacity 0 whenever the exit was interrupted (slice 25). */}
+          <MotionPage key={pathname}>{children}</MotionPage>
         </main>
       </div>
     </div>

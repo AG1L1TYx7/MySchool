@@ -57,6 +57,7 @@ Costs: Google, Microsoft, ClassLink and Clever Instant Login are free to integra
 - **Wellness routing**: when the tutor's safety classifier escalates (self-harm, abuse, danger), the conversation excerpt and student go to the counselor queue with an audit entry; the student sees the caring refusal that names a trusted adult. No emotion inference of any kind.
 - **Behaviour records** with parent-visibility rules set by the school.
 - Peer-to-peer private messaging stays off by default and is a school-level switch.
+- **Community** (slice 25): class discussions and clubs are moderated spaces, not a social network. Teachers see everything students post; a rule list holds a student's words that share a way to be reached outside school, an outside link, or unkind phrases until a teacher looks; parents read along and can report; every moderator decision is audited and the author is told. No follows, no public profiles, no school-wide feed.
 
 ## 7. Parents (slice 13)
 
@@ -99,6 +100,7 @@ Audited in slice 19 (7 October 2026): the data map is published (docs/17) and ge
 | Public leaderboards or any ranking of students visible to other students | Comparative display of minors' performance is a FERPA risk and harms the students at the bottom. Private XP, streaks, badges and class quests stay. |
 | "Stakes" and betting-style mechanics on grades or outcomes | Resembles gambling for minors. |
 | Recruiter and employer access to student data | Not appropriate for K-12 and incompatible with student-privacy agreements. |
+| Follows, followers, public profiles and school-wide activity feeds between students | Social-network mechanics for minors invite comparison and contact outside the classroom; class discussions and moderated clubs give the collaboration without them. The portfolio's public page is the one profile a student chooses to publish. |
 
 ## 12. Definition of ready for a US pilot
 

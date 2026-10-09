@@ -249,6 +249,7 @@ enum NotificationCategory {
   AI
   DIGEST
   MOTIVATION
+  COMMUNITY
 }
 
 enum ConversationType {
@@ -402,6 +403,8 @@ model Organization {
   skills      Skill[]
   codeLessons CodeLesson[]
 
+  communityGroups CommunityGroup[]
+
   @@index([tenantId])
   @@index([name])
   @@index([isActive, deletedAt])
@@ -512,6 +515,13 @@ model User {
 
   portfolioReviews  PortfolioReview[]
   skillEndorsements SkillEndorsement[]
+
+  communityMemberships CommunityMember[]
+  communityTopics      CommunityTopic[]
+  communityPosts       CommunityPost[]
+  communityReactions   CommunityReaction[]
+  communityReports     CommunityReport[]
+  topicSubscriptions   TopicSubscription[]
 
   @@index([organizationId, role])
   @@index([status, deletedAt])
@@ -814,6 +824,8 @@ model Class {
   lessonPlans LessonPlan[]
   insights    ClassInsight[]
   substitutes SubstituteAccess[]
+
+  communityGroup CommunityGroup?
 
   @@index([organizationId, term, status, deletedAt])
   @@index([courseId])
@@ -3067,4 +3079,137 @@ model CodeSubmission {
 
   @@index([studentId, lessonId, createdAt])
   @@map("CodeSubmissions")
+}
+
+/// Community (slice 25): groups and forums with class discussion threads, staff moderation, reports and audit.
+model CommunityGroup {
+  id              String   @id @map("Id") @db.Char(36)
+  organizationId  String   @map("OrganizationId") @db.Char(36)
+  classId         String?  @unique @map("ClassId") @db.Char(36)
+  name            String   @map("Name") @db.VarChar(120)
+  description     String?  @map("Description") @db.Text
+  kind            String   @default("club") @map("Kind") @db.VarChar(16)
+  visibility      String   @default("school") @map("Visibility") @db.VarChar(16)
+  joinPolicy      String   @default("open") @map("JoinPolicy") @db.VarChar(16)
+  studentsCanPost Boolean  @default(true) @map("StudentsCanPost")
+  status          String   @default("active") @map("Status") @db.VarChar(16)
+  createdById     String?  @map("CreatedById") @db.Char(36)
+  createdAt       DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt       DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class        Class?            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  members      CommunityMember[]
+  topics       CommunityTopic[]
+
+  @@index([organizationId, status, kind])
+  @@map("CommunityGroups")
+}
+
+model CommunityMember {
+  id         String    @id @map("Id") @db.Char(36)
+  groupId    String    @map("GroupId") @db.Char(36)
+  userId     String    @map("UserId") @db.Char(36)
+  role       String    @default("member") @map("Role") @db.VarChar(16)
+  status     String    @default("active") @map("Status") @db.VarChar(16)
+  mutedUntil DateTime? @map("MutedUntil") @db.DateTime(6)
+  joinedAt   DateTime  @default(now()) @map("JoinedAt") @db.DateTime(6)
+
+  group CommunityGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("CommunityMembers")
+}
+
+model CommunityTopic {
+  id         String    @id @map("Id") @db.Char(36)
+  groupId    String    @map("GroupId") @db.Char(36)
+  authorId   String?   @map("AuthorId") @db.Char(36)
+  title      String    @map("Title") @db.VarChar(200)
+  body       String    @map("Body") @db.Text
+  pinned     Boolean   @default(false) @map("Pinned")
+  locked     Boolean   @default(false) @map("Locked")
+  status     String    @default("visible") @map("Status") @db.VarChar(16)
+  holdReason String?   @map("HoldReason") @db.VarChar(300)
+  postCount  Int       @default(0) @map("PostCount")
+  lastPostAt DateTime? @map("LastPostAt") @db.DateTime(6)
+  createdAt  DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt  DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  group         CommunityGroup      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author        User?               @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  posts         CommunityPost[]
+  subscriptions TopicSubscription[]
+
+  @@index([groupId, status, pinned, lastPostAt])
+  @@map("CommunityTopics")
+}
+
+model CommunityPost {
+  id         String    @id @map("Id") @db.Char(36)
+  topicId    String    @map("TopicId") @db.Char(36)
+  authorId   String?   @map("AuthorId") @db.Char(36)
+  body       String    @map("Body") @db.Text
+  status     String    @default("visible") @map("Status") @db.VarChar(16)
+  holdReason String?   @map("HoldReason") @db.VarChar(300)
+  editedAt   DateTime? @map("EditedAt") @db.DateTime(6)
+  createdAt  DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  topic     CommunityTopic      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  author    User?               @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  reactions CommunityReaction[]
+
+  @@index([topicId, status, createdAt])
+  @@map("CommunityPosts")
+}
+
+model CommunityReaction {
+  id        String   @id @map("Id") @db.Char(36)
+  postId    String   @map("PostId") @db.Char(36)
+  userId    String   @map("UserId") @db.Char(36)
+  kind      String   @map("Kind") @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("CommunityReactions")
+}
+
+model TopicSubscription {
+  id        String   @id @map("Id") @db.Char(36)
+  topicId   String   @map("TopicId") @db.Char(36)
+  userId    String   @map("UserId") @db.Char(36)
+  createdAt DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  topic CommunityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, userId])
+  @@map("TopicSubscriptions")
+}
+
+model CommunityReport {
+  id             String    @id @map("Id") @db.Char(36)
+  organizationId String    @map("OrganizationId") @db.Char(36)
+  targetType     String    @map("TargetType") @db.VarChar(16)
+  targetId       String    @map("TargetId") @db.Char(36)
+  reporterId     String    @map("ReporterId") @db.Char(36)
+  reason         String    @map("Reason") @db.VarChar(40)
+  details        String?   @map("Details") @db.VarChar(1000)
+  status         String    @default("open") @map("Status") @db.VarChar(16)
+  resolution     String?   @map("Resolution") @db.VarChar(40)
+  resolvedById   String?   @map("ResolvedById") @db.Char(36)
+  resolvedAt     DateTime? @map("ResolvedAt") @db.DateTime(6)
+  note           String?   @map("Note") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, createdAt])
+  @@index([targetType, targetId])
+  @@map("CommunityReports")
 }
