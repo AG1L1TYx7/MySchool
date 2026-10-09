@@ -68,6 +68,51 @@ jobs:
             grep -a -A 25 -E '● .* ›|● Test suite' e2e.log | grep -avE '^\s+at ' | head -400
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # Failing tests also become run annotations, which are readable without repository rights.
+          if [ "$status" -ne 0 ]; then
+            grep -a -A 12 -E '● .* ›|● Test suite' e2e.log | grep -avE '^[[:space:]]+at |^--$|^[[:space:]]*$' | head -60 | while IFS= read -r line; do echo "::error title=e2e::${line}"; done
+          fi
+          exit $status
+      - run: pnpm audit --audit-level=high
+
+  web:
+    name: Web client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @smartschool/web lint
+      - run: pnpm --filter @smartschool/web typecheck
+      - run: pnpm --filter @smartschool/web build
+
+  ai:
+    name: AI service
+    runs-on: ubuntu-latest
+    env:
+      MODEL_PROVIDER: fake
+      AI_SERVICE_TOKEN: ci-only-ai-service-token-0123456789
+      LMS_SERVICE_TOKEN: ci-only-callback-token-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: apps/ai/pyproject.toml
+      - run: pip install -e "apps/ai[dev]"
+      - run: ruff check apps/ai
+      - run: ruff format --check apps/ai
+      - run: mypy app
+        working-directory: apps/ai
+      - run: pytest apps/ai -q
+      - run: pip install pip-audit && pip-audit --skip-editable
+ | head -60 | while IFS= read -r line; do echo "::error title=e2e::${line}"; done
+          fi
           exit $status
       - run: pnpm audit --audit-level=high
 
