@@ -71,6 +71,8 @@ jobs:
           # Failing tests also become run annotations, which are readable without repository rights.
           if [ "$status" -ne 0 ]; then
             grep -a -A 12 -E '● .* ›|● Test suite' e2e.log | grep -avE '^[[:space:]]+at |^--$|^[[:space:]]*$' | head -60 | while IFS= read -r line; do echo "::error title=e2e::${line}"; done
+            # The first unhandled server errors (the cause behind a 500 in a spec), with their stack heads.
+            grep -a -A 8 'Unhandled error' e2e.log | grep -avE '^\{"level"|^--$|^[[:space:]]*$' | head -40 | while IFS= read -r line; do echo "::error title=server::${line}"; done
           fi
           exit $status
       - run: pnpm audit --audit-level=high
