@@ -3,6 +3,11 @@
  * that sit above every school's own settings. Pure.
  */
 import { createHash } from 'node:crypto';
+import {
+  parseSecurityPolicy,
+  SECURITY_DEFAULTS,
+  type SecurityPolicy,
+} from '../operations/operations-rules';
 
 export const TENANT_STATUSES = ['active', 'trial', 'suspended'] as const;
 export type TenantStatus = (typeof TENANT_STATUSES)[number];
@@ -35,6 +40,8 @@ export interface TenantPolicies {
       number
     >
   >;
+  /** Password length, who must use 2FA, session age and administrator IP ranges (slice 26). */
+  security: SecurityPolicy;
 }
 
 export const DEFAULT_POLICIES: TenantPolicies = {
@@ -43,6 +50,7 @@ export const DEFAULT_POLICIES: TenantPolicies = {
   studentMessagingAllowed: true,
   disabledFeatures: [],
   retention: {},
+  security: SECURITY_DEFAULTS,
 };
 
 const FEATURE_CODE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
@@ -78,6 +86,7 @@ export function parsePolicies(json: string | null | undefined): TenantPolicies {
       FEATURE_CODE.test(s),
     ),
     retention,
+    security: parseSecurityPolicy(parsed.security),
   };
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { MotionItem } from '@/components/motion';
 import { Alert, Button, Select } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
@@ -34,7 +34,7 @@ export function StatusPill({ status }: { status: ContentStatus }) {
   return <span className={`rounded px-1.5 py-0.5 text-xs ${statusClass(status)}`}>{STATUS_LABELS[status]}</span>;
 }
 
-export function GroupCard({ group }: { group: Group }) {
+export function GroupCard({ group, action }: { group: Group; action?: ReactNode }) {
   const readable = group.canSee;
   return (
     <MotionItem className="flex h-full flex-col rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
@@ -57,6 +57,7 @@ export function GroupCard({ group }: { group: Group }) {
       <p className="mt-auto pt-3 text-xs text-slate-500">
         {group.memberCount} member{group.memberCount === 1 ? '' : 's'} · {group.topicCount} topic{group.topicCount === 1 ? '' : 's'}
       </p>
+      {action && <div className="mt-3">{action}</div>}
     </MotionItem>
   );
 }

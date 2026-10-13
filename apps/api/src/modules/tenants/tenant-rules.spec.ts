@@ -11,6 +11,7 @@ import {
   slugify,
   tenantFromHost,
 } from './tenant-rules';
+import { SECURITY_DEFAULTS } from '../operations/operations-rules';
 
 describe('tenant rules', () => {
   it('parses policies with defaults and drops junk', () => {
@@ -20,6 +21,7 @@ describe('tenant rules', () => {
       studentMessagingAllowed: true,
       disabledFeatures: [],
       retention: {},
+      security: SECURITY_DEFAULTS,
     });
     const p = parsePolicies(
       '{"aiEnabled":false,"aiDisabledSchools":["01a0f4ba-2f41-7bb3-a7f4-28d3309e135b","nope"],"disabledFeatures":["ai.tutor.chat","BAD CODE"],"retention":{"aiConversations":90,"auditLogs":"x"},"studentMessagingAllowed":false}',

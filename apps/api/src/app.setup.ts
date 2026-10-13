@@ -1,6 +1,7 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import compression from 'compression';
 import helmet from 'helmet';
 
@@ -14,7 +15,17 @@ export function configureApp(
   options: { corsOrigins?: string[] } = {},
 ): NestExpressApplication {
   // JSON for the API, raw text/csv for bulk imports (docs/09: imports accept a CSV body).
-  app.useBodyParser('json', { limit: '5mb' });
+  app.useBodyParser('json', {
+    limit: '5mb',
+    // The payment provider's webhook is signed over the bytes as sent (slice 26).
+    verify: (
+      req: IncomingMessage & { rawBody?: Buffer },
+      _res: ServerResponse,
+      buf: Buffer,
+    ) => {
+      if (req.url?.includes('/billing/webhooks/')) req.rawBody = buf;
+    },
+  });
   app.useBodyParser('urlencoded', { extended: true, limit: '5mb' });
   app.useBodyParser('text', { type: 'text/csv', limit: '10mb' });
   app.use(compression({ threshold: 1024 }));

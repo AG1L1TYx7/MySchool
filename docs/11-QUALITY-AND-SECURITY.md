@@ -56,6 +56,9 @@ Data protection
 - Minimum personal data in AI prompts; pseudonymised prompt logs with retention; soft delete where history matters, hard delete for student data on request (Release 2 data-subject tooling).
 - Audit log for every write to identity, permissions, students, grades and settings.
 
+- **District security policy (slice 26).** `SecurityPolicyGuard` runs after the access guard on every signed-in request: administrators outside the district's IPv4 allowlist get 403 `security.ip_not_allowed` (loopback always passes; the client address is the first `X-Forwarded-For` entry behind the proxy), and a session older than the district's limit gets 401 `security.session_expired`. The password floor is 12 characters; a district may raise it to 64. District 2FA roles join the platform's in both the login answer and the access token.
+- **Idempotency (slice 26).** Billing writes require an `Idempotency-Key`; the stored answer is replayed for a day and a different body under the same key is refused, so a retried request can never create a second subscription or invoice.
+
 ## 4. Performance rules
 
 - Every list endpoint paginates (max 200) and sorts only on allow-listed, indexed columns.

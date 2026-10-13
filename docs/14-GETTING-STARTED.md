@@ -182,6 +182,10 @@ Sign in as the student and open My portfolio: add a project with a file and a sc
 
 Sign in as the teacher, open a class and press Discussion: the class discussion exists from that moment with everyone on the roster, and you moderate it. Start a topic. As the student, Community shows the topic under Recent activity; reply, react, and try a reply with a phone number in it: it is held for a teacher and only you and the teachers see it. Back as the teacher, Community > Moderation lists it with the reason; approve, hide or remove it, and the student is told. Under Groups the teacher can create a club (who can read it, how people join, whether students post) and the student can join it; the parent can read the class discussion and report a topic but never posts. The principal closes reports from the same Moderation tab; every decision is in the audit log.
 
+## 4r. Billing and operations
+
+Sign in as the platform administrator (superadmin) and open Billing: All districts lists each district with its plan; pick Demo District, change the plan or start a trial under Subscription, press Issue invoice for this period under Invoices, open the invoice, download the PDF and record a payment. Usage shows requests, AI calls, people, active students and storage by day and by school (press the snapshot through the API, or wait for the nightly run). Operations shows the health checks and lets you open an incident; the public page at /status shows it at once with the affected component marked, and the update log as you post updates until it is resolved. Sign in as the superintendent: Billing shows only their district, and District, Policies, Security sets the shortest password, 2FA roles, session age and the networks administrators may sign in from.
+
 ## 5. Backups
 
 ```bash

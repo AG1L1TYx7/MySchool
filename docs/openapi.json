@@ -16820,6 +16820,596 @@
         ]
       }
     },
+    "/api/v1/billing/plans": {
+      "get": {
+        "operationId": "BillingController_plans_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The plans a district can be on",
+        "tags": [
+          "Billing"
+        ]
+      },
+      "put": {
+        "operationId": "BillingController_upsertPlan_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create or change a plan by code (platform administrator)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/overview": {
+      "get": {
+        "operationId": "BillingController_overview_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every district, its plan and status, recurring revenue and what is open or overdue",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/subscription": {
+      "get": {
+        "operationId": "BillingController_subscription_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The district subscription (?tenantId for the platform administrator), seats now and the monthly estimate",
+        "tags": [
+          "Billing"
+        ]
+      },
+      "put": {
+        "operationId": "BillingController_setSubscription_api/v1",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start or change the subscription (idempotent by Idempotency-Key)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/subscription/cancel": {
+      "post": {
+        "operationId": "BillingController_cancel_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel at once; invoices already issued stay due",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/invoices": {
+      "get": {
+        "operationId": "BillingController_invoices_api/v1",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "paid",
+                "void",
+                "overdue"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invoices for the district (platform administrator: all, or ?tenantId)",
+        "tags": [
+          "Billing"
+        ]
+      },
+      "post": {
+        "operationId": "BillingController_generate_api/v1",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Issue the invoice for the current (or a named) period; one per period",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/invoices/{id}": {
+      "get": {
+        "operationId": "BillingController_invoice_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One invoice with its lines",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/invoices/{id}/pdf": {
+      "get": {
+        "operationId": "BillingController_pdf_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The invoice as a PDF (audited)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/invoices/{id}/pay": {
+      "post": {
+        "operationId": "BillingController_pay_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a payment received outside the platform",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/invoices/{id}/void": {
+      "post": {
+        "operationId": "BillingController_voidInvoice_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Void an unpaid invoice",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/usage": {
+      "get": {
+        "operationId": "BillingController_usageReport_api/v1",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date; default thirty days ago",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date; default today",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Metered usage by day and by school (from, to, tenantId)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/usage/snapshot": {
+      "post": {
+        "operationId": "BillingController_snapshot_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record active students and storage per school now (runs nightly on its own)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/webhooks/provider": {
+      "post": {
+        "operationId": "BillingController_webhook_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Payment provider webhook (signature required); invoice.paid marks the matching invoice paid",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "operationId": "OperationsController_status_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Public status page: components, open incidents, planned maintenance and ninety days of uptime",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
+    "/api/v1/operations/incidents": {
+      "get": {
+        "operationId": "OperationsController_incidents_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every incident and maintenance window with its update log",
+        "tags": [
+          "Operations"
+        ]
+      },
+      "post": {
+        "operationId": "OperationsController_create_api/v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open an incident or schedule maintenance (audited)",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
+    "/api/v1/operations/incidents/{id}": {
+      "patch": {
+        "operationId": "OperationsController_update_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add an update, move the status, change impact or visibility (audited)",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
+    "/api/v1/operations/checks": {
+      "get": {
+        "operationId": "OperationsController_checks_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Recent health checks",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
+    "/api/v1/operations/checks/run": {
+      "post": {
+        "operationId": "OperationsController_run_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Run a health check now (one runs every five minutes on its own)",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_basic",
@@ -20681,40 +21271,62 @@
       "CreateIncidentDto": {
         "type": "object",
         "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "incident",
+              "maintenance"
+            ],
+            "default": "incident"
+          },
           "title": {
             "type": "string"
           },
-          "severity": {
+          "message": {
+            "type": "string",
+            "description": "The first update, shown on the status page"
+          },
+          "impact": {
             "type": "string",
             "enum": [
-              "low",
-              "medium",
-              "high",
+              "none",
+              "minor",
+              "major",
               "critical"
-            ]
+            ],
+            "default": "minor"
           },
-          "summary": {
-            "type": "string"
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "api",
+                "database",
+                "ai",
+                "web"
+              ]
+            }
           },
-          "detectedAt": {
-            "type": "string"
+          "isPublic": {
+            "type": "boolean",
+            "default": true
           },
-          "affectedCount": {
-            "type": "number"
-          },
-          "dataCategories": {
+          "scheduledFor": {
             "type": "string",
-            "description": "Comma-separated data categories, for the notice"
+            "description": "Maintenance: when it starts"
           },
-          "organizationId": {
+          "scheduledUntil": {
             "type": "string",
-            "format": "uuid"
+            "description": "Maintenance: when it should be over"
           }
         },
         "required": [
+          "kind",
           "title",
-          "severity",
-          "summary"
+          "message",
+          "impact",
+          "components"
         ]
       },
       "UpdateIncidentDto": {
@@ -20723,32 +21335,38 @@
           "status": {
             "type": "string",
             "enum": [
-              "open",
-              "contained",
-              "notified",
-              "closed"
+              "investigating",
+              "identified",
+              "monitoring",
+              "resolved",
+              "scheduled",
+              "in_progress",
+              "completed"
             ]
           },
-          "severity": {
+          "message": {
+            "type": "string",
+            "description": "What changed, in plain words"
+          },
+          "impact": {
             "type": "string",
             "enum": [
-              "low",
-              "medium",
-              "high",
+              "none",
+              "minor",
+              "major",
               "critical"
             ]
           },
-          "affectedCount": {
-            "type": "number"
+          "isPublic": {
+            "type": "boolean"
           },
-          "dataCategories": {
+          "title": {
             "type": "string"
-          },
-          "note": {
-            "type": "string",
-            "description": "A timeline entry"
           }
-        }
+        },
+        "required": [
+          "message"
+        ]
       },
       "BrandingDto": {
         "type": "object",
@@ -20844,6 +21462,10 @@
           "retention": {
             "type": "object",
             "description": "Retention days by switch; applied to schools without their own setting"
+          },
+          "security": {
+            "type": "object",
+            "description": "Security: passwordMinLength (12 to 64), mfaRequiredRoles (role names), sessionMaxHours (0 = platform default), adminIpAllowlist (IPv4 or CIDR)"
           }
         }
       },
@@ -22028,6 +22650,103 @@
         "required": [
           "resolution"
         ]
+      },
+      "UpsertPlanDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "pricePerStudentCents": {
+            "type": "number",
+            "description": "Cents per student per month"
+          },
+          "minimumCents": {
+            "type": "number",
+            "description": "Cents per month at least"
+          },
+          "includedStudents": {
+            "type": "number"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "pricePerStudentCents",
+          "minimumCents"
+        ]
+      },
+      "SetSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "Platform administrators choose the district; a superintendent gets their own"
+          },
+          "planCode": {
+            "type": "string",
+            "example": "district"
+          },
+          "seats": {
+            "type": "number",
+            "description": "Students billed; left out, counted from the district's active students"
+          },
+          "billingEmail": {
+            "type": "string"
+          },
+          "billingName": {
+            "type": "string"
+          },
+          "trialDays": {
+            "type": "number",
+            "description": "Days of trial before the first invoice (platform administrators)"
+          }
+        },
+        "required": [
+          "planCode"
+        ]
+      },
+      "GenerateInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "periodStart": {
+            "type": "string",
+            "description": "First day of the period (ISO date); left out, the subscription's current period"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "InvoiceActionDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Payment reference from the bank or the provider"
+          }
+        }
       }
     }
   }

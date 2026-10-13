@@ -195,6 +195,8 @@ function PoliciesView({ q, canManage }: { q: string; canManage: boolean }) {
   const { data: overview, error: overviewError } = useOverview(q);
   const [form, setForm] = useState<TenantPolicies | null>(null);
   const [features, setFeatures] = useState('');
+  const [mfaRoles, setMfaRoles] = useState('');
+  const [ipList, setIpList] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -205,6 +207,8 @@ function PoliciesView({ q, canManage }: { q: string; canManage: boolean }) {
       .then((r) => {
         setForm(r.policies);
         setFeatures(r.policies.disabledFeatures.join(', '));
+        setMfaRoles(r.policies.security.mfaRequiredRoles.join(', '));
+        setIpList(r.policies.security.adminIpAllowlist.join(', '));
       })
       .catch((e) => setError(errorMessage(e)));
   }, [tenantId]);
@@ -222,10 +226,20 @@ function PoliciesView({ q, canManage }: { q: string; canManage: boolean }) {
     try {
       const r = await api<{ policies: TenantPolicies }>(`/tenants/${tenantId}/policies`, {
         method: 'PUT',
-        body: { ...form, disabledFeatures: features.split(/[,\s]+/).map((f) => f.trim()).filter(Boolean) },
+        body: {
+          ...form,
+          disabledFeatures: features.split(/[,\s]+/).map((f) => f.trim()).filter(Boolean),
+          security: {
+            ...form.security,
+            mfaRequiredRoles: mfaRoles.split(/[,\s]+/).map((r) => r.trim().toLowerCase()).filter(Boolean),
+            adminIpAllowlist: ipList.split(/[,\s]+/).map((r) => r.trim()).filter(Boolean),
+          },
+        },
       });
       setForm(r.policies);
       setFeatures(r.policies.disabledFeatures.join(', '));
+      setMfaRoles(r.policies.security.mfaRequiredRoles.join(', '));
+      setIpList(r.policies.security.adminIpAllowlist.join(', '));
       setSaved(true);
     } catch (err) {
       setError(errorMessage(err));
@@ -279,6 +293,14 @@ function PoliciesView({ q, canManage }: { q: string; canManage: boolean }) {
               onChange={(e) => setForm({ ...form, retention: { ...form.retention, [k]: Number(e.target.value) } })}
             />
           ))}
+        </div>
+      </Card>
+      <Card title="Security" description="Rules for every account in the district. The platform already requires 12-character passwords and 2FA for administrators; a district can ask for more.">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="Shortest password allowed (12 to 64)" id="district-pw-min" type="number" min={12} max={64} disabled={!canManage} value={form.security.passwordMinLength} onChange={(e) => setForm({ ...form, security: { ...form.security, passwordMinLength: Number(e.target.value) } })} />
+          <Input label="Close sign-ins after (hours, 0 = platform default)" id="district-session-hours" type="number" min={0} max={2160} disabled={!canManage} value={form.security.sessionMaxHours} onChange={(e) => setForm({ ...form, security: { ...form.security, sessionMaxHours: Number(e.target.value) } })} />
+          <Input label="Roles that must use 2FA" id="district-mfa-roles" disabled={!canManage} value={mfaRoles} onChange={(e) => setMfaRoles(e.target.value)} hint="Role names separated by commas, for example teacher, counselor. Principals and district staff already must." />
+          <Input label="Administrators may sign in only from" id="district-ip-allowlist" disabled={!canManage} value={ipList} onChange={(e) => setIpList(e.target.value)} hint="IPv4 addresses or ranges such as 203.0.113.0/24, separated by commas. Leave empty for anywhere. Applies to principals and district administrators." />
         </div>
       </Card>
       {canManage && (

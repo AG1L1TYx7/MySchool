@@ -39,6 +39,10 @@ import { LibraryModule } from './modules/library/library.module';
 import { PathsModule } from './modules/paths/paths.module';
 import { CareersModule } from './modules/careers/careers.module';
 import { CommunityModule } from './modules/community/community.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { UsageInterceptor } from './modules/billing/usage.interceptor';
+import { OperationsModule } from './modules/operations/operations.module';
+import { SecurityPolicyGuard } from './modules/operations/security-policy.guard';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { InsightModule } from './modules/insight/insight.module';
 import { MobileModule } from './modules/mobile/mobile.module';
@@ -149,6 +153,8 @@ import { UsersModule } from './modules/users/users.module';
     PathsModule,
     CareersModule,
     CommunityModule,
+    BillingModule,
+    OperationsModule,
     HealthModule,
     MetricsModule,
   ],
@@ -157,7 +163,9 @@ import { UsersModule } from './modules/users/users.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: AccessGuard },
+    { provide: APP_GUARD, useClass: SecurityPolicyGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: UsageInterceptor },
   ],
 })
 export class AppModule {}

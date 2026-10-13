@@ -131,14 +131,17 @@ function GroupsView({ canCreate }: { canCreate: boolean }) {
             ) : (
               <MotionList className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {others.map((g) => (
-                  <div key={g.id} className="flex min-w-0 flex-col gap-2">
-                    <GroupCard group={g} />
-                    {(g.joinOutcome === 'active' || g.joinOutcome === 'pending') && (
-                      <Button variant="secondary" onClick={() => void join(g)}>
-                        {g.joinOutcome === 'active' ? `Join ${g.name}` : `Ask to join ${g.name}`}
-                      </Button>
-                    )}
-                  </div>
+                  <GroupCard
+                    key={g.id}
+                    group={g}
+                    action={
+                      g.joinOutcome === 'active' || g.joinOutcome === 'pending' ? (
+                        <Button variant="secondary" onClick={() => void join(g)}>
+                          {g.joinOutcome === 'active' ? `Join ${g.name}` : `Ask to join ${g.name}`}
+                        </Button>
+                      ) : null
+                    }
+                  />
                 ))}
               </MotionList>
             )}

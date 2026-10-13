@@ -51,6 +51,8 @@ const FEATURELESS_OK = [
   /^\/auth\//,
   /^\/health/,
   /^\/metrics/,
+  /^\/status/,
+  /^\/billing\/webhooks\//,
   /^\/internal\/ai\//,
   /^\/roles$/,
   /^\/features$/,
@@ -67,6 +69,8 @@ const PUBLIC_PREFIXES = [
   /^\/calendar\/ical\//,
   /^\/h5p\/play\//,
   /^\/internal\/ai\//,
+  /^\/status/,
+  /^\/billing\/webhooks\//,
 ];
 
 const fill = (p: string) =>

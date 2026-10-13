@@ -14,6 +14,10 @@ import {
   PLATFORM_CODE_LESSONS,
   PLATFORM_SKILLS,
 } from '../src/modules/careers/careers-rules';
+import {
+  PLATFORM_PLANS,
+  periodFrom,
+} from '../src/modules/billing/billing-rules';
 import { FEATURE_CATALOG } from '../src/modules/access/feature-catalog';
 import { H5P_LIBRARIES } from '../src/modules/h5p/h5p-libraries';
 import { BADGES } from '../src/modules/motivation/motivation-rules';
@@ -1401,6 +1405,63 @@ async function seedLearningGap(): Promise<void> {
 }
 
 /** Platform skills and code lessons (slice 24), the same for every school. */
+/** The platform plans and the demo district on the District plan with a period that started this month. */
+async function seedBilling(): Promise<void> {
+  for (const p of PLATFORM_PLANS) {
+    await prisma.subscriptionPlan.upsert({
+      where: { code: p.code },
+      update: {},
+      create: {
+        id: uuidv7(),
+        code: p.code,
+        name: p.name,
+        description: p.description,
+        pricePerStudentCents: p.pricePerStudentCents,
+        minimumCents: p.minimumCents,
+        includedStudents: p.includedStudents,
+        features: JSON.stringify(p.features),
+        sortOrder: p.sortOrder,
+      },
+    });
+  }
+  const tenant = await prisma.tenant.findUnique({ where: { slug: 'demo' } });
+  const plan = await prisma.subscriptionPlan.findUnique({
+    where: { code: 'district' },
+  });
+  if (!tenant || !plan) return;
+  const existing = await prisma.subscription.findUnique({
+    where: { tenantId: tenant.id },
+  });
+  if (existing) return;
+  const now = new Date();
+  const period = periodFrom(
+    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+  );
+  const seats = await prisma.student.count({
+    where: {
+      organization: { tenantId: tenant.id },
+      enrollmentStatus: 'ACTIVE',
+      deletedAt: null,
+    },
+  });
+  await prisma.subscription.create({
+    data: {
+      id: uuidv7(),
+      tenantId: tenant.id,
+      planId: plan.id,
+      status: 'active',
+      seats,
+      billingEmail: 'business@demo-district.example',
+      billingName: 'Demo District business office',
+      currentPeriodStart: period.start,
+      currentPeriodEnd: period.end,
+    },
+  });
+  console.log(
+    `billing: plans present, Demo District on the District plan with ${seats} seats`,
+  );
+}
+
 async function seedCareers(): Promise<void> {
   for (const skill of PLATFORM_SKILLS) {
     const existing = await prisma.skill.findFirst({
@@ -1457,6 +1518,7 @@ async function main(): Promise<void> {
   await seedMotivation(orgId);
   await seedLearningGap();
   await seedCareers();
+  await seedBilling();
 }
 
 main()

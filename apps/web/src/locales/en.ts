@@ -845,6 +845,10 @@ export const en = {
   // Community (slice 25)
   'nav.community': 'Community',
   'category.community': 'Groups, class discussions and moderation',
+  // Billing and operations (slice 26)
+  'nav.billing': 'Billing',
+  'nav.operations': 'Operations',
+  'category.platform': 'Billing, plans and the status page',
   'category.portfolio': 'Portfolio, skills, career plans and code lessons',
   'category.paths': 'Learning health, next steps and paths',
   'category.library': 'Shared content, collections and review',

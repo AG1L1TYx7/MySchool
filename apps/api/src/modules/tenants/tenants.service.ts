@@ -30,6 +30,7 @@ import {
   type Branding,
   type TenantPolicies,
 } from './tenant-rules';
+import { parseSecurityPolicy } from '../operations/operations-rules';
 
 export const DEFAULT_TENANT_ID = '00000000-0000-7000-8000-000000000001';
 
@@ -388,6 +389,7 @@ export class TenantsService {
         dto.studentMessagingAllowed ?? current.studentMessagingAllowed,
       disabledFeatures: dto.disabledFeatures ?? current.disabledFeatures,
       retention: dto.retention ?? current.retention,
+      security: parseSecurityPolicy(dto.security ?? current.security),
     };
     const parsed = parsePolicies(JSON.stringify(next));
     if (parsed.aiDisabledSchools.length) {

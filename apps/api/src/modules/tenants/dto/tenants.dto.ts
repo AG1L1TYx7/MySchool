@@ -119,4 +119,13 @@ export class UpdatePoliciesDto {
   @IsOptional()
   @IsObject()
   retention?: Record<string, number>;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Security: passwordMinLength (12 to 64), mfaRequiredRoles (role names), sessionMaxHours (0 = platform default), adminIpAllowlist (IPv4 or CIDR)',
+  })
+  @IsOptional()
+  @IsObject()
+  security?: Record<string, unknown>;
 }

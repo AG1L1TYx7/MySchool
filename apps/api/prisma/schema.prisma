@@ -405,6 +405,8 @@ model Organization {
 
   communityGroups CommunityGroup[]
 
+  usageDays UsageDaily[]
+
   @@index([tenantId])
   @@index([name])
   @@index([isActive, deletedAt])
@@ -2553,6 +2555,10 @@ model Tenant {
 
   organizations Organization[]
 
+  subscription Subscription?
+  invoices     Invoice[]
+  usageDays    UsageDaily[]
+
   @@map("Tenants")
 }
 
@@ -3212,4 +3218,159 @@ model CommunityReport {
   @@index([organizationId, status, createdAt])
   @@index([targetType, targetId])
   @@map("CommunityReports")
+}
+
+/// Billing and operations (slice 26): plans, one subscription per tenant, invoices, idempotency keys, usage metering,
+/// service incidents for the status page and the health checks behind its uptime figures.
+model SubscriptionPlan {
+  id                   String   @id @map("Id") @db.Char(36)
+  code                 String   @unique @map("Code") @db.VarChar(32)
+  name                 String   @map("Name") @db.VarChar(80)
+  description          String?  @map("Description") @db.VarChar(500)
+  pricePerStudentCents Int      @default(0) @map("PricePerStudentCents")
+  minimumCents         Int      @default(0) @map("MinimumCents")
+  includedStudents     Int      @default(0) @map("IncludedStudents")
+  features             String?  @map("Features") @db.Text
+  isActive             Boolean  @default(true) @map("IsActive")
+  sortOrder            Int      @default(0) @map("SortOrder")
+  createdAt            DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt            DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  subscriptions Subscription[]
+
+  @@map("SubscriptionPlans")
+}
+
+model Subscription {
+  id                 String    @id @map("Id") @db.Char(36)
+  tenantId           String    @unique @map("TenantId") @db.Char(36)
+  planId             String    @map("PlanId") @db.Char(36)
+  status             String    @default("active") @map("Status") @db.VarChar(16)
+  seats              Int       @default(0) @map("Seats")
+  billingEmail       String?   @map("BillingEmail") @db.VarChar(120)
+  billingName        String?   @map("BillingName") @db.VarChar(200)
+  currentPeriodStart DateTime  @map("CurrentPeriodStart") @db.DateTime(6)
+  currentPeriodEnd   DateTime  @map("CurrentPeriodEnd") @db.DateTime(6)
+  trialEndsAt        DateTime? @map("TrialEndsAt") @db.DateTime(6)
+  provider           String    @default("manual") @map("Provider") @db.VarChar(16)
+  providerRef        String?   @map("ProviderRef") @db.VarChar(120)
+  canceledAt         DateTime? @map("CanceledAt") @db.DateTime(6)
+  createdAt          DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt          DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+  invoices Invoice[]
+
+  @@index([status])
+  @@map("Subscriptions")
+}
+
+model Invoice {
+  id             String    @id @map("Id") @db.Char(36)
+  tenantId       String    @map("TenantId") @db.Char(36)
+  subscriptionId String?   @map("SubscriptionId") @db.Char(36)
+  number         String    @unique @map("Number") @db.VarChar(24)
+  status         String    @default("open") @map("Status") @db.VarChar(16)
+  periodStart    DateTime  @map("PeriodStart") @db.DateTime(6)
+  periodEnd      DateTime  @map("PeriodEnd") @db.DateTime(6)
+  lines          String    @map("Lines") @db.Text
+  subtotalCents  Int       @map("SubtotalCents")
+  taxCents       Int       @default(0) @map("TaxCents")
+  totalCents     Int       @map("TotalCents")
+  currency       String    @default("USD") @map("Currency") @db.Char(3)
+  issuedAt       DateTime  @default(now()) @map("IssuedAt") @db.DateTime(6)
+  dueAt          DateTime  @map("DueAt") @db.DateTime(6)
+  paidAt         DateTime? @map("PaidAt") @db.DateTime(6)
+  voidedAt       DateTime? @map("VoidedAt") @db.DateTime(6)
+  provider       String    @default("manual") @map("Provider") @db.VarChar(16)
+  providerRef    String?   @map("ProviderRef") @db.VarChar(120)
+  note           String?   @map("Note") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, issuedAt])
+  @@map("Invoices")
+}
+
+model IdempotencyKey {
+  id           String   @id @map("Id") @db.Char(36)
+  actorId      String   @map("ActorId") @db.Char(36)
+  route        String   @map("Route") @db.VarChar(120)
+  key          String   @map("Key") @db.VarChar(120)
+  requestHash  String   @map("RequestHash") @db.Char(64)
+  statusCode   Int      @map("StatusCode")
+  responseBody String   @map("ResponseBody") @db.Text
+  createdAt    DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  expiresAt    DateTime @map("ExpiresAt") @db.DateTime(6)
+
+  @@unique([actorId, route, key])
+  @@index([expiresAt])
+  @@map("IdempotencyKeys")
+}
+
+model UsageDaily {
+  id             String   @id @map("Id") @db.Char(36)
+  tenantId       String   @map("TenantId") @db.Char(36)
+  organizationId String   @map("OrganizationId") @db.Char(36)
+  day            DateTime @map("Day") @db.Date
+  apiRequests    Int      @default(0) @map("ApiRequests")
+  aiCalls        Int      @default(0) @map("AiCalls")
+  activeUsers    Int      @default(0) @map("ActiveUsers")
+  activeStudents Int      @default(0) @map("ActiveStudents")
+  storageMb      Int      @default(0) @map("StorageMb")
+  updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, organizationId, day])
+  @@index([tenantId, day])
+  @@map("UsageDaily")
+}
+
+model UsageActivity {
+  id             String   @id @map("Id") @db.Char(36)
+  tenantId       String   @map("TenantId") @db.Char(36)
+  organizationId String   @map("OrganizationId") @db.Char(36)
+  day            DateTime @map("Day") @db.Date
+  userId         String   @map("UserId") @db.Char(36)
+
+  @@unique([organizationId, day, userId])
+  @@index([tenantId, day])
+  @@map("UsageActivity")
+}
+
+model ServiceIncident {
+  id             String    @id @map("Id") @db.Char(36)
+  kind           String    @default("incident") @map("Kind") @db.VarChar(16)
+  title          String    @map("Title") @db.VarChar(200)
+  status         String    @default("investigating") @map("Status") @db.VarChar(16)
+  impact         String    @default("minor") @map("Impact") @db.VarChar(16)
+  components     String    @map("Components") @db.VarChar(200)
+  isPublic       Boolean   @default(true) @map("IsPublic")
+  startedAt      DateTime  @map("StartedAt") @db.DateTime(6)
+  resolvedAt     DateTime? @map("ResolvedAt") @db.DateTime(6)
+  scheduledFor   DateTime? @map("ScheduledFor") @db.DateTime(6)
+  scheduledUntil DateTime? @map("ScheduledUntil") @db.DateTime(6)
+  updates        String    @map("Updates") @db.Text
+  createdById    String?   @map("CreatedById") @db.Char(36)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  @@index([status, startedAt])
+  @@map("ServiceIncidents")
+}
+
+model StatusCheck {
+  id         String   @id @map("Id") @db.Char(36)
+  checkedAt  DateTime @default(now()) @map("CheckedAt") @db.DateTime(6)
+  status     String   @map("Status") @db.VarChar(16)
+  components String   @map("Components") @db.VarChar(500)
+  latencyMs  Int      @default(0) @map("LatencyMs")
+
+  @@index([checkedAt])
+  @@map("StatusChecks")
 }

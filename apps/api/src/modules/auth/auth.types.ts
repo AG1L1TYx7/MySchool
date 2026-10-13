@@ -11,6 +11,8 @@ export interface AuthenticatedUser {
   /** For a superintendent: every organisation of their tenant. */
   tenantOrganizationIds?: string[];
   sessionId: string;
+  /** When this sign-in began; the district's session-age policy is checked against it (slice 26). */
+  sessionStartedAt?: Date;
   /** Privileged role without 2FA: only the auth routes are allowed until setup completes. */
   mfaSetupRequired: boolean;
   /** Present when the request was authenticated with an API key: only these feature codes may be used. */

@@ -78,12 +78,14 @@ export interface RequestOptions {
   body?: unknown;
   auth?: boolean;
   signal?: AbortSignal;
+  /** Extra request headers, for example an Idempotency-Key on billing writes. */
+  headers?: Record<string, string>;
 }
 
 export async function api<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, auth = true, signal } = options;
+  const { method = 'GET', body, auth = true, signal, headers: extra } = options;
   const send = async (): Promise<Response> => {
-    const headers: Record<string, string> = { accept: 'application/json', ...CSRF_HEADERS };
+    const headers: Record<string, string> = { accept: 'application/json', ...CSRF_HEADERS, ...(extra ?? {}) };
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (auth && tokenStore.access) headers.authorization = `Bearer ${tokenStore.access}`;
     return fetch(`${BASE}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal, credentials: 'same-origin' });

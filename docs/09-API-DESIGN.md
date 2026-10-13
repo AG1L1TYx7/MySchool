@@ -394,6 +394,26 @@ POST   /community/topics/{id}/moderate             community.moderate: { action 
 POST   /community/reports/{id}/resolve             community.moderate: { resolution dismiss|warn|hide|remove, note? } (audited; author and reporter told)
 ```
 
+### Billing and operations (Release 3 slice 26)
+
+```
+GET    /billing/plans                              billing.view: active plans (platform administrator: all); PUT (billing.manage) { code, name, description?, pricePerStudentCents, minimumCents, includedStudents?, features[]?, isActive? }
+GET    /billing/overview                           billing.manage: districts, plan and status each, recurring revenue, open and overdue totals
+GET    /billing/subscription?tenantId              billing.view: { tenant, subscription | null, seatsNow, estimate }; superintendents get their own district
+PUT    /billing/subscription                       billing.manage, header Idempotency-Key: { tenantId?, planCode, seats?, billingEmail?, billingName?, trialDays? } -> 201 (Idempotent-Replayed: true on a repeat; 422 idempotency.mismatch; 400 idempotency.key_required)
+POST   /billing/subscription/cancel?tenantId       billing.manage
+GET    /billing/invoices?tenantId&status           billing.view; GET /billing/invoices/{id}; GET /billing/invoices/{id}/pdf (audited)
+POST   /billing/invoices                           billing.manage, Idempotency-Key: { tenantId?, periodStart?, note? } -> 201 one per period (409 billing.period_invoiced)
+POST   /billing/invoices/{id}/pay                  billing.manage: { reference?, note? }; POST /void (400 billing.invoice_paid when paid)
+GET    /billing/usage?tenantId&from&to             billing.view: { days[], totals, schools[] } (flushes the in-memory counts first)
+POST   /billing/usage/snapshot                     billing.manage: active students and storage per school now
+POST   /billing/webhooks/provider                  public; Stripe-Signature over the raw body; 404 billing.provider_off without a secret, 403 billing.bad_signature
+GET    /status                                     public: { status, label, checkedAt, components[], incidents[], maintenance[], uptime { days, percent, byDay[] } }
+GET    /operations/incidents?open                  operations.manage; POST { kind?, title, message, impact?, components[], isPublic?, scheduledFor?, scheduledUntil? }; PATCH /{id} { status?, message, impact?, isPublic?, title? } (400 operations.bad_transition)
+GET    /operations/checks?limit                    operations.manage; POST /operations/checks/run
+PUT    /tenants/{id}/policies                      now also { security: { passwordMinLength, mfaRequiredRoles[], sessionMaxHours, adminIpAllowlist[] } }
+```
+
 ### Mobile and push (Release 2 slice 18)
 ```
 GET    /mobile/home                         one call for the first screen: todayClasses, work { overdue, dueSoon, recentlyGraded }, unread, attendance (teachers), motivation (students), children (families), announcements

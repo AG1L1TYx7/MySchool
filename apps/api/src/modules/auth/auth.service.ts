@@ -37,6 +37,8 @@ import {
   UpdateMeDto,
 } from './dto/auth.dto';
 import { PasswordService } from './password.service';
+import { mfaRequiredByPolicy } from '../operations/operations-rules';
+import { TenantsService } from '../tenants/tenants.service';
 import { sessionExpiry } from './session-rules';
 import { TokenService } from './token.service';
 import { TwoFactorService } from './two-factor.service';
@@ -102,6 +104,7 @@ export class AuthService {
     private readonly flags: FeatureFlagService,
     private readonly captcha: CaptchaService,
     private readonly mail: MailService,
+    private readonly tenants: TenantsService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
   ) {}
@@ -158,6 +161,12 @@ export class AuthService {
           detail: 'That school join code is not valid.',
         });
       organizationId = org.id;
+      const min = await this.passwordMinFor(organizationId);
+      if (dto.password.length < min)
+        throw new BadRequestException({
+          code: 'auth.password_weak',
+          detail: `This district requires passwords of at least ${min} characters.`,
+        });
     }
 
     const verificationRequired = this.config.auth.requireEmailVerification;
@@ -398,7 +407,7 @@ export class AuthService {
     return {
       mfaRequired: false,
       user: this.toPublic(updated),
-      mfaSetupRequired: this.mfaSetupRequired(updated),
+      mfaSetupRequired: await this.mfaSetupRequiredFor(updated),
       ...pair,
     };
   }
@@ -474,7 +483,7 @@ export class AuthService {
     return {
       mfaRequired: false,
       user: this.toPublic(updated),
-      mfaSetupRequired: this.mfaSetupRequired(updated),
+      mfaSetupRequired: await this.mfaSetupRequiredFor(updated),
       ...pair,
     };
   }
@@ -707,7 +716,11 @@ export class AuthService {
         code: 'auth.password_reused',
         detail: 'Choose a different password.',
       });
-    const weakness = this.passwords.validateNewPassword(dto.newPassword, user);
+    const weakness = this.passwords.validateNewPassword(
+      dto.newPassword,
+      user,
+      await this.passwordMinFor(user.organizationId),
+    );
     if (weakness)
       throw new BadRequestException({
         code: 'auth.password_weak',
@@ -788,6 +801,7 @@ export class AuthService {
     const weakness = this.passwords.validateNewPassword(
       dto.newPassword,
       record.user,
+      await this.passwordMinFor(record.user.organizationId),
     );
     if (weakness)
       throw new BadRequestException({
@@ -905,7 +919,7 @@ export class AuthService {
         code: 'auth.mfa_not_enabled',
         detail: 'Two-factor is not enabled.',
       });
-    if (this.mfaSetupRequired({ ...user, twoFactorEnabled: false })) {
+    if (await this.mfaSetupRequiredFor({ ...user, twoFactorEnabled: false })) {
       throw new ForbiddenException({
         code: 'auth.mfa_required_for_role',
         detail:
@@ -986,6 +1000,37 @@ export class AuthService {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
+
+  /** The platform's roles plus the district's own (slice 26 security policy). */
+  async mfaSetupRequiredFor(
+    user: Pick<User, 'role' | 'twoFactorEnabled' | 'organizationId'>,
+  ): Promise<boolean> {
+    if (user.twoFactorEnabled) return false;
+    if (this.mfaSetupRequired(user)) return true;
+    const policy = (
+      await this.tenants.policiesFor(await this.tenantOf(user.organizationId))
+    ).security;
+    return mfaRequiredByPolicy(policy, ROLE_API_NAME[user.role]);
+  }
+
+  /** The district's minimum password length for a school (the platform floor when there is none). */
+  private async passwordMinFor(organizationId: string | null): Promise<number> {
+    const policy = (
+      await this.tenants.policiesFor(await this.tenantOf(organizationId))
+    ).security;
+    return policy.passwordMinLength;
+  }
+
+  private async tenantOf(
+    organizationId: string | null,
+  ): Promise<string | null> {
+    if (!organizationId) return null;
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { tenantId: true },
+    });
+    return org?.tenantId ?? null;
+  }
 
   /** Administrators in the configured roles must finish 2FA setup before using the rest of the API. */
   mfaSetupRequired(user: Pick<User, 'role' | 'twoFactorEnabled'>): boolean {

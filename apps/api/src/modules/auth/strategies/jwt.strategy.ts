@@ -4,6 +4,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfigService } from '../../../config/app-config.service';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { ROLE_API_NAME } from '../../access/roles';
+import { mfaRequiredByPolicy } from '../../operations/operations-rules';
+import { TenantsService } from '../../tenants/tenants.service';
 import type { AccessTokenClaims, AuthenticatedUser } from '../auth.types';
 
 /**
@@ -15,6 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private readonly config: AppConfigService,
     private readonly prisma: PrismaService,
+    private readonly tenants: TenantsService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -41,6 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       select: {
         id: true,
         absoluteExpiresAt: true,
+        createdAt: true,
         user: {
           select: {
             id: true,
@@ -77,6 +81,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             })
           ).map((o) => o.id)
         : undefined;
+    const policy = (await this.tenants.policiesFor(tenantId)).security;
     return {
       id: session.user.id,
       email: session.user.email,
@@ -85,10 +90,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       tenantId,
       tenantOrganizationIds,
       sessionId: session.id,
+      sessionStartedAt: session.createdAt,
       mfaSetupRequired:
-        this.config.auth.mfaRequiredRoles.includes(
+        (this.config.auth.mfaRequiredRoles.includes(
           ROLE_API_NAME[session.user.role],
-        ) && !session.user.twoFactorEnabled,
+        ) ||
+          mfaRequiredByPolicy(policy, ROLE_API_NAME[session.user.role])) &&
+        !session.user.twoFactorEnabled,
     };
   }
 }

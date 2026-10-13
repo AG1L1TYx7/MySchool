@@ -821,6 +821,10 @@ export const es: Record<MessageKey, string> = {
   // Community (slice 25)
   'nav.community': 'Comunidad',
   'category.community': 'Grupos, discusiones de clase y moderación',
+  // Billing and operations (slice 26)
+  'nav.billing': 'Facturación',
+  'nav.operations': 'Operaciones',
+  'category.platform': 'Facturación, planes y la página de estado',
   'category.portfolio': 'Portafolio, habilidades, planes de carrera y lecciones de código',
   'category.paths': 'Salud del aprendizaje, próximos pasos y rutas',
   'category.library': 'Contenido compartido, colecciones y revisión',

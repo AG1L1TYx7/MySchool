@@ -383,6 +383,19 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
     'Community',
     [...STAFF_AND_COUNSELOR, 'ASSISTANT'],
   ),
+  f('billing.view', 'Subscription, invoices and usage', 'Platform', DISTRICT),
+  f(
+    'billing.manage',
+    'Plans, subscriptions and invoices for every district',
+    'Platform',
+    ['SUPER_ADMIN'],
+  ),
+  f(
+    'operations.manage',
+    'Status page incidents and health checks',
+    'Platform',
+    ['SUPER_ADMIN'],
+  ),
 ];
 
 export const FEATURE_CODES: readonly string[] = FEATURE_CATALOG.map(

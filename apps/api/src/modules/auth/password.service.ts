@@ -52,9 +52,13 @@ export class PasswordService {
   validateNewPassword(
     password: string,
     context: PasswordContext = {},
+    minLength = 12,
   ): string | null {
     if (!this.meetsPolicy(password)) {
       return 'Password must be 12 to 128 characters with upper and lower case letters, a digit and a symbol.';
+    }
+    if (password.length < minLength) {
+      return `Your district requires passwords of at least ${minLength} characters.`;
     }
     if (isCommonPassword(password))
       return 'That password is too common. Choose something harder to guess.';

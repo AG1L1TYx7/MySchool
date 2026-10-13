@@ -34,12 +34,21 @@ export interface DistrictOverview {
   schools: SchoolRow[];
 }
 
+/** District security policy (slice 26): the platform floor is 12 characters; 0 hours keeps the platform session default. */
+export interface SecurityPolicy {
+  passwordMinLength: number;
+  mfaRequiredRoles: string[];
+  sessionMaxHours: number;
+  adminIpAllowlist: string[];
+}
+
 export interface TenantPolicies {
   aiEnabled: boolean;
   aiDisabledSchools: string[];
   studentMessagingAllowed: boolean;
   disabledFeatures: string[];
   retention: Record<string, number>;
+  security: SecurityPolicy;
 }
 
 export interface Branding {
