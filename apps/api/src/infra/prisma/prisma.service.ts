@@ -21,6 +21,12 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(PrismaService.name);
+  private closed = false;
+
+  /** True once the module has disconnected; late work (shutdown flushes) must not reconnect. */
+  get isClosed(): boolean {
+    return this.closed;
+  }
 
   constructor(config: AppConfigService) {
     super({
@@ -49,6 +55,7 @@ export class PrismaService
   }
 
   async onModuleDestroy(): Promise<void> {
+    this.closed = true;
     await this.$disconnect();
   }
 

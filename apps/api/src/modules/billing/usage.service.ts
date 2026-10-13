@@ -1,4 +1,4 @@
-import { Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -19,7 +19,7 @@ interface Bucket {
  * restarts; a nightly snapshot records active students and storage per school.
  */
 @Injectable()
-export class UsageService implements OnApplicationShutdown {
+export class UsageService implements OnModuleDestroy {
   private readonly log = new Logger(UsageService.name);
   private buckets = new Map<string, Bucket>();
   private readonly seenUsers = new Set<string>();
@@ -60,6 +60,7 @@ export class UsageService implements OnApplicationShutdown {
 
   /** Writes the in-memory counts to the day rows. Safe to call at any time (tests do). */
   async flush(): Promise<number> {
+    if (this.prisma.isClosed) return 0;
     const pending = Array.from(this.buckets.values());
     this.buckets = new Map();
     for (const b of pending) {
@@ -174,7 +175,8 @@ export class UsageService implements OnApplicationShutdown {
     return n;
   }
 
-  async onApplicationShutdown(): Promise<void> {
+  /** Writes what is buffered while the database is still connected; after that the last minute is dropped. */
+  async onModuleDestroy(): Promise<void> {
     await this.flush().catch(() => undefined);
   }
 }
