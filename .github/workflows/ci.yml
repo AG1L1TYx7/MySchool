@@ -68,11 +68,11 @@ jobs:
             grep -a -A 25 -E '● .* ›|● Test suite' e2e.log | grep -avE '^\s+at ' | head -400
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          # Failing tests also become run annotations, which are readable without repository rights.
+          # Annotations are readable without repository rights, but GitHub keeps at most ten per step:
+          # the first unhandled server errors (the cause behind a 500) come first, then the failing test names.
           if [ "$status" -ne 0 ]; then
-            grep -a -A 12 -E '● .* ›|● Test suite' e2e.log | grep -avE '^[[:space:]]+at |^--$|^[[:space:]]*$' | head -60 | while IFS= read -r line; do echo "::error title=e2e::${line}"; done
-            # The first unhandled server errors (the cause behind a 500 in a spec), with their stack heads.
-            grep -a -A 8 'Unhandled error' e2e.log | grep -avE '^\{"level"|^--$|^[[:space:]]*$' | head -40 | while IFS= read -r line; do echo "::error title=server::${line}"; done
+            grep -a -A 8 'Unhandled error' e2e.log | grep -avE '^--$|^[[:space:]]*$' | cut -c1-400 | head -6 | while IFS= read -r line; do echo "::error title=server::${line}"; done
+            grep -a -E '● .* ›|● Test suite' e2e.log | head -4 | while IFS= read -r line; do echo "::error title=e2e::${line}"; done
           fi
           exit $status
       - run: pnpm audit --audit-level=high
