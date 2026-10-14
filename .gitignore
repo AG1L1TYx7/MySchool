@@ -50,3 +50,5 @@ apps/web/public/h5p/
 # Local backups (pnpm db:backup) and docker secrets
 backups/
 .env.docker
+tools/browser/out/
+coverage-e2e/

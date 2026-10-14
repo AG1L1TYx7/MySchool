@@ -195,6 +195,19 @@ Release 3 review (14 October 2026): [20-RELEASE-3-REVIEW.md](20-RELEASE-3-REVIEW
 Excluded from every release (ADR-024): emotion detection, public leaderboards, stakes, recruiting. The old multi-agent hub (21) is replaced by the AI service design (ADR-021).
 
 ---
+## 5a. Release 4: Hardening and the seams (from the Release 3 review)
+
+Goal: close the gaps the Release 3 review carried forward, in the order it gave them. Each slice keeps the working agreement in section 6.
+
+| Slice | User outcome | Source |
+|---|---|---|
+| 27 CI gates and test hardening | The browser checks (sweep, WCAG audits, Lighthouse, per-slice journeys) live in the repository and run in CI with a Lighthouse budget; the end-to-end suite enforces a coverage floor; a migration drift check; a contract check that every route the LMS's AI client calls exists in the AI service; timing-sensitive tests get their own budgets | docs/20 section 6, items 2 and 9 |
+| 28 Performance findings | The student learning profile answers under the budget; the status page paints its last known state before the API answers; three flaky journeys made robust | docs/20 section 6, item 9 |
+| 29 Security verification | Dynamic scan of the running web app in CI, a prompt-injection corpus for the AI service, and the material a third-party penetration tester needs | docs/20 section 6, item 1 |
+| 30 Integration and billing seams | LTI Assignment and Grade Services, Names and Roles, Deep Linking; Google Classroom API sync; card payments through the provider seam | docs/20 section 6, items 7 and 8 |
+
+Status (14 October 2026, slice 27): CI gates are in. `tools/browser/` holds the checks that used to live outside the repository: `sweep.mjs` (every page as every role, with a progress line per page), `a11y.mjs` and `a11y-mobile.mjs` (axe-core, desktop and 360 px with reflow and zoom), `lighthouse.mjs` (budget from `check-rules.mjs`: performance 80 and the rest 100 on the public pages, `/status` informational until slice 28), `flows/flows11.mjs` to `flows26.mjs` (the per-slice journeys) with `run-flows.mjs`, and `lib.mjs` (one launch, `WEB_URL`, `CHROME_PATH`, output under `tools/browser/out/`). Root scripts `browser:sweep`, `browser:a11y`, `browser:a11y:mobile`, `browser:lighthouse`, `browser:flows`, `browser:rules`. CI: a `Browser checks` job starts MariaDB, the built API, the built web app and the AI service in fake-model mode, seeds, then runs the sweep, the desktop WCAG audit and the Lighthouse budget, uploading `tools/browser/out` as an artifact; the API job checks migration drift after deploy (`prisma migrate diff --exit-code`) and runs the end-to-end suite with coverage on MariaDB (floor 80 percent lines, statements and functions, 60 percent branches, from `test/jest-e2e.json`; measured in band on 14 October: 85.3 percent lines, 84.0 statements, 87.5 functions, 65.1 branches); the AI job's new `test_contract.py` reads the LMS's AI client and fails when a called route is missing. The three tests that ran past thirty seconds under instrumentation have 120-second budgets and the e2e default is 60 seconds. Tests: 240 unit and 3 check-rules tests (node:test), 206 e2e, 41 AI. The phone-width audit and the journeys run by hand (`pnpm browser:a11y:mobile`, `pnpm browser:flows`) and before each release; they are not in CI because together they take about half an hour.
+
 ## 6. Working agreement for every slice
 
 1. Start with the user outcome and the acceptance test written as a scenario.

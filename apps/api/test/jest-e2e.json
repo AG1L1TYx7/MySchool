@@ -1,17 +1,18 @@
 {
-  "moduleFileExtensions": [
-    "js",
-    "json",
-    "ts"
-  ],
-  "rootDir": ".",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "roots": ["<rootDir>/test"],
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "setupFiles": [
-    "<rootDir>/e2e-env.ts"
-  ],
-  "testTimeout": 30000
+  "setupFiles": ["<rootDir>/test/e2e-env.ts"],
+  "testTimeout": 60000,
+  "collectCoverageFrom": ["src/**/*.ts", "!src/generated/**", "!src/**/*.spec.ts", "!src/main.ts"],
+  "coverageDirectory": "<rootDir>/coverage-e2e",
+  "coverageReporters": ["text-summary", "lcov"],
+  "coverageThreshold": {
+    "global": { "lines": 80, "statements": 80, "functions": 80, "branches": 60 }
+  }
 }

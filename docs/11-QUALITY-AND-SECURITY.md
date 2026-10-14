@@ -26,6 +26,8 @@ A slice is done only when all of the following are true and visible in CI:
 
 Test data: every e2e suite creates and removes its own records and never depends on another suite's ordering. The seed provides stable demo accounts and one of everything.
 
+**Browser checks and gates (slice 27).** `tools/browser/` holds the sweep (every page as every role: console errors, page errors, failed requests, 4xx and 5xx), the axe-core audits at desktop and phone width, the Lighthouse budget and the per-slice user journeys; `pnpm browser:<name>` runs each against a running app (`WEB_URL`, default http://localhost:3000). CI runs the sweep, the desktop audit and the Lighthouse budget on every push in the `Browser checks` job, the API job fails on migration drift and on end-to-end coverage below the floor in `test/jest-e2e.json`, and the AI job fails when the LMS's AI client calls a route the service does not serve.
+
 ## 3. Security checklist (reviewed per slice)
 
 Identity and session

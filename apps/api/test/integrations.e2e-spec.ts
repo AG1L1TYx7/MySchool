@@ -287,8 +287,26 @@ describe('Integrations (e2e)', () => {
       (v) => v !== null,
     );
     expect(row?.status).toBe('pending');
-    const sent = await app.get(WebhooksService).deliverDue();
-    expect(sent).toBeGreaterThanOrEqual(1);
+    // The pass drains the shared queue in batches (other app instances of a parallel run add to it and may
+    // even post this row themselves), so drain and poll until this delivery is marked delivered.
+    const delivered = await until(
+      async () => {
+        await app.get(WebhooksService).deliverDue();
+        const res = await request(server)
+          .get(
+            `/api/v1/organizations/${orgId}/webhooks/${webhookId}/deliveries?pageSize=100`,
+          )
+          .set(as('principal'));
+        return (
+          (res.body as { data: Delivery[] }).data.find(
+            (d) => d.eventId === row?.eventId,
+          ) ?? null
+        );
+      },
+      (v) => v?.status === 'delivered',
+      30_000,
+    );
+    expect(delivered?.status).toBe('delivered');
     const hit = received.find(
       (r) =>
         r.headers['x-webhook-event'] === 'assignment.created' &&
@@ -300,18 +318,17 @@ describe('Integrations (e2e)', () => {
       entityType: 'Assignment',
     });
     const deliveries = await request(server)
-      .get(`/api/v1/organizations/${orgId}/webhooks/${webhookId}/deliveries`)
+      .get(
+        `/api/v1/organizations/${orgId}/webhooks/${webhookId}/deliveries?pageSize=100`,
+      )
       .set(as('principal'))
       .expect(200);
     const rows = (deliveries.body as { data: Delivery[] }).data;
-    expect(rows.find((d) => d.eventId === row?.eventId)?.status).toBe(
-      'delivered',
-    );
     // Events outside the filter never queue.
     expect(
       rows.find((d) => d.eventType === 'announcement.published'),
     ).toBeUndefined();
-  });
+  }, 120_000);
 
   it('backs off on failure and gives up after the retry limit', async () => {
     const res = await request(server)

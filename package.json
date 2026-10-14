@@ -19,7 +19,13 @@
     "db:backup": "node tools/db-backup.mjs",
     "db:restore": "node tools/db-restore.mjs",
     "load:seed": "pnpm --filter @smartschool/api db:seed:load",
-    "load:test": "node tools/load-test.mjs"
+    "load:test": "node tools/load-test.mjs",
+    "browser:sweep": "node tools/browser/sweep.mjs",
+    "browser:a11y": "node tools/browser/a11y.mjs",
+    "browser:a11y:mobile": "node tools/browser/a11y-mobile.mjs",
+    "browser:lighthouse": "node tools/browser/lighthouse.mjs",
+    "browser:flows": "node tools/browser/run-flows.mjs",
+    "browser:rules": "node --test tools/browser/check-rules.test.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -49,6 +55,9 @@
     }
   },
   "devDependencies": {
-    "autocannon": "8.0.0"
+    "autocannon": "8.0.0",
+    "axe-core": "4.10.3",
+    "lighthouse": "12.8.2",
+    "playwright": "1.58.2"
   }
 }

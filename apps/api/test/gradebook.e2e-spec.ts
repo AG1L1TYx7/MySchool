@@ -692,5 +692,5 @@ describe('Gradebook, standards and report cards (e2e)', () => {
       where: { id: emmaId },
     });
     expect(student.gpa).not.toBeNull();
-  });
+  }, 120_000);
 });

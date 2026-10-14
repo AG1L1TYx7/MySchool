@@ -479,7 +479,7 @@ describe('Motivation (e2e)', () => {
     expect(s.quests.some((q) => q.kind === 'personal' && q.auto)).toBe(true);
     expect(await service.generateWeeklyQuests()).toBe(0); // idempotent within the week
     expect(typeof (await service.expireQuests())).toBe('number');
-  });
+  }, 120_000);
 
   it('stops rewarding when the school turns motivation off', async () => {
     await request(server)

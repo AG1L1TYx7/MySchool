@@ -186,6 +186,10 @@ Sign in as the teacher, open a class and press Discussion: the class discussion 
 
 Sign in as the platform administrator (superadmin) and open Billing: All districts lists each district with its plan; pick Demo District, change the plan or start a trial under Subscription, press Issue invoice for this period under Invoices, open the invoice, download the PDF and record a payment. Usage shows requests, AI calls, people, active students and storage by day and by school (press the snapshot through the API, or wait for the nightly run). Operations shows the health checks and lets you open an incident; the public page at /status shows it at once with the affected component marked, and the update log as you post updates until it is resolved. Sign in as the superintendent: Billing shows only their district, and District, Policies, Security sets the shortest password, 2FA roles, session age and the networks administrators may sign in from.
 
+## 4s. Browser checks
+
+With the API, the web app and the AI service running (sections 2 and 3), `pnpm browser:sweep` signs in as every demo role and visits every page, `pnpm browser:a11y` and `pnpm browser:a11y:mobile` run the WCAG 2.2 AA audits, `pnpm browser:lighthouse` checks the public pages against the budget, and `pnpm browser:flows` (or `pnpm browser:flows 24 26` for named slices) walks the per-slice user journeys. Results and screenshots land under `tools/browser/out/`. The first run downloads Chromium with `pnpm exec playwright install chromium`; set `CHROME_PATH` to use a browser you already have, and `WEB_URL` to point at another host.
+
 ## 5. Backups
 
 ```bash

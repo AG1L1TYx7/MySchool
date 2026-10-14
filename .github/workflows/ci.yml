@@ -17,9 +17,11 @@ jobs:
           - name: mariadb-10.4
             image: mariadb:10.4
             env: MARIADB_ROOT_PASSWORD
+            coverage: true
           - name: mysql-8
             image: mysql:8.0
             env: MYSQL_ROOT_PASSWORD
+            coverage: false
     services:
       db:
         image: ${{ matrix.db.image }}
@@ -53,12 +55,17 @@ jobs:
       - run: pnpm --filter @smartschool/api lint
       - run: pnpm --filter @smartschool/api typecheck
       - run: pnpm --filter @smartschool/api prisma:deploy
+      - name: Migration drift check (the migrations must produce exactly the schema)
+        run: pnpm --filter @smartschool/api exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema prisma/schema.prisma --exit-code
       - run: pnpm --filter @smartschool/api test
       - run: pnpm --filter @smartschool/api db:seed
       - name: End-to-end tests (failures are copied to the job summary)
         run: |
           status=0
-          pnpm --filter @smartschool/api test:e2e --runInBand --forceExit > e2e.log 2>&1 || status=$?
+          coverage=""
+          if [ "${{ matrix.db.coverage }}" = "true" ]; then coverage="--coverage"; fi
+          pnpm --filter @smartschool/api test:e2e --runInBand --forceExit $coverage > e2e.log 2>&1 || status=$?
+          grep -aA5 'Coverage summary' e2e.log || true
           grep -avE '^\{"level"' e2e.log | tail -150
           {
             echo '## End-to-end'
@@ -113,3 +120,81 @@ jobs:
         working-directory: apps/ai
       - run: pytest apps/ai -q
       - run: pip install pip-audit && pip-audit --skip-editable
+
+  browser:
+    name: Browser checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      db:
+        image: mariadb:10.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: smartschooldb
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/smartschooldb
+      JWT_SECRET: ci-only-secret-value-that-is-long-enough-0123456789
+      AI_CALLBACK_TOKEN: ci-only-callback-token-0123456789
+      AI_SERVICE_URL: http://127.0.0.1:8000
+      AI_SERVICE_API_KEY: ci-only-ai-service-token-0123456789
+      WEB_APP_URL: http://localhost:3000
+      API_URL: http://127.0.0.1:5000
+      RATE_LIMIT_PER_MINUTE: '100000'
+      LOGIN_RATE_LIMIT_PER_MINUTE: '1000'
+      NODE_ENV: production
+      MODEL_PROVIDER: fake
+      AI_SERVICE_TOKEN: ci-only-ai-service-token-0123456789
+      LMS_SERVICE_TOKEN: ci-only-callback-token-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: apps/ai/pyproject.toml
+      - run: pnpm install --frozen-lockfile
+      - run: pip install -e "apps/ai[dev]"
+      - run: pnpm browser:rules
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @smartschool/api prisma:generate
+      - run: pnpm --filter @smartschool/api build
+      - run: pnpm --filter @smartschool/api prisma:deploy
+      - run: pnpm --filter @smartschool/api db:seed
+      - run: pnpm --filter @smartschool/web build
+      - name: Start the API, the web app and the AI service
+        run: |
+          (cd apps/api && node dist/main > ../../api.log 2>&1 &)
+          (cd apps/web && pnpm start > ../../web.log 2>&1 &)
+          (cd apps/ai && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../../ai.log 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:5000/api/v1/health >/dev/null && curl -sf http://localhost:3000/login >/dev/null && curl -sf http://127.0.0.1:8000/health >/dev/null && break; sleep 2; done
+          curl -sf http://127.0.0.1:5000/api/v1/health && curl -sf -o /dev/null http://localhost:3000/login && curl -sf http://127.0.0.1:8000/health
+      - name: Sweep every page as every role (console errors, failed requests, 4xx and 5xx)
+        run: pnpm browser:sweep ci-sweep
+      - name: WCAG 2.2 AA with axe-core, six roles
+        run: pnpm browser:a11y ci-a11y
+      - name: Lighthouse budget on the public pages
+        run: pnpm browser:lighthouse ci-lighthouse
+      - name: Logs on failure
+        if: failure()
+        run: |
+          echo '## API log (tail)' >> "$GITHUB_STEP_SUMMARY"; tail -80 api.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '## Web log (tail)' >> "$GITHUB_STEP_SUMMARY"; tail -40 web.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '## AI log (tail)' >> "$GITHUB_STEP_SUMMARY"; tail -40 ai.log >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-checks
+          path: tools/browser/out/
+          if-no-files-found: ignore
