@@ -14,9 +14,9 @@
     "framer-motion": "^13.5.0",
     "h5p-standalone": "3.8.2",
     "next": "15.5.27",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "socket.io-client": "4.8.1"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "socket.io-client": "4.8.4"
   },
   "devDependencies": {
     "@types/node": "^20",
