@@ -1,5 +1,5 @@
 # SmartSchool web (Next.js standalone). Build: docker compose build web
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY apps/web apps/web
 ENV NEXT_STANDALONE=1
 RUN pnpm --filter @smartschool/web h5p:setup && pnpm --filter @smartschool/web build
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 WORKDIR /app
 COPY --from=build /app/apps/web/.next/standalone ./
