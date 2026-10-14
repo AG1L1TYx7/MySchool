@@ -45,12 +45,17 @@
       "glob@>=10.2.0 <10.5.0": ">=10.5.0",
       "postcss@<8.5.23": ">=8.5.23",
       "postcss-selector-parser@<7.1.6": ">=7.1.6",
-      "handlebars": ">=4.7.10"
+      "handlebars": ">=4.7.10",
+      "basic-ftp": ">=6.2.1"
     },
     "auditConfig": {
       "ignoreCves": [
         "CVE-2026-93687",
         "CVE-2026-97058"
+      ],
+      "ignoreGhsas": [
+        "GHSA-jmr9-qjv8-65gv",
+        "GHSA-7pqw-9j4j-h8q3"
       ]
     }
   },

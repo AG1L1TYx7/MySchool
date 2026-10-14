@@ -122,9 +122,13 @@ jobs:
       - run: pip install pip-audit && pip-audit --skip-editable
 
   browser:
-    name: Browser checks
+    name: Browser ${{ matrix.check }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [sweep, a11y, lighthouse]
     services:
       db:
         image: mariadb:10.4
@@ -179,12 +183,8 @@ jobs:
           (cd apps/ai && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../../ai.log 2>&1 &)
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:5000/api/v1/health >/dev/null && curl -sf http://localhost:3000/login >/dev/null && curl -sf http://127.0.0.1:8000/health >/dev/null && break; sleep 2; done
           curl -sf http://127.0.0.1:5000/api/v1/health && curl -sf -o /dev/null http://localhost:3000/login && curl -sf http://127.0.0.1:8000/health
-      - name: Sweep every page as every role (console errors, failed requests, 4xx and 5xx)
-        run: pnpm browser:sweep ci-sweep
-      - name: WCAG 2.2 AA with axe-core, six roles
-        run: pnpm browser:a11y ci-a11y
-      - name: Lighthouse budget on the public pages
-        run: pnpm browser:lighthouse ci-lighthouse
+      - name: Run the check (sweep: every page as every role; a11y: WCAG 2.2 AA with axe-core, six roles; lighthouse: the budget on the public pages)
+        run: pnpm browser:${{ matrix.check }} ci-${{ matrix.check }}
       - name: Logs on failure
         if: failure()
         run: |
@@ -195,6 +195,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser-checks
+          name: browser-${{ matrix.check }}
           path: tools/browser/out/
           if-no-files-found: ignore

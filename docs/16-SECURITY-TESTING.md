@@ -21,7 +21,7 @@ How SmartSchool is attacked before it is trusted, what the first pass found on 6
 | Stored HTML is defanged | an H5P question written with a script, an event handler, a frame and a javascript: link | any of them survives in what is stored or served |
 | File names are safe | an upload named with traversal and tags; a download path with traversal | the name survives unchanged, or the download answers anything but 400 or 404 |
 
-Besides the suite: `pnpm audit --audit-level=high` and `pip-audit` fail CI; `pnpm audit --audit-level=moderate` is checked by hand each slice; the two ignored advisories are a dev-only pattern (`braces` through the Next lint preset) and a dev-only string formatter (`sprintf-js` through Jest's coverage chain) with no patched version.
+Besides the suite: `pnpm audit --audit-level=high` and `pip-audit` fail CI; `pnpm audit --audit-level=moderate` is checked by hand each slice; the two ignored advisories are a dev-only pattern (`braces` through the Next lint preset) and a dev-only string formatter (`sprintf-js` through Jest's coverage chain) with no patched version. Since slice 27 two more are ignored: `extract-zip` (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3), a dev-only archive extractor reached only through Lighthouse's own browser downloader, which the checks never call because Playwright supplies Chromium; it has no patched version. `basic-ftp` on the same chain is pinned to a patched version.
 
 ## 2. Findings of the first pass (6 October 2026) and what was done
 
