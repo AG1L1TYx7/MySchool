@@ -2,7 +2,7 @@
 /**
  * Load test against a running API (docs/07 slice 8). Run `pnpm load:seed` first for the 10,000-student school.
  *
- *   pnpm load:test                       # 60 connections, 20 s per scenario, API at http://localhost:5000
+ *   pnpm load:test                       # 60 connections, 20 s per scenario, API at http://127.0.0.1:5000 (not localhost: on Node 24 fetch tries ::1 first and the API listens on IPv4)
  *   pnpm load:test --url http://host:5000 --connections 100 --duration 30
  *
  * Start the API with RATE_LIMIT_PER_MINUTE=1000000 (or higher) so the per-IP throttle does not answer 429.
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (name, fallback) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : fallback);
-const base = opt('url', 'http://localhost:5000').replace(/\/$/, '');
+const base = opt('url', 'http://127.0.0.1:5000').replace(/\/$/, '');
 const connections = Number(opt('connections', 60));
 const duration = Number(opt('duration', 20));
 const PASSWORD = 'SmartSchool!Load2026';
@@ -65,6 +65,12 @@ async function main() {
   rows.push(await run('gradebook', `${base}/api/v1/classes/${classId}/gradebook`, teacher));
   rows.push(await run('notifications summary', `${base}/api/v1/notifications/summary`, student));
   rows.push(await run('announcements feed', `${base}/api/v1/announcements?pageSize=20`, student));
+  // Release 2 and 3 read paths (slices 16, 22, 23, 25, 26).
+  rows.push(await run('learning profile (student)', `${base}/api/v1/me/learning/profile`, student));
+  rows.push(await run('mastery (student)', `${base}/api/v1/me/mastery`, student));
+  rows.push(await run('library items (page of 20)', `${base}/api/v1/library/items?pageSize=20`, teacher));
+  rows.push(await run('community feed (student)', `${base}/api/v1/community/feed`, student));
+  rows.push(await run('status page (public)', `${base}/api/v1/status`, teacher));
   rows.push(await run('audit log page', `${base}/api/v1/audit-logs?pageSize=50`, teacher).catch(() => ({ name: 'audit log page', skipped: true })));
 
   const out = { target: base, connections, duration, at: new Date().toISOString(), rows };

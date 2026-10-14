@@ -89,7 +89,7 @@ Filled in by the slice that last ran the audits (see docs/07 for the date).
 
 | Audit | Result |
 |---|---|
-| Desktop axe, six roles | 7 October 2026: 167 pages, 0 violations |
-| Phone axe, five roles | 7 October 2026: 93 pages, 0 violations (fixed on the way: a low-contrast course title on the Insight class list; scrolling tables made keyboard reachable with role=region and tabindex) |
-| Reflow and 200% zoom | 7 October 2026: no horizontal page scroll at 360 px on any page, no clipped text at 200% (fixed on the way: the app header, planner and calendar controls, the standards list, the class roster table and the grades table) |
+| Desktop axe, six roles | 14 October 2026: 189 pages, 0 violations |
+| Phone axe, five roles | 14 October 2026: 108 pages, 0 violations; no horizontal page scroll at 360 px on any page; no clipped text at 200 percent zoom |
+| Reflow and 200% zoom | 14 October 2026: no horizontal page scroll at 360 px on any page, no clipped text at 200% |
 | Skip link flow | 7 October 2026: Tab lands on the skip link first; Enter moves focus to main |

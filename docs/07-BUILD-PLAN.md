@@ -190,6 +190,8 @@ Goal: districts, ecosystems and the long tail of the catalogue, built in full.
 | 25 Community | 45–46 | Groups and forums with staff moderation tools, reporting and audit; class discussion threads | 31 |
 | 26 Billing and operations | 47–48 | Subscriptions and invoices with idempotency keys, usage metering, security policies and incident records, status page | 32 (rest), 35 |
 
+Release 3 review (14 October 2026): [20-RELEASE-3-REVIEW.md](20-RELEASE-3-REVIEW.md) measures the product at the end of slice 26 against docs/11 and docs/13 section 12 and lists the gaps carried forward; the next work starts from its section 6.
+
 Excluded from every release (ADR-024): emotion detection, public leaderboards, stakes, recruiting. The old multi-agent hub (21) is replaced by the AI service design (ADR-021).
 
 ---
