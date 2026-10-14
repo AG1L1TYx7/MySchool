@@ -1,3 +1,4 @@
+import { LAUNCH_PAGE_CSP } from './integration-rules';
 import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
@@ -171,6 +172,7 @@ export class LtiController {
     try {
       const html = await this.lti.platformAuth(params);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Security-Policy', LAUNCH_PAGE_CSP);
       res.setHeader('Cache-Control', 'no-store');
       res.send(html);
     } catch (err) {

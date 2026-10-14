@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { PROBE_LIMIT } from '../../common/throttle-limits';
 import {
   Body,
   Controller,
@@ -74,10 +76,14 @@ export class OperationsController {
   @RequireFeature('operations.manage')
   @ApiOperation({ summary: 'Recent health checks' })
   checks(@Query('limit') limit: string | undefined) {
-    return this.operations.recentChecks(limit ? Number(limit) : 50);
+    const n = Number(limit);
+    return this.operations.recentChecks(
+      Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 500) : 50,
+    );
   }
 
   @Post('operations/checks/run')
+  @Throttle(PROBE_LIMIT)
   @ApiBearerAuth('bearer')
   @RequireFeature('operations.manage')
   @ApiOperation({

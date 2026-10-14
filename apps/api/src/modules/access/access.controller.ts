@@ -69,8 +69,11 @@ export class AccessController {
   @Get('users/:userId/feature-overrides')
   @RequireFeature('users.view')
   @ApiOperation({ summary: 'Per-user grants and revocations' })
-  async overrides(@Param('userId') userId: string) {
-    return { data: await this.access.userOverrides(userId) };
+  async overrides(
+    @Param('userId') userId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return { data: await this.access.userOverrides(userId, actor) };
   }
 
   @Put('users/:userId/feature-overrides/:code')

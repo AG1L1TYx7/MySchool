@@ -87,6 +87,14 @@ export class AccessGuard implements CanActivate {
       REQUIRE_ANY_FEATURE_KEY,
       targets,
     );
+    // A key reaches only routes that name a feature inside its scopes; self-service routes without a
+    // feature are a person's, never an integration's (docs/21 F06).
+    if (user?.apiKey && !features?.length && !anyFeatures?.length) {
+      throw new ForbiddenException({
+        code: 'apikey.scope',
+        detail: 'This route is not available to API keys.',
+      });
+    }
     if (!roles && minLevel === undefined && !features && !anyFeatures)
       return true;
 

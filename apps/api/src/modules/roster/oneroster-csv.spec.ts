@@ -6,6 +6,7 @@ import {
 import { restrictToSchool } from './oneroster-api';
 import { normalizeGrade, roleFrom, splitList } from './roster-model';
 import { sampleZip } from '../../../test/fixtures/oneroster-sample';
+import { zipEntryFilter } from './oneroster-csv';
 
 describe('OneRoster CSV', () => {
   it('reads a zipped bundle into a snapshot, ignoring roles we do not roster', () => {
@@ -102,5 +103,23 @@ describe('OneRoster CSV', () => {
       'e2',
       'e3',
     ]);
+  });
+});
+
+describe('zip inflate limits (docs/21 F09)', () => {
+  it('opens only CSV entries and stops at the per-file, total and count limits', () => {
+    const allow = zipEntryFilter({
+      fileMaxBytes: 10,
+      totalMaxBytes: 15,
+      maxFiles: 3,
+    });
+    expect(allow({ name: 'users.csv', originalSize: 8 })).toBe(true);
+    expect(allow({ name: 'readme.txt', originalSize: 1 })).toBe(false);
+    expect(allow({ name: 'nested/.hidden.csv', originalSize: 1 })).toBe(false);
+    expect(allow({ name: 'big.csv', originalSize: 11 })).toBe(false);
+    expect(allow({ name: 'orgs.csv', originalSize: 8 })).toBe(false); // 8 + 8 > 15
+    expect(allow({ name: 'orgs.csv', originalSize: 7 })).toBe(true);
+    expect(allow({ name: 'classes.csv', originalSize: 0 })).toBe(true);
+    expect(allow({ name: 'courses.csv', originalSize: 0 })).toBe(false); // fourth file
   });
 });

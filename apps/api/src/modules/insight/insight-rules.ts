@@ -1,3 +1,5 @@
+import { escapeCell } from '../../common/utils/csv';
+
 /**
  * Insight rules (docs/02 section 16, docs/13 section 9): the pure arithmetic behind the principal dashboard,
  * class and student analytics, scheduled reports and transcripts. No database, no clock unless passed in.
@@ -159,10 +161,7 @@ export function toCsv(
   headers: string[],
   rows: Array<Array<string | number | null | undefined>>,
 ): string {
-  const cell = (v: string | number | null | undefined) => {
-    const s = v === null || v === undefined ? '' : String(v);
-    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
+  const cell = escapeCell; // shared writer: quoting plus the formula guard (docs/21 F21)
   return (
     String.fromCharCode(0xfeff) +
     [headers, ...rows].map((r) => r.map(cell).join(',')).join('\r\n') +

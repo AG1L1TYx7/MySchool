@@ -20,9 +20,9 @@ import { toCsv } from '../../common/utils/csv';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import {
-  assertOrganizationAccess,
   organizationScope,
   resolveOrganizationId,
+  assertOrganizationRecord,
 } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -51,7 +51,10 @@ import {
   toPublicStudent,
   type PublicGuardian,
   type PublicStudent,
+  toStudentListRow,
+  type StudentListRow,
 } from './students.mapper';
+import { canSeeSensitiveStudentFields } from './students-rules';
 
 /** Scalar columns shared by create, update and import. */
 interface StudentFields {
@@ -105,7 +108,7 @@ export class StudentsService {
   async list(
     q: ListStudentsQuery,
     actor: AuthenticatedUser,
-  ): Promise<PagedResponse<PublicStudent>> {
+  ): Promise<PagedResponse<StudentListRow>> {
     const where = this.whereFor(q, actor);
     const orderBy = q.orderBy(SORTABLE).map((o) => ({
       [o.field]: o.direction,
@@ -121,7 +124,7 @@ export class StudentsService {
       }),
       this.prisma.student.count({ where }),
     ]);
-    return PagedResponse.of(rows.map(toPublicStudent), q, total);
+    return PagedResponse.of(rows.map(toStudentListRow), q, total);
   }
 
   /** Students and parents: the records that belong to the caller. */
@@ -136,7 +139,7 @@ export class StudentsService {
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
-    return rows.map(toPublicStudent);
+    return rows.map((r) => toPublicStudent(r));
   }
 
   async get(
@@ -144,9 +147,21 @@ export class StudentsService {
     actor: AuthenticatedUser,
   ): Promise<PublicStudent & { canSupport: boolean }> {
     const student = await this.find(id, actor);
+    const canSupport = await this.canSupport(student, actor);
+    const own =
+      student.userId === actor.id ||
+      (
+        (student as { guardians?: Array<{ guardianUserId: string }> })
+          .guardians ?? []
+      ).some((g) => g.guardianUserId === actor.id);
     return {
-      ...toPublicStudent(student),
-      canSupport: await this.canSupport(student, actor),
+      ...toPublicStudent(student, {
+        sensitive: canSeeSensitiveStudentFields(actor.role, {
+          own,
+          teaches: actor.role === 'TEACHER' && canSupport,
+        }),
+      }),
+      canSupport,
     };
   }
 
@@ -717,7 +732,11 @@ export class StudentsService {
         detail: 'You can only view your own record.',
       });
     }
-    assertOrganizationAccess(actor, student.organizationId);
+    assertOrganizationRecord(
+      actor,
+      student.organizationId,
+      'Student not found.',
+    );
     return student;
   }
 

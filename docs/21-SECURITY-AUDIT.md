@@ -102,8 +102,64 @@ Each finding names the file and line as reviewed at commit `59090b0`. "Exploit" 
 
 ## 4. Fixes made
 
-(filled in below)
+Everything below is in the code, with a unit test for each new pure rule and the affected e2e suites re-run (all 27 suites, in band, against a fresh test database, as CI runs them). Nothing here changes the database schema or how anyone signs in; the four findings that would are in section 5.
+
+| Finding | What changed | Where |
+|---|---|---|
+| F03 | The client address comes from the socket unless `TRUST_PROXY` names the proxy hops (a count, `loopback`, `uniquelocal` or a list). The audit log, the rate limiter and the district IP allowlist all read `req.ip`. The e2e harness for the allowlist test opts into `loopback`. | `common/request-rules.ts` (`parseTrustProxy`), `app.setup.ts`, `audit.interceptor.ts`, `env.schema.ts`, `.env.example`, compose |
+| F04 | Request logs redact authorization, API key, service token and cookie headers, every password, token and code field in bodies, and `Set-Cookie` and `Location` in responses; URLs that carry a calendar token, an H5P ticket, an SSO or LTI code, or a verification, reset or 2FA token are masked before logging. | `request-rules.ts` (`LOG_REDACT_PATHS`, `maskLoggedUrl`), `app.module.ts` |
+| F05 | Streamed tutor answers are buffered to a sentence boundary, passed through the personal-data strip and the safety rules against everything released so far, and only then sent; a refusal stops the stream where it stands. | `apps/ai/app/safety.py` (`release_segments`), `main.py`, `tests/test_stream_safety.py` |
+| F06 | An API key cannot reach a route that declares no feature (the "featureless" routes are for people), and a key presented to the auth routes is refused. | `access.guard.ts`, `jwt-auth.guard.ts` |
+| F07 | Sign-in style routes throttle per address **and** account, so one shared address cannot lock a school out and one account cannot be hammered from many addresses; CORS outside development answers only the configured origins and production requires `CORS_ORIGINS`. | `request-rules.ts` (`throttleTracker`), `guards/app-throttler.guard.ts`, `app.setup.ts`, `env.schema.ts` |
+| F08 | Every URL the server fetches on an administrator's say-so (webhook endpoints, roster sources, LTI key sets, platform and tool URLs) must be public https with no credentials; the name is resolved again before every fetch and refused if it points at loopback, private, link-local, carrier-grade NAT, multicast or metadata addresses. Plain http on localhost stays allowed outside production. Key sets are read with a size cap. | `common/outbound-url.ts` (+ spec), `webhooks.service.ts`, `roster.service.ts`, `lti.service.ts`, `integration-rules.ts` |
+| F09 | Roster uploads are capped at 100 MB per file and 12 files; a OneRoster zip inflates only its CSV entries, none above 200 MB, 400 MB in all, 24 files at most. | `roster.controller.ts`, `oneroster-csv.ts` (`zipEntryFilter`, + spec) |
+| F10 | The code sandbox admits four runs at once, queues 32 and turns the rest away with a clear message; exports, PDFs, search, sandbox runs, webhook tests and on-demand health checks have per-route limits under the global one; the public status page is built once per thirty seconds and dropped when an incident or check changes. | `careers-rules.ts` (`sandboxAdmission`), `code-runner.service.ts`, `common/throttle-limits.ts`, seven controllers, `operations.service.ts` |
+| F13 | The AI service accepts `AI_ENV` or `ENVIRONMENT`; in production it refuses placeholder or short tokens, the fake model provider and the development trace salt. The API requires `AI_SERVICE_API_KEY` in production. | `apps/ai/app/config.py` (+ `tests/test_config.py`), `env.schema.ts`, compose |
+| F14 | The student list carries identity and standing only; on the detail, date of birth, phone, address, accessibility needs, goals and notes are shown to administrators and counselors, to a teacher of that student, and to the student and guardians, never to assistants. | `students-rules.ts` (+ spec), `students.mapper.ts`, `students.service.ts` |
+| F15 | Cached tutor transcripts and the offline outbox are cleared on sign-out and when the session is lost. | `apps/web/src/lib/offline.ts`, `auth.tsx` |
+| F17 | A user may be edited or sent a reset only by someone whose role may assign that user's role (a principal manages staff and families, not a superintendent or the platform administrator attached to the school); feature overrides are readable only inside the caller's organisation. | `users.service.ts`, `access.controller.ts`, `access.service.ts` |
+| F19 | The demo school, its accounts and the published password are not seeded under `NODE_ENV=production` unless `SEED_DEMO_DATA=true`; the guide and README say so. | `prisma/seed.ts`, docs/14, README |
+| F20 | The post-sign-in destination and an LTI platform's custom path go through the same in-app-only rule (one leading slash, no backslash, short). | `apps/web/src/lib/safe-path.ts`, `sso/complete/page.tsx`, `integration-rules.ts` (`launchPathFor`) |
+| F21 | Both remaining CSV writers delegate to the shared cell writer, which neutralises text cells that would run as spreadsheet formulas (numbers are left alone). | `common/utils/csv.ts`, `integration-rules.ts`, `insight-rules.ts` |
+| F22 | Downloads are served with a media type derived from the allow-listed extension, an encoded `Content-Disposition` and `nosniff`, on every download route. | `file-rules.ts` (`mimeTypeFor`), `files.controller.ts`, `library.controller.ts`, `exports.controller.ts`, `compliance.controller.ts` |
+| F23 | The Common Cartridge export passes assignment descriptions through the H5P HTML allow-list. | `integration-rules.ts` |
+| F24 | The native-client header is ignored when the request carries the browser's refresh cookie. | `auth.controller.ts` |
+| F25 | `ENCRYPTION_KEY` is required in production; compose fails fast without it. | `env.schema.ts`, compose, `.env.docker.example` |
+| F26 | The API sends `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`; Swagger gets its own policy and is served only when `SWAGGER_ENABLED` (default: off in production); the two LTI launch pages set a policy that allows only their own form post. | `app.setup.ts`, `main.ts`, `integration-rules.ts` (`LAUNCH_PAGE_CSP`), two controllers |
+| F27 | SMTP authentication is implemented (`SMTP_USER`/`SMTP_PASSWORD`); the Ollama image is pinned; the web container listens on the host's loopback for the TLS proxy (`WEB_BIND` to change). | `mail.service.ts`, `env.schema.ts`, compose, docs/14 |
+| F28 | Access tokens are accepted from the Authorization header only; socket handshakes already carry the token in the handshake payload. | `jwt.strategy.ts` |
+| F29, F39 | Five wrong school join codes from one address block it for fifteen minutes; verification and reset mails go out at most once per address per five minutes with the same answer either way. | `auth/abuse-rules.ts` (+ spec), `auth.service.ts` |
+| F30 | A push token moves to another account only once its previous registration is disabled; an account keeps at most ten active devices, the least recently seen one retiring beyond that. | `push-rules.ts` (`canReownToken`, + spec), `push.service.ts` |
+| F32 | The AI service's interactive docs are off in production; `/health` answers only the status without the service token. | `apps/ai/app/main.py` |
+| F34 | The LTI launch tab drops its handle on the app (`opener = null`). | `lti-tools-card.tsx` |
+| F35 (part) | Public portfolio pages carry `noindex, nofollow`. The approval rule is a decision (section 5). | `apps/web/src/app/p/[slug]/layout.tsx` |
+| F36 | A school role asking for a student, a file or a records export in another school is told "not found", the same as for an id that does not exist; district roles keep the explicit refusal. | `access/scope.ts` (`assertOrganizationRecord`, + spec), four services |
+| F37 | Lesson content links accept http(s) only (library links were already limited to https in the service). | `courses.dto.ts` |
+| F38 | The health-check list is capped at 500 rows. | `operations.controller.ts` |
+| F40 | An unknown key id refetches a platform's key set at most once a minute; when several registered platforms share an issuer, LTI login initiation without `client_id` is refused instead of picking one. | `lti.service.ts` |
+| F41 | Next.js 15.5.24 → 15.5.27. | `apps/web/package.json` |
+| Process | Dependabot opens grouped weekly pull requests for npm, pip, GitHub Actions and Docker images. | `.github/dependabot.yml` |
+
+Audits after the fixes: `pnpm audit --prod` finds nothing; the full audit reports the three ignored Lighthouse browser-download advisories (docs/16) and seven moderate OpenTelemetry instrumentation advisories reached only through Lighthouse's Sentry dependency in the browser checks (not installed in the API, web or AI images; CI fails on high and above). `pip-audit` finds nothing.
+
+Test counts after the fixes: API unit 258 of 258 (54 suites), API e2e all 27 suites, AI 46 of 46, web typecheck and build clean, browser checks on CI.
 
 ## 5. Manual actions and recommendations
 
-(filled in below)
+### Decisions that change how people sign in or the schema (not made in this audit)
+
+1. **F01 and F02, first-time linking by email.** Today an LTI launch or an SSO sign-in whose email matches an existing account signs in as that account. The safe rule is: never link by email for staff and district roles (an administrator must link the identity from their own settings first, or the roster brings it), and for students and families only with a verified email from a platform or tenant on the district's allowlist, in the same school. Microsoft should be bound to the tenant (`tid`) and object id (`oid`), not the email, with the `common` endpoint removed. Platform registration should be a district-role action. This changes who can sign in through those paths, so it needs your yes.
+2. **F16 and F18, two-factor enrolment and lockout.** Enrolling an authenticator should ask for the current password; the MFA token should be single-use; the TOTP step should be claimed with a conditional update so two simultaneous challenges cannot both pass. Lockout should count per account **and** address, answer the same way for a locked and an unknown account, and tell the owner by email. All four alter the sign-in flow.
+3. **F11 and F12, LTI nonces and the tool's private key.** Replay protection for launches needs a small `LtiNonce` table (nonce, platform, expiry) and a migration; the tool's signing key should be stored encrypted with `ENCRYPTION_KEY` like TOTP secrets, which is also a migration. Both are schema changes.
+4. **F35, minors' public pages.** Whether a student under 18 may publish a public portfolio page without a guardian's or a counselor's approval is a policy choice; the code change is small once chosen (an approval flag on the portfolio, set by a guardian from the family area or by staff).
+
+### Remaining manual actions
+
+- **F31.** Remove the unused internal AI tool routes (`internal.controller.ts` student-needs and lesson-text) until a per-request scoped token exists, or keep them and accept that the AI host's callback token reads any student's profile. Your call; the routes are listed in docs/04.
+- **F33.** `SAFETY_MODEL_CHECK` is stored and never used. Either implement the model classifier behind it or remove the setting so operators do not believe a check runs.
+- **Rotate** every secret that has ever been in a `.env` on a shared machine, and the AI service token and callback token on the pilot server, now that both sides refuse placeholders.
+- **Set in production:** `TRUST_PROXY` to the proxy hops in front of the API (`uniquelocal` for the compose layout), `ENCRYPTION_KEY`, `AI_SERVICE_API_KEY`, `CORS_ORIGINS`, `SWAGGER_ENABLED` left unset, and a captcha provider (`RECAPTCHA_*`) for the public forms; without a captcha the new cooldowns are the only brake on registration and mail.
+- **GitHub settings:** enable secret scanning with push protection on the repository, and branch protection that requires the CI workflow. Dependabot is configured in the repository; its pull requests still need a reviewer.
+- **Pre-commit secret scan:** add `gitleaks` (or `git-secrets`) as a pre-commit hook on every developer machine, and run `gitleaks detect` once over the full history of this repository and the old one.
+- **Keep ignoring, knowingly:** the three Lighthouse browser-download advisories and the seven OpenTelemetry moderates are development-only; they are listed in docs/16 and re-checked by CI.
+- **Still untested** (docs/16 section 3): a human penetration test of the pilot server, dynamic scanning of the web app, an adversarial prompt corpus for the tutor.

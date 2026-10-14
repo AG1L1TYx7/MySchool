@@ -127,3 +127,18 @@ export function base64url(input: Buffer | string): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_');
 }
+
+/** Active registrations one account may hold; the least recently seen one is retired beyond this (docs/21 F30). */
+export const MAX_DEVICES_PER_USER = 10;
+
+/**
+ * A token already registered to someone else moves to the new account only once the old registration is
+ * disabled (sign-out on that device, or a dead-token report); an active one is refused (docs/21 F30).
+ */
+export function canReownToken(
+  existing: { userId: string; disabledAt: Date | null } | null,
+  actorId: string,
+): boolean {
+  if (!existing || existing.userId === actorId) return true;
+  return existing.disabledAt !== null;
+}

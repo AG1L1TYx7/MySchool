@@ -63,7 +63,63 @@ export interface PublicGuardian {
   };
 }
 
-export function toPublicStudent(s: Student): PublicStudent {
+/** A list row: identity and standing only; the sensitive fields live on the detail (docs/21 F14). */
+export type StudentListRow = Pick<
+  PublicStudent,
+  | 'id'
+  | 'organizationId'
+  | 'userId'
+  | 'studentNumber'
+  | 'firstName'
+  | 'lastName'
+  | 'email'
+  | 'gender'
+  | 'gradeLevel'
+  | 'enrollmentStatus'
+  | 'legalHold'
+  | 'enrollmentDate'
+  | 'gpa'
+  | 'attendanceRate'
+  | 'createdAt'
+  | 'updatedAt'
+>;
+
+export function toStudentListRow(s: Student): StudentListRow {
+  return {
+    id: s.id,
+    organizationId: s.organizationId,
+    userId: s.userId,
+    studentNumber: s.studentNumber,
+    firstName: s.firstName,
+    lastName: s.lastName,
+    email: s.email,
+    gender: s.gender,
+    gradeLevel: s.gradeLevel,
+    enrollmentStatus: s.enrollmentStatus.toLowerCase() as EnrollmentStatusApi,
+    legalHold: s.legalHold,
+    enrollmentDate: dateOnly(s.enrollmentDate),
+    gpa: s.gpa === null ? null : Number(s.gpa),
+    attendanceRate: s.attendanceRate === null ? null : Number(s.attendanceRate),
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+  };
+}
+
+/** The full record; with `sensitive: false` the fields listed in students-rules.ts are blanked. */
+export function toPublicStudent(
+  s: Student,
+  options: { sensitive: boolean } = { sensitive: true },
+): PublicStudent {
+  if (!options.sensitive)
+    return {
+      ...toPublicStudent(s),
+      dateOfBirth: null,
+      phone: null,
+      address: null,
+      accessibilityNeeds: null,
+      goals: null,
+      notes: null,
+    };
   return {
     id: s.id,
     organizationId: s.organizationId,

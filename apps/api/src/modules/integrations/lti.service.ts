@@ -20,6 +20,11 @@ import {
   type KeyObject,
 } from 'node:crypto';
 import { newId } from '../../common/utils/ids';
+import {
+  assertPublicHttpUrl,
+  checkOutboundUrl,
+  readBoundedText,
+} from '../../common/outbound-url';
 import { AppConfigService } from '../../config/app-config.service';
 import type { Role, User } from '../../generated/prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -60,6 +65,9 @@ export class LtiError extends Error {
 
 const STATE_TTL_MS = 10 * 60_000;
 const JWKS_TTL_MS = 60 * 60_000;
+const JWKS_MAX_BYTES = 256 * 1024;
+/** An unknown key id refetches the key set at most this often (docs/21 F40). */
+const JWKS_REFETCH_COOLDOWN_MS = 60_000;
 
 /**
  * LTI 1.3 (IMS Core 1.3 + Security Framework): SmartSchool as a tool launched from Canvas or Schoology,
@@ -182,7 +190,22 @@ export class LtiService {
     refresh: boolean,
   ): Promise<JsonWebKey | null> {
     const cached = this.jwksCache.get(jwksUrl);
-    if (!cached || refresh || Date.now() - cached.fetchedAt > JWKS_TTL_MS) {
+    const age = cached ? Date.now() - cached.fetchedAt : Infinity;
+    if (
+      !cached ||
+      age > JWKS_TTL_MS ||
+      (refresh && age > JWKS_REFETCH_COOLDOWN_MS)
+    ) {
+      try {
+        await assertPublicHttpUrl(jwksUrl, {
+          allowLoopback: !this.config.isProduction,
+        });
+      } catch (err) {
+        throw new LtiError(
+          'jwks',
+          `The platform's key set URL is not allowed: ${(err as Error).message}`,
+        );
+      }
       const res = await fetch(jwksUrl, {
         signal: AbortSignal.timeout(8000),
         headers: { accept: 'application/json' },
@@ -192,7 +215,17 @@ export class LtiService {
           'jwks',
           `The platform's key set could not be read (HTTP ${res.status}).`,
         );
-      const body = (await res.json()) as { keys?: JsonWebKey[] };
+      let body: { keys?: JsonWebKey[] };
+      try {
+        body = JSON.parse(await readBoundedText(res, JWKS_MAX_BYTES)) as {
+          keys?: JsonWebKey[];
+        };
+      } catch {
+        throw new LtiError(
+          'jwks',
+          "The platform's key set could not be read (not JSON, or too large).",
+        );
+      }
       this.jwksCache.set(jwksUrl, {
         fetchedAt: Date.now(),
         keys: body.keys ?? [],
@@ -235,13 +268,17 @@ export class LtiService {
         'params',
         'iss, login_hint and target_link_uri are required.',
       );
-    const platform = await this.prisma.ltiPlatform.findFirst({
+    // Two schools may share one issuer (a district's Canvas); when the platform omits client_id the
+    // issuer must then be unambiguous, otherwise the launch is refused (docs/21 F40).
+    const candidates = await this.prisma.ltiPlatform.findMany({
       where: {
         issuer: iss,
         isActive: true,
         ...(params.client_id ? { clientId: params.client_id } : {}),
       },
+      take: 2,
     });
+    const platform = candidates.length === 1 ? candidates[0] : null;
     if (!platform)
       throw new LtiError(
         'unknown_platform',
@@ -449,12 +486,34 @@ export class LtiService {
     });
   }
 
+  /** Platform and tool URLs are redirected to or fetched; only public https URLs are stored (docs/21 F08). */
+  private assertRegisteredUrls(
+    urls: Record<string, string | null | undefined>,
+  ) {
+    for (const [field, url] of Object.entries(urls)) {
+      if (typeof url !== 'string') continue;
+      const check = checkOutboundUrl(url, {
+        allowLoopback: !this.config.isProduction,
+      });
+      if (!check.ok)
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail: `${field} must be a public https URL: ${check.reason}.`,
+        });
+    }
+  }
+
   async createPlatform(
     organizationId: string,
     dto: CreateLtiPlatformDto,
     actor: AuthenticatedUser,
   ) {
     assertOrganizationAccess(actor, organizationId);
+    this.assertRegisteredUrls({
+      authorizationUrl: dto.authorizationUrl,
+      jwksUrl: dto.jwksUrl,
+      tokenUrl: dto.tokenUrl,
+    });
     const row = await this.prisma.ltiPlatform.create({
       data: {
         id: newId(),
@@ -487,6 +546,10 @@ export class LtiService {
   ) {
     assertOrganizationAccess(actor, organizationId);
     await this.ownPlatform(organizationId, id);
+    this.assertRegisteredUrls({
+      authorizationUrl: dto.authorizationUrl,
+      jwksUrl: dto.jwksUrl,
+    });
     const row = await this.prisma.ltiPlatform.update({
       where: { id },
       data: { ...dto },
@@ -546,6 +609,11 @@ export class LtiService {
     actor: AuthenticatedUser,
   ) {
     assertOrganizationAccess(actor, organizationId);
+    this.assertRegisteredUrls({
+      loginUrl: dto.loginUrl,
+      launchUrl: dto.launchUrl,
+      jwksUrl: dto.jwksUrl,
+    });
     const row = await this.prisma.ltiTool.create({
       data: {
         id: newId(),
@@ -580,6 +648,10 @@ export class LtiService {
   ) {
     assertOrganizationAccess(actor, organizationId);
     await this.ownTool(organizationId, id);
+    this.assertRegisteredUrls({
+      loginUrl: dto.loginUrl,
+      launchUrl: dto.launchUrl,
+    });
     const { customParams, ...rest } = dto;
     const row = await this.prisma.ltiTool.update({
       where: { id },

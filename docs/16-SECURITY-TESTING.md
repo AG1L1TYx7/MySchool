@@ -42,6 +42,12 @@ The route catalogue grew by the learning, insight, mobile, push and compliance r
 
 The id-based probe in `test/security.e2e-spec.ts` caught a real gap once the library spec left a teacher's upload in school A: a principal of school B could read `GET /files/{id}` for that file, because the file-manager branch of `findAccessible` checked the feature but not the organisation. Fixed by requiring the same organisation on that branch (district roles keep their reach). The library routes themselves were added to the catalogue check and the per-role feature sweep with no findings; library visibility is decided by `canSee` in `library-rules.ts`, unit-tested for every reach and role.
 
+## 2d. Security audit (14 October 2026)
+
+A full audit of the code, configuration and dependencies (docs/21) found 41 issues: one critical and eleven high, of which the ones that need no product decision are fixed (outbound URL guard, proxy trust, log redaction, streamed-answer moderation, API-key reach, per-account throttling, zip and sandbox limits, AI production checks, student field exposure, user-management reach, seed guard, open redirect) along with the mediums and lows (CSV guard, download headers, CSP, SMTP auth, query-string tokens, join-code and mail cooldowns, push token ownership, AI docs gating, opener, noindex, URL schemes, LTI key refetch and client id, Next.js patch). Four findings change how people sign in or the schema and wait for a decision (docs/21 section 5). The route matrix and the cross-school probe in this suite ran unchanged and green after the fixes; the per-route limits were tuned so the matrix (fourteen calls per route) stays under them.
+
+Advisories ignored on purpose, all development-only: `GHSA-jmr9-qjv8-65gv` and `GHSA-7pqw-9j4j-h8q3` (extract-zip, in Lighthouse's browser download) and the OpenTelemetry instrumentation moderates reached through Lighthouse's Sentry dependency (`GHSA-qqmp-wf37-98f9`, `GHSA-8988-4f7v-96qf`); none is installed in the API, web or AI images, and CI fails on high and above.
+
 ## 3. Not tested yet, and honest about it
 
 - **A human penetration test.** The suite is systematic but it only asks the questions we thought of. A third party should attack the pilot deployment before a district signs the data-privacy agreement (docs/13 section 10).

@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { createSign } from 'node:crypto';
 import { newId } from '../../common/utils/ids';
@@ -18,6 +23,8 @@ import {
   STALE_DAYS,
   type PushPayload,
   type ServiceAccount,
+  canReownToken,
+  MAX_DEVICES_PER_USER,
 } from './push-rules';
 
 export interface PublicDevice {
@@ -68,6 +75,33 @@ export class PushService {
       throw new NotFoundException({
         code: 'request.invalid',
         detail: 'That does not look like a push token.',
+      });
+    const existing = await this.prisma.pushDevice.findUnique({
+      where: { token },
+      select: { userId: true, disabledAt: true },
+    });
+    if (!canReownToken(existing, actor.id))
+      throw new ConflictException({
+        code: 'push.token_in_use',
+        detail:
+          'This device is still signed in to another account. Sign out there first.',
+      });
+    // Cap registrations per account: beyond the limit the least recently seen device is retired.
+    const active = await this.prisma.pushDevice.findMany({
+      where: { userId: actor.id, disabledAt: null, NOT: { token } },
+      orderBy: { lastSeenAt: 'asc' },
+      select: { id: true },
+    });
+    if (active.length >= MAX_DEVICES_PER_USER)
+      await this.prisma.pushDevice.updateMany({
+        where: {
+          id: {
+            in: active
+              .slice(0, active.length - MAX_DEVICES_PER_USER + 1)
+              .map((d) => d.id),
+          },
+        },
+        data: { disabledAt: new Date() },
       });
     const row = await this.prisma.pushDevice.upsert({
       where: { token },

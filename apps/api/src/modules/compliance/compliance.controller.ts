@@ -1,3 +1,6 @@
+import { contentDisposition } from '../files/file-rules';
+import { Throttle } from '@nestjs/throttler';
+import { EXPORT_LIMIT } from '../../common/throttle-limits';
 import {
   Body,
   Controller,
@@ -159,6 +162,7 @@ export class ComplianceController {
   }
 
   @Get('students/:id/records-export.zip')
+  @Throttle(EXPORT_LIMIT)
   @RequireAnyFeature('compliance.view', 'family.view', 'report-cards.view.all')
   @ApiOperation({
     summary:
@@ -171,10 +175,8 @@ export class ComplianceController {
   ) {
     const out = await this.compliance.recordsExport(id, actor);
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${out.fileName}"`,
-    );
+    res.setHeader('Content-Disposition', contentDisposition(out.fileName));
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(Buffer.from(out.zip));
   }
 

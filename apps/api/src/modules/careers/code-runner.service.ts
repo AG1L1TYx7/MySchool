@@ -3,6 +3,7 @@ import { Worker } from 'node:worker_threads';
 import {
   CODE_LIMITS,
   compareResult,
+  sandboxAdmission,
   type CodeTest,
   type TestOutcome,
 } from './careers-rules';
@@ -28,7 +29,34 @@ export class CodeRunnerService {
     return true;
   }
 
+  private active = 0;
+  private readonly waiting: Array<() => void> = [];
+
+  /**
+   * Admission control (docs/21 F10): at most `maxConcurrent` workers exist at once, a bounded line waits
+   * for a free slot, and beyond that a run is answered at once with a "busy" error instead of a worker.
+   */
   async run(source: string, tests: CodeTest[]): Promise<RunResult> {
+    const decision = sandboxAdmission(this.active, this.waiting.length);
+    if (decision === 'busy')
+      return {
+        outcomes: [],
+        output: '',
+        error: 'The code runner is busy right now. Try again in a moment.',
+        runtimeMs: 0,
+      };
+    if (decision === 'wait')
+      await new Promise<void>((resolve) => this.waiting.push(resolve));
+    this.active += 1;
+    try {
+      return await this.runNow(source, tests);
+    } finally {
+      this.active -= 1;
+      this.waiting.shift()?.();
+    }
+  }
+
+  private async runNow(source: string, tests: CodeTest[]): Promise<RunResult> {
     const started = Date.now();
     if (source.length > CODE_LIMITS.sourceMaxChars)
       return {

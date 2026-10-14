@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { Alert } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
+import { safePath } from '@/lib/safe-path';
 
 export default function SsoCompletePage() {
   return (
@@ -38,8 +39,7 @@ function Complete() {
 
   useEffect(() => {
     if (!user) return;
-    const next = params.get('next') ?? '/dashboard';
-    router.replace(params.get('mfaSetup') === '1' ? '/settings/security?mfa=required' : next.startsWith('/') ? next : '/dashboard');
+    router.replace(params.get('mfaSetup') === '1' ? '/settings/security?mfa=required' : safePath(params.get('next')));
   }, [user, params, router]);
 
   if (failed) return <Alert>{t('sso.failed')}</Alert>;

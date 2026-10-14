@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { CODE_RUN_LIMIT, EXPORT_LIMIT } from '../../common/throttle-limits';
 import {
   Body,
   Controller,
@@ -300,6 +302,7 @@ export class CareersController {
   }
 
   @Get('students/:id/resume.pdf')
+  @Throttle(EXPORT_LIMIT)
   @RequireFeature('portfolio.view')
   @ApiOperation({ summary: 'The resume as a PDF (audited)' })
   async resumePdf(
@@ -351,6 +354,7 @@ export class CareersController {
   }
 
   @Post('code/lessons/:id/run')
+  @Throttle(CODE_RUN_LIMIT)
   @RequireFeature('code.learn')
   @ApiOperation({
     summary:

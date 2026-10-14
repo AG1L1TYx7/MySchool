@@ -1,3 +1,4 @@
+import { contentDisposition } from '../files/file-rules';
 import { Controller, Get, Param, ParseUUIDPipe, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -56,10 +57,8 @@ export class ExportsController {
   ) {
     const out = await this.exports.commonCartridge(classId, actor);
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${out.fileName}"`,
-    );
+    res.setHeader('Content-Disposition', contentDisposition(out.fileName));
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(Buffer.from(out.zip));
   }
 
@@ -77,7 +76,8 @@ export class ExportsController {
 
   private sendCsv(res: Response, fileName: string, csv: string) {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', contentDisposition(fileName));
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(csv);
   }
 }

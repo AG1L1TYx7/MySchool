@@ -1,3 +1,6 @@
+import { contentDisposition, mimeTypeFor } from '../files/file-rules';
+import { Throttle } from '@nestjs/throttler';
+import { SEARCH_LIMIT } from '../../common/throttle-limits';
 import {
   Body,
   Controller,
@@ -61,6 +64,7 @@ export class LibraryController {
   }
 
   @Get('items/search')
+  @Throttle(SEARCH_LIMIT)
   @RequireFeature('library.view')
   @ApiOperation({
     summary:
@@ -234,11 +238,9 @@ export class LibraryController {
     @Res() res: Response,
   ) {
     const f = await this.library.download(id, actor);
-    res.setHeader('Content-Type', f.mimeType);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${f.fileName.replace(/"/g, '')}"`,
-    );
+    res.setHeader('Content-Type', mimeTypeFor(f.fileName));
+    res.setHeader('Content-Disposition', contentDisposition(f.fileName));
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.sendFile(f.absolutePath);
   }
 

@@ -33,6 +33,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       .getRequest<Request & { user?: AuthenticatedUser }>();
     const presented = req.headers['x-api-key'];
     if (typeof presented === 'string' && presented.length > 0) {
+      // Account routes belong to people: keys never sign in, enrol 2FA or manage sessions (docs/21 F06).
+      if (context.getClass().name === 'AuthController') {
+        throw new UnauthorizedException({
+          code: 'apikey.scope',
+          detail: 'API keys cannot use the account routes.',
+        });
+      }
       req.user = await this.apiKeys.authenticate(presented);
       return true;
     }

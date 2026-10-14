@@ -20,10 +20,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly tenants: TenantsService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        ExtractJwt.fromUrlQueryParameter('access_token'), // socket handshakes
-      ]),
+      // Header only: socket handshakes carry the token in the handshake auth object (ws-auth.service.ts),
+      // so a query-string token would only ever end up in proxy logs and referrers (docs/21 F28).
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: config.get('JWT_SECRET'),
       issuer: config.get('JWT_ISSUER'),
       audience: config.get('JWT_AUDIENCE'),

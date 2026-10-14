@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Role } from '../../generated/prisma/client';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { FeatureFlagService } from './feature-flag.service';
 import { PermissionService } from './permission.service';
 import { ROLE_API_NAME, ROLE_LEVEL } from './roles';
@@ -83,7 +84,23 @@ export class AccessService {
     return this.roleFeatures(role);
   }
 
-  async userOverrides(userId: string) {
+  /** With an actor, the user must be inside the actor's organisation (docs/21 F17); the platform administrator sees all. */
+  async userOverrides(userId: string, actor?: AuthenticatedUser) {
+    if (actor && actor.role !== 'SUPER_ADMIN') {
+      const inScope = await this.prisma.user.findFirst({
+        where: {
+          id: userId,
+          deletedAt: null,
+          organizationId: actor.organizationId ?? '__none__',
+        },
+        select: { id: true },
+      });
+      if (!inScope)
+        throw new NotFoundException({
+          code: 'resource.not_found',
+          detail: 'User not found.',
+        });
+    }
     const rows = await this.prisma.userFeatureOverride.findMany({
       where: { userId },
       select: {

@@ -5,14 +5,15 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    environment: str = Field(default="development", alias="AI_ENV")
+    # Both names are accepted: compose files have used ENVIRONMENT, the service's own documentation AI_ENV.
+    environment: str = Field(default="development", validation_alias=AliasChoices("AI_ENV", "ENVIRONMENT"))
     host: str = Field(default="127.0.0.1", alias="AI_HOST")
     port: int = Field(default=8000, alias="AI_PORT")
 
@@ -39,18 +40,29 @@ class Settings(BaseSettings):
     data_dir: Path = Field(default=Path(__file__).resolve().parent.parent / "data", alias="AI_DATA_DIR")
     trace_salt: str = Field(default="dev-salt", alias="TRACE_SALT")
 
-    @field_validator("service_token", "lms_service_token")
-    @classmethod
-    def _no_placeholder_in_production(cls, value: str, info: object) -> str:
-        return value
-
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
 
+    def production_problems(self) -> list[str]:
+        """What stops this configuration from running in production (docs/21 F13): placeholder or short
+        tokens, the fake model provider, and the development trace salt."""
+        if not self.is_production:
+            return []
+        problems: list[str] = []
+        for name, value in (("AI_SERVICE_TOKEN", self.service_token), ("LMS_SERVICE_TOKEN", self.lms_service_token)):
+            if "CHANGE_ME" in value or len(value) < 24:
+                problems.append(f"{name} must be set to a random value of at least 24 characters")
+        if self.model_provider == "fake":
+            problems.append("MODEL_PROVIDER=fake is only for tests")
+        if self.trace_salt == "dev-salt" or len(self.trace_salt) < 16:
+            problems.append("TRACE_SALT must be set to a random value of at least 16 characters")
+        return problems
+
     def validate_for_environment(self) -> None:
-        if self.is_production and ("CHANGE_ME" in self.service_token or "CHANGE_ME" in self.lms_service_token):
-            raise RuntimeError("AI_SERVICE_TOKEN and LMS_SERVICE_TOKEN must be set in production")
+        problems = self.production_problems()
+        if problems:
+            raise RuntimeError("; ".join(problems))
 
 
 @lru_cache

@@ -30,6 +30,14 @@ export class MailService {
           host: config.get('SMTP_HOST'),
           port: config.get('SMTP_PORT'),
           secure: config.get('SMTP_PORT') === 465,
+          ...(config.get('SMTP_USER')
+            ? {
+                auth: {
+                  user: config.get('SMTP_USER'),
+                  pass: config.get('SMTP_PASSWORD'),
+                },
+              }
+            : {}),
         })
       : null;
   }

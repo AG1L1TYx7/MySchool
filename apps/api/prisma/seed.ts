@@ -1507,15 +1507,26 @@ async function main(): Promise<void> {
   await seedFeatures();
   await seedH5pLibraries();
   await seedFlags();
-  const orgId = await seedOrganization();
-  await seedUsers(orgId);
-  await seedStudents(orgId);
-  await seedCurriculum(orgId);
-  await seedStructure(orgId);
-  await seedAcademics(orgId);
-  await seedGrading(orgId);
-  await seedSupport(orgId);
-  await seedMotivation(orgId);
+  // The demo school, its accounts and the published password are development data (docs/21 F19): a
+  // production database gets the catalogue only unless SEED_DEMO_DATA=true is set on purpose.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.SEED_DEMO_DATA !== 'true'
+  ) {
+    console.log(
+      'demo school and accounts skipped (NODE_ENV=production; set SEED_DEMO_DATA=true to seed them anyway)',
+    );
+  } else {
+    const orgId = await seedOrganization();
+    await seedUsers(orgId);
+    await seedStudents(orgId);
+    await seedCurriculum(orgId);
+    await seedStructure(orgId);
+    await seedAcademics(orgId);
+    await seedGrading(orgId);
+    await seedSupport(orgId);
+    await seedMotivation(orgId);
+  }
   await seedLearningGap();
   await seedCareers();
   await seedBilling();

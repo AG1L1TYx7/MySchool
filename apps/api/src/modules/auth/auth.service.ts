@@ -1,5 +1,12 @@
 import {
+  isBlocked,
+  mailAllowed,
+  noteFailure,
+  type AttemptWindow,
+} from './abuse-rules';
+import {
   BadRequestException,
+  HttpException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -93,6 +100,10 @@ const REGISTER_MESSAGE =
 
 @Injectable()
 export class AuthService {
+  /** Wrong join codes per address (docs/21 F29) and the last verification or reset mail per address (F39). */
+  private readonly joinCodeFailures = new Map<string, AttemptWindow>();
+  private readonly mailLastSent = new Map<string, number>();
+
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
@@ -151,15 +162,27 @@ export class AuthService {
 
     let organizationId: string | null = null;
     if (dto.joinCode) {
+      const addressKey = ctx.ip ?? 'unknown';
+      if (isBlocked(this.joinCodeFailures, addressKey, Date.now()))
+        throw new HttpException(
+          {
+            code: 'auth.join_code_throttled',
+            detail:
+              'Too many wrong school codes from this network. Try again in a few minutes.',
+          },
+          429,
+        );
       const org = await this.prisma.organization.findFirst({
         where: { joinCode: dto.joinCode, deletedAt: null, isActive: true },
         select: { id: true },
       });
-      if (!org)
+      if (!org) {
+        noteFailure(this.joinCodeFailures, addressKey, Date.now());
         throw new BadRequestException({
           code: 'auth.join_code_invalid',
           detail: 'That school join code is not valid.',
         });
+      }
       organizationId = org.id;
       const min = await this.passwordMinFor(organizationId);
       if (dto.password.length < min)
@@ -266,6 +289,15 @@ export class AuthService {
       user.deletedAt ||
       user.status !== 'ACTIVE' ||
       user.emailVerifiedAt
+    )
+      return {};
+    // One mail per address per cooldown; the answer stays the same so nothing about the account is learned.
+    if (
+      !mailAllowed(
+        this.mailLastSent,
+        `verify|${user.email.toLowerCase()}`,
+        Date.now(),
+      )
     )
       return {};
     const token = await this.createToken(
@@ -757,6 +789,14 @@ export class AuthService {
     await this.captcha.assertHuman(captchaToken, ctx.ip, 'forgot_password');
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt || user.status !== 'ACTIVE')
+      return { delivered: false };
+    if (
+      !mailAllowed(
+        this.mailLastSent,
+        `reset|${user.email.toLowerCase()}`,
+        Date.now(),
+      )
+    )
       return { delivered: false };
 
     const token = await this.createToken(

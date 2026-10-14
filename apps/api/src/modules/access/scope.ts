@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 /**
@@ -57,6 +57,22 @@ export function resolveOrganizationId(
       detail: 'Your account is not attached to an organisation.',
     });
   return actor.organizationId;
+}
+
+/**
+ * Like `assertOrganizationAccess`, for a record looked up by id: a school role gets "not found" for a
+ * record in another school, so an id reveals nothing about where it exists (docs/21 F36). District roles
+ * keep the explicit refusal, since they may legitimately be told a school is outside their district.
+ */
+export function assertOrganizationRecord(
+  actor: AuthenticatedUser,
+  organizationId: string,
+  detail = 'Not found.',
+): void {
+  if (actor.role === 'SUPER_ADMIN' || actor.role === 'SUPERINTENDENT')
+    return assertOrganizationAccess(actor, organizationId);
+  if (actor.organizationId !== organizationId)
+    throw new NotFoundException({ code: 'resource.not_found', detail });
 }
 
 export function assertOrganizationAccess(

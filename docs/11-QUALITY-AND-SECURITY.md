@@ -47,7 +47,12 @@ Input and output
 - All bodies validated with whitelisting; unknown fields dropped; sizes capped (JSON 5 MB, CSV 10 MB, file uploads per policy).
 - CSV output guards against formula injection; file names are sanitised; uploads are type-checked and stored outside the web root (slice 4).
 - Errors never leak stack traces, SQL or internal ids beyond the resource id; every problem response carries a trace id for support.
-- Security headers on both the API (helmet) and the web client (CSP, frame denial, referrer policy, permissions policy, HSTS in production).
+- Security headers on both the API (helmet, with `default-src 'none'` and `frame-ancestors 'none'`; Swagger only when enabled) and the web client (CSP, frame denial, referrer policy, permissions policy, HSTS in production).
+- Outbound URLs an administrator supplies (webhooks, roster sources, LTI key sets) are public https only, resolved and checked against private ranges before every fetch (`common/outbound-url.ts`); uploaded archives inflate within a budget.
+- Request logs redact credentials and mask token-carrying URLs (`common/request-rules.ts`); downloads carry a media type from the allow-listed extension, an encoded disposition and `nosniff`.
+- Expensive routes (exports, PDFs, search, sandbox runs, probes) have per-route limits under the global one (`common/throttle-limits.ts`); wrong join codes and mail to one address have cooldowns (`auth/abuse-rules.ts`).
+- Sensitive student fields (date of birth, phone, address, needs, notes) are on the detail only, for administrators, counselors, the student's own teachers and the family (`students-rules.ts`); list rows carry identity and standing.
+- Security audit of 14 October 2026: docs/21 (findings, fixes, and the decisions still open).
 
 Secrets and configuration
 - Secrets only from the environment; placeholders refused in production; `.env` never committed; generated credentials for development.
@@ -58,7 +63,7 @@ Data protection
 - Minimum personal data in AI prompts; pseudonymised prompt logs with retention; soft delete where history matters, hard delete for student data on request (Release 2 data-subject tooling).
 - Audit log for every write to identity, permissions, students, grades and settings.
 
-- **District security policy (slice 26).** `SecurityPolicyGuard` runs after the access guard on every signed-in request: administrators outside the district's IPv4 allowlist get 403 `security.ip_not_allowed` (loopback always passes; the client address is the first `X-Forwarded-For` entry behind the proxy), and a session older than the district's limit gets 401 `security.session_expired`. The password floor is 12 characters; a district may raise it to 64. District 2FA roles join the platform's in both the login answer and the access token.
+- **District security policy (slice 26).** `SecurityPolicyGuard` runs after the access guard on every signed-in request: administrators outside the district's IPv4 allowlist get 403 `security.ip_not_allowed` (loopback always passes; the client address is `req.ip`, which is the socket peer unless `TRUST_PROXY` names the proxy hops, docs/21 F03), and a session older than the district's limit gets 401 `security.session_expired`. The password floor is 12 characters; a district may raise it to 64. District 2FA roles join the platform's in both the login answer and the access token.
 - **Idempotency (slice 26).** Billing writes require an `Idempotency-Key`; the stored answer is replayed for a day and a different body under the same key is refused, so a retried request can never create a second subscription or invoice.
 
 ## 4. Performance rules

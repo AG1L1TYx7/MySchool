@@ -313,6 +313,12 @@ describe('LTI 1.3 rules', () => {
       launchPathFor(undefined, 'http://localhost:5000', { path: '/tutor' }),
     ).toBe('/tutor');
     expect(
+      launchPathFor(undefined, 'http://localhost:5000', { path: '//evil' }),
+    ).toBe('/dashboard');
+    expect(
+      launchPathFor(undefined, 'http://localhost:5000', { path: '/a\\evil' }),
+    ).toBe('/dashboard');
+    expect(
       launchPathFor(undefined, 'http://localhost:5000', { path: 'https://x' }),
     ).toBe('/dashboard');
   });

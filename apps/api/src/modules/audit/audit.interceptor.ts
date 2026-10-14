@@ -68,10 +68,7 @@ export class AuditInterceptor implements NestInterceptor {
   }
 }
 
+/** The client address Express derived under `trust proxy`; a forwarded header the client wrote is never read (docs/21 F03). */
 export function clientIp(req: Request): string | null {
-  const forwarded = req.headers['x-forwarded-for'];
-  const first = Array.isArray(forwarded)
-    ? forwarded[0]
-    : forwarded?.split(',')[0];
-  return first?.trim() || req.ip || req.socket.remoteAddress || null;
+  return req.ip || req.socket?.remoteAddress || null;
 }

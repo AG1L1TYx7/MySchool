@@ -85,10 +85,13 @@ describe('Billing and operations (e2e)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
+    // The IP allowlist test sends X-Forwarded-For, so this app trusts the loopback proxy the way a
+    // deployment behind its own reverse proxy does (TRUST_PROXY=loopback, docs/21 F03).
     app = configureApp(
       moduleRef.createNestApplication<NestExpressApplication>({
         bodyParser: false,
       }),
+      { trustProxy: 'loopback' },
     );
     await app.init();
     server = app.getHttpServer() as Server;

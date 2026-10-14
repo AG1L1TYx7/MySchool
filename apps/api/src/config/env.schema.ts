@@ -89,6 +89,8 @@ export const envSchema = z
     REDIS_URL: z.string().optional().default(''),
 
     CORS_ORIGINS: csv,
+    /** Express trust proxy: a hop count, true/false, or addresses and ranges. Empty: no proxy is trusted. */
+    TRUST_PROXY: z.string().optional().default(''),
 
     UPLOAD_DIR: z.string().default('./uploads'),
     MAX_FILE_SIZE_MB: z.coerce.number().positive().default(10),
@@ -96,6 +98,11 @@ export const envSchema = z
 
     SMTP_HOST: z.string().optional().default(''),
     SMTP_PORT: z.coerce.number().int().positive().default(25),
+    /** SMTP authentication; both empty means the relay accepts unauthenticated mail from this host. */
+    SMTP_USER: z.string().optional().default(''),
+    SMTP_PASSWORD: z.string().optional().default(''),
+    /** Serve Swagger UI and the OpenAPI document. Default: on outside production. */
+    SWAGGER_ENABLED: boolFromString.optional(),
     MAIL_FROM: z.string().default('noreply@smartschool.local'),
     MAIL_FROM_NAME: z.string().default('SmartSchool'),
     SENDGRID_API_KEY: z.string().optional().default(''),
@@ -138,6 +145,30 @@ export const envSchema = z
           code: z.ZodIssueCode.custom,
           path: ['DATABASE_URL'],
           message: 'DATABASE_URL still has its placeholder password',
+        });
+      }
+      if (!env.ENCRYPTION_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['ENCRYPTION_KEY'],
+          message:
+            'ENCRYPTION_KEY (base64, 32 bytes) must be set in production so field encryption does not depend on JWT_SECRET',
+        });
+      }
+      if (env.AI_SERVICE_API_KEY.length < 16) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['AI_SERVICE_API_KEY'],
+          message:
+            'AI_SERVICE_API_KEY must be set (at least 16 characters) in production; the AI service refuses an empty bearer',
+        });
+      }
+      if (env.CORS_ORIGINS.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CORS_ORIGINS'],
+          message:
+            'CORS_ORIGINS must list the web app origin in production; the API never reflects arbitrary origins.',
         });
       }
       if (!env.WEB_APP_URL.startsWith('https://')) {

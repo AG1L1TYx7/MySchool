@@ -383,7 +383,9 @@ export class AuthController {
     req: Request,
     res: Response,
   ): Omit<TokenPair, 'refreshToken'> & { refreshToken?: string } {
-    if (isNativeClient(req)) return pair;
+    // A request that carries the browser's refresh cookie is a browser whatever header it adds: the
+    // refresh token never goes into a body that page script could read (docs/21 F24).
+    if (isNativeClient(req) && !cookieFrom(req)) return pair;
     res.cookie(REFRESH_COOKIE, pair.refreshToken, {
       httpOnly: true,
       sameSite: 'strict',

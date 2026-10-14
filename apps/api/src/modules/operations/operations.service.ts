@@ -30,6 +30,8 @@ import {
   type IncidentUpdate,
 } from './operations-rules';
 
+/** How long one build of the status page is served before it is rebuilt. */
+const STATUS_CACHE_MS = 30_000;
 const UPTIME_DAYS = 90;
 const KEEP_CHECK_DAYS = 100;
 
@@ -58,6 +60,7 @@ export class OperationsService {
 
   /** Probes the dependencies and stores the result; the status page and uptime are built from these rows. */
   async runCheck() {
+    this.statusCache = null;
     const t0 = Date.now();
     const report = await this.health.report();
     const components = componentsFromHealth(report);
@@ -83,8 +86,26 @@ export class OperationsService {
     };
   }
 
-  /** The public status page. */
-  async statusPage() {
+  private statusCache: { at: number; value: Promise<unknown> } | null = null;
+
+  /**
+   * The public status page, served from a short cache (docs/21 F10): it is unauthenticated and reads
+   * ninety days of checks, so one build serves everyone for ${STATUS_CACHE_MS} and any change to an
+   * incident or a check drops the cache.
+   */
+  statusPage(): Promise<unknown> {
+    const now = Date.now();
+    if (this.statusCache && now - this.statusCache.at < STATUS_CACHE_MS)
+      return this.statusCache.value;
+    const value = this.buildStatusPage();
+    this.statusCache = { at: now, value };
+    value.catch(() => {
+      this.statusCache = null;
+    });
+    return value;
+  }
+
+  private async buildStatusPage() {
     const now = new Date();
     const [latest, checks, incidents] = await Promise.all([
       this.prisma.statusCheck.findFirst({ orderBy: { checkedAt: 'desc' } }),
@@ -165,6 +186,7 @@ export class OperationsService {
   }
 
   async createIncident(dto: CreateIncidentDto, actor: AuthenticatedUser) {
+    this.statusCache = null;
     const kind = dto.kind ?? 'incident';
     const now = new Date();
     const status = kind === 'maintenance' ? 'scheduled' : 'investigating';
@@ -225,6 +247,7 @@ export class OperationsService {
     dto: UpdateIncidentDto,
     actor: AuthenticatedUser,
   ) {
+    this.statusCache = null;
     const row = await this.prisma.serviceIncident.findUnique({ where: { id } });
     if (!row)
       throw new NotFoundException({

@@ -2,6 +2,7 @@ import {
   canSeePortfolio,
   checklistFor,
   compareResult,
+  sandboxAdmission,
   gradeNumber,
   INVENTORY,
   isValidSlug,
@@ -170,5 +171,16 @@ describe('resume and code tests', () => {
       ).status,
     ).toBe('passed');
     expect(summarizeRun([], 'boom').status).toBe('error');
+  });
+});
+
+describe('sandboxAdmission (docs/21 F10)', () => {
+  const limits = { maxConcurrent: 2, maxQueued: 3 };
+  it('runs while a worker slot is free, then queues, then turns runs away', () => {
+    expect(sandboxAdmission(0, 0, limits)).toBe('run');
+    expect(sandboxAdmission(1, 5, limits)).toBe('run');
+    expect(sandboxAdmission(2, 0, limits)).toBe('wait');
+    expect(sandboxAdmission(2, 2, limits)).toBe('wait');
+    expect(sandboxAdmission(2, 3, limits)).toBe('busy');
   });
 });

@@ -78,13 +78,15 @@ export function toCsv(
   return rows.map((r) => r.map(escapeCell).join(',')).join('\r\n') + '\r\n';
 }
 
-function escapeCell(
+/** One CSV cell: quoted when needed, and a text cell that would run as a spreadsheet formula is neutralised. */
+export function escapeCell(
   value: string | number | boolean | null | undefined,
 ): string {
   if (value === null || value === undefined) return '';
   const s = String(value);
-  // Neutralise spreadsheet formula injection as well as quoting.
-  const guarded = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  // Neutralise spreadsheet formula injection as well as quoting (numbers are never formulas).
+  const guarded =
+    typeof value === 'string' && /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   return /[",\r\n]/.test(guarded)
     ? `"${guarded.replace(/"/g, '""')}"`
     : guarded;

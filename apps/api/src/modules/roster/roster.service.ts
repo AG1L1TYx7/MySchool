@@ -12,6 +12,11 @@ import type {
   RosterSyncRun,
 } from '../../generated/prisma/client';
 import { newId } from '../../common/utils/ids';
+import {
+  assertPublicHttpUrl,
+  checkOutboundUrl,
+} from '../../common/outbound-url';
+import { AppConfigService } from '../../config/app-config.service';
 import { CryptoService } from '../../infra/crypto/crypto.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { assertOrganizationAccess, isDistrictRole } from '../access/scope';
@@ -85,6 +90,7 @@ export class RosterService {
     private readonly sync: RosterSyncService,
     private readonly crypto: CryptoService,
     private readonly audit: AuditService,
+    private readonly config: AppConfigService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -418,8 +424,14 @@ export class RosterService {
     }
   }
 
-  private fetchSnapshot(source: RosterSource): Promise<RosterSnapshot> {
+  private async fetchSnapshot(source: RosterSource): Promise<RosterSnapshot> {
     const config = this.openConfig(source.config);
+    // Resolved before every sync: a source address that now points inside the network is refused (docs/21 F08).
+    for (const k of ['baseUrl', 'tokenUrl'])
+      if (config[k])
+        await assertPublicHttpUrl(config[k], {
+          allowLoopback: !this.config.isProduction,
+        });
     if (source.provider === 'CLEVER')
       return new CleverClient({
         districtToken: config.districtToken,
@@ -530,12 +542,17 @@ export class RosterService {
         code: 'request.invalid',
         detail: `Missing ${missing.join(', ')} for ${provider.toLowerCase()}.`,
       });
-    for (const k of ['baseUrl', 'tokenUrl'])
-      if (config[k] && !/^https?:\/\//.test(config[k]))
+    for (const k of ['baseUrl', 'tokenUrl']) {
+      if (!config[k]) continue;
+      const check = checkOutboundUrl(config[k], {
+        allowLoopback: !this.config.isProduction,
+      });
+      if (!check.ok)
         throw new BadRequestException({
           code: 'request.invalid',
-          detail: `${k} must be an http(s) URL.`,
+          detail: `${k} must be a public https URL: ${check.reason}.`,
         });
+    }
   }
 
   private sealConfig(config: Record<string, string>): string {

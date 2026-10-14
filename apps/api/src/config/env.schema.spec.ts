@@ -38,6 +38,23 @@ describe('validateEnv', () => {
     ).toThrow(/DATABASE_URL/);
   });
 
+  it('requires the AI service key in production (docs/21 F13)', () => {
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://school.example',
+      WEB_APP_URL: 'https://school.example',
+      ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+    };
+    expect(() => validateEnv(production)).toThrow(/AI_SERVICE_API_KEY/);
+    expect(() =>
+      validateEnv({ ...production, ENCRYPTION_KEY: undefined }),
+    ).toThrow(/ENCRYPTION_KEY/);
+    expect(() =>
+      validateEnv({ ...production, AI_SERVICE_API_KEY: 'k'.repeat(24) }),
+    ).not.toThrow();
+  });
+
   it('refuses placeholder secrets in production only', () => {
     const placeholder = {
       ...valid,

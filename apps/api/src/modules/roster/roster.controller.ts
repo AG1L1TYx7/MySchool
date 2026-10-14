@@ -117,7 +117,8 @@ export class RosterController {
   @UseInterceptors(
     FilesInterceptor('files', 12, {
       storage: memoryStorage(),
-      limits: { fileSize: 200 * 1024 * 1024 },
+      // Uploads are held in memory; the zip inflate budget is in oneroster-csv.ts (docs/21 F09).
+      limits: { fileSize: 100 * 1024 * 1024, files: 12, fields: 8 },
     }),
   )
   importCsv(

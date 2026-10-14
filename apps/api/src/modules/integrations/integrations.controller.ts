@@ -1,3 +1,6 @@
+import { LAUNCH_PAGE_CSP } from './integration-rules';
+import { Throttle } from '@nestjs/throttler';
+import { PROBE_LIMIT } from '../../common/throttle-limits';
 import {
   Body,
   Controller,
@@ -113,6 +116,7 @@ export class IntegrationsController {
   }
 
   @Post('webhooks/:id/test')
+  @Throttle(PROBE_LIMIT)
   @RequireFeature('integrations.manage')
   @ApiOperation({
     summary: 'Send a webhook.test event now and report the outcome',
@@ -302,6 +306,7 @@ export class IntegrationsController {
       actor,
     );
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Security-Policy', LAUNCH_PAGE_CSP);
     res.setHeader('Cache-Control', 'no-store');
     res.send(html);
   }

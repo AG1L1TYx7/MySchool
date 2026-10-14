@@ -52,6 +52,20 @@ export function cacheTranscript(conversationId: string, messages: TutorMessage[]
   write(`${CACHE_PREFIX}${conversationId}`, messages.slice(-CACHE_LIMIT));
 }
 
+/** Forgets every cached transcript and the outbox: on sign-out and when the session is lost (docs/21 F15). */
+export function clearTutorCache(): void {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch {
+    /* storage blocked: nothing was cached */
+  }
+}
+
 export function outbox(conversationId?: string): OutboxItem[] {
   const all = read<OutboxItem[]>(OUTBOX_KEY, []);
   return conversationId ? all.filter((o) => o.conversationId === conversationId) : all;

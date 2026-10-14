@@ -16,7 +16,11 @@ import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { ROLE_LEVEL } from '../access/roles';
-import { assertOrganizationAccess, organizationScope } from '../access/scope';
+import {
+  assertOrganizationAccess,
+  organizationScope,
+  assertOrganizationRecord,
+} from '../access/scope';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -680,7 +684,12 @@ export class SupportService {
         detail:
           "Only the student's parent or guardian, or a school administrator, records AI consent.",
       });
-    if (admin) assertOrganizationAccess(actor, student.organizationId);
+    if (admin)
+      assertOrganizationRecord(
+        actor,
+        student.organizationId,
+        'Student not found.',
+      );
     const status = dto.status.toUpperCase() as 'GRANTED' | 'DECLINED';
     const data = {
       status,

@@ -15,28 +15,35 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
 
   const config = app.get(AppConfigService);
-  configureApp(app, { corsOrigins: config.get('CORS_ORIGINS') });
+  configureApp(app, {
+    corsOrigins: config.get('CORS_ORIGINS'),
+    trustProxy: config.get('TRUST_PROXY'),
+    isDevelopment: config.isDevelopment,
+  });
 
-  const swagger = new DocumentBuilder()
-    .setTitle('SmartSchool API')
-    .setDescription(
-      'LMS API for SmartSchool. Conventions: docs/09-API-DESIGN.md. Errors use RFC 9457 problem details.',
-    )
-    .setVersion('1.0')
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'bearer',
-    )
-    .build();
-  SwaggerModule.setup(
-    'swagger',
-    app,
-    SwaggerModule.createDocument(app, swagger),
-    {
-      jsonDocumentUrl: 'openapi.json',
-      swaggerOptions: { persistAuthorization: true },
-    },
-  );
+  // Swagger is on by default outside production and off in it unless SWAGGER_ENABLED=true (docs/21 F26).
+  if (config.get('SWAGGER_ENABLED') ?? !config.isProduction) {
+    const swagger = new DocumentBuilder()
+      .setTitle('SmartSchool API')
+      .setDescription(
+        'LMS API for SmartSchool. Conventions: docs/09-API-DESIGN.md. Errors use RFC 9457 problem details.',
+      )
+      .setVersion('1.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'bearer',
+      )
+      .build();
+    SwaggerModule.setup(
+      'swagger',
+      app,
+      SwaggerModule.createDocument(app, swagger),
+      {
+        jsonDocumentUrl: 'openapi.json',
+        swaggerOptions: { persistAuthorization: true },
+      },
+    );
+  }
 
   app.enableShutdownHooks();
 

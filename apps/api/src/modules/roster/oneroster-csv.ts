@@ -1,4 +1,4 @@
-import { unzipSync } from 'fflate';
+import { unzipSync, type UnzipFileInfo } from 'fflate';
 import { parseCsv } from '../../common/utils/csv';
 import {
   emptySnapshot,
@@ -28,8 +28,41 @@ export interface CsvBundle {
   [fileName: string]: string;
 }
 
+/**
+ * How much a OneRoster zip may inflate to (docs/21 F09): only the CSV files are opened, none larger than
+ * `fileMaxBytes`, and the whole bundle no larger than `totalMaxBytes`. The limits are generous for a
+ * large district's users.csv yet far below what a crafted archive could expand to.
+ */
+export const ZIP_LIMITS = {
+  fileMaxBytes: 200 * 1024 * 1024,
+  totalMaxBytes: 400 * 1024 * 1024,
+  maxFiles: 24,
+} as const;
+
+/** fflate's entry filter: which zip entries are inflated at all, counting the declared sizes as it goes. */
+export function zipEntryFilter(
+  limits: {
+    fileMaxBytes: number;
+    totalMaxBytes: number;
+    maxFiles: number;
+  } = ZIP_LIMITS,
+) {
+  let total = 0;
+  let count = 0;
+  return (file: Pick<UnzipFileInfo, 'name' | 'originalSize'>): boolean => {
+    const name = file.name.split('/').pop()?.toLowerCase() ?? '';
+    if (!name.endsWith('.csv') || name.startsWith('.')) return false;
+    if (file.originalSize > limits.fileMaxBytes) return false;
+    if (total + file.originalSize > limits.totalMaxBytes) return false;
+    if (count + 1 > limits.maxFiles) return false;
+    total += file.originalSize;
+    count += 1;
+    return true;
+  };
+}
+
 export function bundleFromZip(zip: Uint8Array): CsvBundle {
-  const files = unzipSync(zip);
+  const files = unzipSync(zip, { filter: zipEntryFilter() });
   const bundle: CsvBundle = {};
   for (const [path, bytes] of Object.entries(files)) {
     const name = path.split('/').pop()?.toLowerCase() ?? '';

@@ -704,7 +704,21 @@ export const CODE_LIMITS = {
   memoryMb: 64,
   sourceMaxChars: 20_000,
   outputMaxChars: 4000,
+  /** Worker threads running at once; more than this wait in line (docs/21 F10). */
+  maxConcurrent: 4,
+  /** Runs allowed to wait; beyond this the student is told to try again. */
+  maxQueued: 32,
 } as const;
+
+/** Whether a new sandbox run starts now, waits for a slot, or is turned away. */
+export function sandboxAdmission(
+  active: number,
+  waiting: number,
+  limits: { maxConcurrent: number; maxQueued: number } = CODE_LIMITS,
+): 'run' | 'wait' | 'busy' {
+  if (active < limits.maxConcurrent) return 'run';
+  return waiting < limits.maxQueued ? 'wait' : 'busy';
+}
 
 /** The platform code lessons seeded for every school. */
 export const PLATFORM_CODE_LESSONS: Array<{

@@ -1,3 +1,7 @@
+import { escapeCell } from '../../common/utils/csv';
+import { sanitizeParameters } from '../h5p/h5p-rules';
+import { checkOutboundUrl } from '../../common/outbound-url';
+import { safeRedirect } from '../sso/sso-rules';
 import {
   createHash,
   createHmac,
@@ -119,18 +123,13 @@ export interface WebhookEnvelope {
   data: Record<string, unknown>;
 }
 
-/** Only https endpoints, except plain http on localhost for development and tests. */
+/**
+ * Only public https endpoints, except plain http on localhost for development and tests; the service
+ * applies the same check without the localhost exception in production and resolves the name before
+ * every delivery (docs/21 F08).
+ */
 export function isAllowedWebhookUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    if (u.protocol === 'https:') return true;
-    return (
-      u.protocol === 'http:' &&
-      ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname)
-    );
-  } catch {
-    return false;
-  }
+  return checkOutboundUrl(url, { allowLoopback: true }).ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -267,11 +266,8 @@ export interface ExportBook {
   overall: (studentId: string) => number | null;
 }
 
-const csvCell = (v: string | number | null | undefined): string => {
-  if (v === null || v === undefined) return '';
-  const s = String(v);
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
+// The shared writer also neutralises cells that would run as spreadsheet formulas (docs/21 F21).
+const csvCell = escapeCell;
 export const csvLines = (
   rows: Array<Array<string | number | null | undefined>>,
 ): string => rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
@@ -409,7 +405,7 @@ export function cartridgeItemHtml(
 <p><em>${xml(classTitle)}</em></p>
 ${due}
 <p><strong>Points:</strong> ${a.maxPoints}${a.isExtraCredit ? ' (extra credit)' : ''}</p>
-${a.description ? `<div>${a.description}</div>` : ''}
+${a.description ? `<div>${sanitizeParameters(a.description)}</div>` : ''}
 </body></html>
 `;
 }
@@ -565,20 +561,19 @@ export function launchPathFor(
   apiPublicUrl: string,
   custom: Record<string, unknown> | undefined,
 ): string {
+  // A platform's custom path and the path in the target link are both redirect targets: the same
+  // in-app-only rule as SSO applies (docs/21 F20).
   const fromCustom =
-    custom && typeof custom.path === 'string' && custom.path.startsWith('/')
-      ? custom.path
-      : null;
-  if (fromCustom) return fromCustom;
+    custom && typeof custom.path === 'string'
+      ? safeRedirect(custom.path)
+      : '/dashboard';
+  if (fromCustom !== '/dashboard') return fromCustom;
   if (!targetLinkUri) return '/dashboard';
   try {
     const u = new URL(targetLinkUri);
     const api = new URL(apiPublicUrl);
     if (u.origin !== api.origin) return '/dashboard';
-    const path = u.searchParams.get('path');
-    return path && path.startsWith('/') && !path.startsWith('//')
-      ? path
-      : '/dashboard';
+    return safeRedirect(u.searchParams.get('path'));
   } catch {
     return '/dashboard';
   }
@@ -687,6 +682,10 @@ export function toolConfiguration(
 }
 
 /** Form that posts itself: how both LTI redirects (login initiation and the id_token) travel through the browser. */
+/** The launch pages are self-submitting forms: only their own inline handler may run, and only a form post may leave. */
+export const LAUNCH_PAGE_CSP =
+  "default-src 'none'; script-src 'unsafe-inline'; form-action *; base-uri 'none'; frame-ancestors 'none'";
+
 export function autoPostForm(
   action: string,
   fields: Record<string, string>,

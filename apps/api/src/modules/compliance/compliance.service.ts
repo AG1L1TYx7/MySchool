@@ -10,7 +10,11 @@ import { strToU8, zipSync } from 'fflate';
 import { newId } from '../../common/utils/ids';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ROLE_LEVEL } from '../access/roles';
-import { assertOrganizationAccess, isDistrictRole } from '../access/scope';
+import {
+  assertOrganizationAccess,
+  isDistrictRole,
+  assertOrganizationRecord,
+} from '../access/scope';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -1249,7 +1253,11 @@ export class ComplianceService {
       });
     }
     if (!isDistrictRole(actor))
-      assertOrganizationAccess(actor, student.organizationId);
+      assertOrganizationRecord(
+        actor,
+        student.organizationId,
+        'Student not found.',
+      );
     const allowed =
       ROLE_LEVEL[actor.role] >= ROLE_LEVEL.PRINCIPAL ||
       (!opts.familyOnly && actor.role === 'COUNSELOR');

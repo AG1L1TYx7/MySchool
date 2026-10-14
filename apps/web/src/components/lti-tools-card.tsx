@@ -23,6 +23,8 @@ export function LtiToolsCard({ classId, organizationId }: { classId: string; org
     w.document.open();
     w.document.write(html);
     w.document.close();
+    // The tool's page must not be able to navigate this tab (docs/21 F34).
+    w.opener = null;
   };
   return (
     <Card title="Tools" description="Outside tools your school connected. Each opens in a new tab, signed in as you.">

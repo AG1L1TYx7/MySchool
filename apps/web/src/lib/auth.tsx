@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, tokenStore, type TokenResponse } from './api';
+import { clearTutorCache } from './offline';
 
 export interface CurrentUser {
   id: string;
@@ -95,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       tokenStore.clear();
       sessionMarker.clear();
+      clearTutorCache();
       setUser(null);
     }
   }, []);
@@ -131,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     tokenStore.clear();
     sessionMarker.clear();
+    clearTutorCache();
     setUser(null);
   }, []);
 

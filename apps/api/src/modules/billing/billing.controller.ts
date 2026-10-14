@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { EXPORT_LIMIT } from '../../common/throttle-limits';
 import {
   Body,
   Controller,
@@ -169,6 +171,7 @@ export class BillingController {
   }
 
   @Get('invoices/:id/pdf')
+  @Throttle(EXPORT_LIMIT)
   @RequireFeature('billing.view')
   @ApiOperation({ summary: 'The invoice as a PDF (audited)' })
   async pdf(

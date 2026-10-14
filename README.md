@@ -42,7 +42,7 @@ Prerequisites: Node 22 or newer, pnpm, XAMPP MariaDB (port 3307 on the developme
 pnpm install
 copy appsapi.env.example appsapi.env      # fill DATABASE_URL, JWT_SECRET, AI_CALLBACK_TOKEN
 pnpm --filter @smartschool/api prisma:deploy   # applies migrations to XAMPP MariaDB
-pnpm --filter @smartschool/api db:seed         # feature catalogue, flags, demo school, one demo user per role
+pnpm --filter @smartschool/api db:seed         # feature catalogue, flags, demo school, one demo user per role (demo data is skipped when NODE_ENV=production)
 pnpm dev                                       # API: http://localhost:5000/swagger, /health
 copy appsweb.env.example appsweb.env
 pnpm dev:web                                   # Web: http://localhost:3000

@@ -7,6 +7,7 @@ import {
   normalizeToken,
   serviceAccountFrom,
   shouldPush,
+  canReownToken,
 } from './push-rules';
 
 describe('push rules', () => {
@@ -83,5 +84,16 @@ describe('push rules', () => {
     expect(isDeadTokenError('UNREGISTERED')).toBe(true);
     expect(isDeadTokenError('UNAVAILABLE')).toBe(false);
     expect(base64url('hello??')).toBe('aGVsbG8_Pw');
+  });
+});
+
+describe('canReownToken (docs/21 F30)', () => {
+  it('lets a token move only from a disabled registration', () => {
+    expect(canReownToken(null, 'u1')).toBe(true);
+    expect(canReownToken({ userId: 'u1', disabledAt: null }, 'u1')).toBe(true);
+    expect(canReownToken({ userId: 'u2', disabledAt: null }, 'u1')).toBe(false);
+    expect(canReownToken({ userId: 'u2', disabledAt: new Date() }, 'u1')).toBe(
+      true,
+    );
   });
 });

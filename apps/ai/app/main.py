@@ -25,7 +25,7 @@ from app.models import FakeProvider, ModelProvider, ModelUnavailable, OllamaProv
 from app.prompts import PromptLibrary
 from app.rag.chunk import chunk_text
 from app.rag.store import Chunk, VectorStore
-from app.safety import REFUSAL_OUTPUT, classify_rules, strip_personal_data
+from app.safety import REFUSAL_OUTPUT, classify_rules, release_segments, strip_personal_data
 from app.tracing import Tracer
 
 
@@ -53,7 +53,14 @@ async def _warm_up() -> None:
         pass
 
 
-app = FastAPI(title="SmartSchool AI", version="0.1.0", docs_url="/docs", redoc_url=None, lifespan=lifespan)
+# The interactive docs stay off in production (docs/21 F32); the OpenAPI document is in the repository.
+app = FastAPI(
+    title="SmartSchool AI",
+    version="0.1.0",
+    docs_url=None if get_settings().is_production else "/docs",
+    redoc_url=None,
+    lifespan=lifespan,
+)
 
 
 class Runtime:
@@ -119,7 +126,11 @@ def _constant_time_equal(a: str, b: str) -> bool:
 
 
 @app.get("/health")
-async def health(runtime: Runtime = Depends(get_runtime)) -> dict[str, Any]:
+async def health(
+    authorization: str | None = Header(default=None), runtime: Runtime = Depends(get_runtime)
+) -> dict[str, Any]:
+    """Liveness for anyone on the service network; the detail (provider, models, prompt versions, index
+    size) only with the service token (docs/21 F32)."""
     model_health = await runtime.provider.health()
     models = model_health.get("models", [])
     wanted = [runtime.settings.chat_model, runtime.settings.embedding_model]
@@ -133,6 +144,9 @@ async def health(runtime: Runtime = Depends(get_runtime)) -> dict[str, Any]:
         if model_health.get("reachable") and all(present.values())
         else ("degraded" if model_health.get("reachable") else "unhealthy")
     )
+    expected = f"Bearer {runtime.settings.service_token}"
+    if not authorization or not _constant_time_equal(authorization, expected):
+        return {"status": status}
     return {
         "status": status,
         "provider": runtime.provider.name,
@@ -197,19 +211,39 @@ async def _stream_tutor(env: ContextEnvelope, runtime: Runtime) -> AsyncIterator
         yield _sse("result", result.model_dump())
         return
     text = ""
+    pending = ""
+    refused = False
     status: ResultStatus = "ok"
     state = StreamState()
     try:
+        # Nothing reaches the student before the personal-data strip and the safety rules have seen it
+        # whole: tokens are buffered to a sentence boundary, cleaned, classified against everything
+        # released so far, and only then sent; a refusal stops the stream where it stands (docs/21 F05).
         async for token in runtime.tutor.stream(env, rag_search=_rag_tool(runtime, env), state=state):
-            text += token
-            yield _sse("token", {"t": token})
+            pending += token
+            release, pending = release_segments(pending)
+            if not release:
+                continue
+            release = strip_personal_data(release)
+            if classify_rules(text + release, env.actor.ageBand).decision != "allow":
+                refused = True
+                break
+            text += release
+            yield _sse("token", {"t": release})
+        if not refused and pending:
+            release = strip_personal_data(pending)
+            pending = ""
+            if classify_rules(text + release, env.actor.ageBand).decision != "allow":
+                refused = True
+            else:
+                text += release
+                yield _sse("token", {"t": release})
     except ModelUnavailable:
         status = "unavailable"
-    text = strip_personal_data(text)
     safety = SafetyDecision()
-    out_rules = classify_rules(text, env.actor.ageBand)
+    out_rules = classify_rules(text + pending, env.actor.ageBand)
     citations: list[Citation] = []
-    if out_rules.decision != "allow":
+    if refused or out_rules.decision != "allow":
         safety.output = out_rules.decision
         safety.categories = out_rules.categories
         content, status = REFUSAL_OUTPUT, "refused"

@@ -25,7 +25,7 @@ import { RequireFeature } from '../access/decorators/access.decorators';
 import { Audit } from '../audit/audit.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { contentDisposition } from './file-rules';
+import { contentDisposition, mimeTypeFor } from './file-rules';
 import { FilesService, type IncomingFile } from './files.service';
 
 /** Hard cap at the HTTP layer; the configured MAX_FILE_SIZE_MB is enforced in the service. */
@@ -90,7 +90,7 @@ export class FilesController {
     @Res() res: Response,
   ): Promise<void> {
     const { absolutePath, file } = await this.files.download(id, actor);
-    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Content-Type', mimeTypeFor(file.originalName));
     res.setHeader('Content-Disposition', contentDisposition(file.originalName));
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.sendFile(absolutePath);

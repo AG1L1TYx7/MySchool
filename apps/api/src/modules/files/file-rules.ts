@@ -104,6 +104,37 @@ export function storagePath(
   );
 }
 
+/** The media type a download is served with comes from the allow-listed extension, never from the uploader's claim (docs/21 F22). */
+const MIME_BY_EXTENSION: Record<string, string> = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  odt: 'application/vnd.oasis.opendocument.text',
+  txt: 'text/plain; charset=utf-8',
+  md: 'text/markdown; charset=utf-8',
+  csv: 'text/csv; charset=utf-8',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  mp3: 'audio/mpeg',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  zip: 'application/zip',
+  json: 'application/json',
+  xml: 'application/xml',
+};
+
+export function mimeTypeFor(fileName: string): string {
+  return MIME_BY_EXTENSION[extensionOf(fileName)] ?? 'application/octet-stream';
+}
+
 /** Content-Disposition value that is safe for any file name (RFC 6266 / 5987). */
 export function contentDisposition(name: string): string {
   const ascii = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');

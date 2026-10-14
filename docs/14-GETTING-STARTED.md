@@ -31,11 +31,11 @@ docker compose --env-file .env.docker up -d --build
 The first start downloads the two models (about 5 GB) and applies the database migrations. Then:
 
 ```bash
-docker compose --env-file .env.docker run --rm api pnpm db:seed    # demo school, optional
+docker compose --env-file .env.docker run --rm api pnpm db:seed    # catalogue only under NODE_ENV=production; demo school needs SEED_DEMO_DATA=true (never on a reachable server)
 docker compose --env-file .env.docker logs -f api web ai           # watch it come up
 ```
 
-Open `http://<server>:3000`. Put a reverse proxy with TLS in front (Caddy or nginx) and set `WEB_APP_URL` to the public address; the sign-in cookie is marked secure in production and will not work over plain HTTP from another machine.
+The web container listens on the server's loopback only (`127.0.0.1:3000`; set `WEB_BIND=0.0.0.0` in `.env.docker` to expose it directly). Put a reverse proxy with TLS in front (Caddy or nginx) that forwards to it, and set `WEB_APP_URL` to the public address. The API reads the client address from the socket unless `TRUST_PROXY` names the proxy hops (`uniquelocal` fits this layout; a count or an address list also works); the sign-in cookie is marked secure in production and will not work over plain HTTP from another machine.
 
 GPU: on a machine with NVIDIA drivers and the NVIDIA Container Toolkit, add to the `ollama` service in `docker-compose.yml`:
 
@@ -74,7 +74,7 @@ cd apps/api
 cp .env.example .env            # set DATABASE_URL, JWT_SECRET, AI_CALLBACK_TOKEN, AI_SERVICE_API_KEY
 pnpm prisma:generate
 pnpm prisma:deploy              # applies migrations
-pnpm db:seed                    # demo school and accounts
+pnpm db:seed                    # demo school and accounts (development only; skipped in production)
 pnpm start:dev                  # http://localhost:5000, Swagger at /swagger
 ```
 

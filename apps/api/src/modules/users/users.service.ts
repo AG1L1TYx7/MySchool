@@ -187,6 +187,13 @@ export class UsersService {
         detail: 'You cannot change your own role or status.',
       });
     }
+    // Reach follows the role hierarchy (docs/21 F17): a principal manages staff and families, not a
+    // superintendent or the platform administrator who happens to be attached to the school.
+    if (existing.id !== actor.id && !canAssignRole(actor.role, existing.role))
+      throw new ForbiddenException({
+        code: 'authz.forbidden',
+        detail: 'Your role cannot manage this account.',
+      });
     if (
       existing.managedBySis &&
       (dto.firstName !== undefined ||
@@ -252,6 +259,11 @@ export class UsersService {
       throw new NotFoundException({
         code: 'resource.not_found',
         detail: 'User not found.',
+      });
+    if (user.id !== actor.id && !canAssignRole(actor.role, user.role))
+      throw new ForbiddenException({
+        code: 'authz.forbidden',
+        detail: 'Your role cannot manage this account.',
       });
     const token = randomToken(32);
     await this.prisma.authToken.create({

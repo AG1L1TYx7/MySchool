@@ -59,10 +59,7 @@ describe('sso rules', () => {
         allowedDomains: [],
       }),
     ).toBe(true);
-    expect(parseList(' Google, microsoft ,, ')).toEqual([
-      'google',
-      'microsoft',
-    ]);
+    expect(parseList(' Google, microsoft , ')).toEqual(['google', 'microsoft']);
   });
 
   it('normalises each provider profile', () => {

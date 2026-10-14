@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { EXPORT_LIMIT } from '../../common/throttle-limits';
 import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -58,6 +60,7 @@ export class DistrictController {
   }
 
   @Get('state-exports/:kind.csv')
+  @Throttle(EXPORT_LIMIT)
   @RequireFeature('district.manage')
   @ApiOperation({
     summary:

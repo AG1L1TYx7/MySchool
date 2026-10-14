@@ -7,6 +7,10 @@ import {
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { newId } from '../../common/utils/ids';
+import {
+  assertPublicHttpUrl,
+  checkOutboundUrl,
+} from '../../common/outbound-url';
 import type { DomainEvent } from '../../common/events/domain-event';
 import { AppConfigService } from '../../config/app-config.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -21,7 +25,6 @@ import type {
 } from './dto/integrations.dto';
 import {
   eventMatches,
-  isAllowedWebhookUrl,
   newWebhookSecret,
   nextDeliveryState,
   parseEventFilter,
@@ -327,6 +330,10 @@ export class WebhooksService {
     let responseCode: number | null = null;
     let lastError: string | null = null;
     try {
+      // Resolved again at delivery time: a name that now points inside the network is refused here.
+      await assertPublicHttpUrl(d.subscription.url, {
+        allowLoopback: !this.config.isProduction,
+      });
       const res = await fetch(d.subscription.url, {
         method: 'POST',
         headers: {
@@ -396,12 +403,17 @@ export class WebhooksService {
   // ---------------------------------------------------------------------------
 
   private validate(url: string | undefined, events: string[] | undefined) {
-    if (url !== undefined && !isAllowedWebhookUrl(url))
-      throw new BadRequestException({
-        code: 'request.invalid',
-        detail:
-          'Webhook endpoints must use https (http is allowed on localhost only).',
+    if (url !== undefined) {
+      // Public https only; plain http on localhost is for development and tests (docs/21 F08).
+      const check = checkOutboundUrl(url, {
+        allowLoopback: !this.config.isProduction,
       });
+      if (!check.ok)
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail: `Webhook endpoints must be public https URLs: ${check.reason}.`,
+        });
+    }
     const unknown = (events ?? []).filter(
       (e) =>
         !(WEBHOOK_EVENT_TYPES as readonly string[]).includes(e) &&

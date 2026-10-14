@@ -270,6 +270,12 @@ export class FilesService {
       });
       if (viaChild > 0) return row;
     }
+    // A file in another school is "not found" to a school role, not "forbidden" (docs/21 F36).
+    if (!isDistrictRole(actor) && !sameOrganization(row, actor))
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'File not found.',
+      });
     throw new ForbiddenException({
       code: 'authz.forbidden',
       detail: 'You do not have access to this file.',

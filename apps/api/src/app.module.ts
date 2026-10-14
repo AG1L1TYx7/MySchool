@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
+import { LOG_REDACT_PATHS, maskLoggedUrl } from './common/request-rules';
 import { LoggerModule } from 'nestjs-pino';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AppConfigModule } from './config/config.module';
@@ -86,14 +88,15 @@ import { UsersModule } from './modules/users/users.module';
               (req.url ?? '').startsWith('/health') ||
               (req.url ?? '').startsWith('/metrics'),
           },
-          redact: [
-            'req.headers.authorization',
-            'req.headers["x-api-key"]',
-            'req.headers.cookie',
-            'req.body.password',
-            'req.body.newPassword',
-            'req.body.currentPassword',
-          ],
+          // Credentials never reach the log: headers, bodies, the cookies and redirects the API sets, and
+          // the secrets some URLs carry (docs/21 F04).
+          redact: LOG_REDACT_PATHS,
+          serializers: {
+            req: (req: { url?: string; [k: string]: unknown }) => ({
+              ...req,
+              url: maskLoggedUrl(req.url),
+            }),
+          },
         },
       }),
     }),
@@ -160,7 +163,7 @@ import { UsersModule } from './modules/users/users.module';
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: AccessGuard },
     { provide: APP_GUARD, useClass: SecurityPolicyGuard },

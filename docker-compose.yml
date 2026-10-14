@@ -42,6 +42,7 @@ services:
       AI_SERVICE_URL: http://ai:8000
       AI_SERVICE_API_KEY: ${AI_SERVICE_TOKEN:?set AI_SERVICE_TOKEN}
       AI_CALLBACK_TOKEN: ${AI_CALLBACK_TOKEN:?set AI_CALLBACK_TOKEN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
       WEB_APP_URL: ${WEB_APP_URL:-https://localhost}
       CORS_ORIGINS: ${WEB_APP_URL:-https://localhost}
       UPLOAD_DIR: /app/apps/api/uploads
@@ -51,6 +52,9 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-SmartSchool <no-reply@example.org>}
       AUTH_COOKIE_SECURE: "true"
+      # Which hops may set X-Forwarded-For: the web container and the host's TLS proxy are on private
+      # addresses, so "uniquelocal" trusts them and nothing on the internet (docs/21 F03).
+      TRUST_PROXY: ${TRUST_PROXY:-uniquelocal}
     volumes:
       - uploads:/app/apps/api/uploads
     ports:
@@ -66,14 +70,15 @@ services:
     environment:
       API_URL: http://api:5000
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      # Loopback only: the TLS reverse proxy on the host forwards to it. Set WEB_BIND=0.0.0.0 to expose it directly.
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3000}:3000"
 
   ai:
     build:
       context: apps/ai
     restart: unless-stopped
     environment:
-      ENVIRONMENT: production
+      AI_ENV: production
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
       LMS_URL: http://api:5000
       LMS_SERVICE_TOKEN: ${AI_CALLBACK_TOKEN}
@@ -88,7 +93,7 @@ services:
       - ollama
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.9.0
     restart: unless-stopped
     volumes:
       - ollama:/root/.ollama

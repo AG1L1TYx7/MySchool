@@ -93,3 +93,23 @@ def strip_personal_data(text: str) -> str:
     """Removes emails and phone numbers from model output before it reaches a student."""
     text = re.sub(r"\b[\w.+-]+@[\w-]+\.[\w.]+\b", "[email removed]", text)
     return re.sub(r"\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b", "[number removed]", text)
+
+
+_BOUNDARY = re.compile(r"[.!?\n]")
+
+
+def release_segments(pending: str, *, minimum: int = 24) -> tuple[str, str]:
+    """Splits buffered model output into what may be shown now and what must wait.
+
+    Text is released only up to the last sentence boundary, and only once at least `minimum`
+    characters have accumulated, so a phone number or an unsafe sentence is never half-shown before
+    the personal-data and safety rules have seen it whole. Returns (release, remainder).
+    """
+    if len(pending) < minimum:
+        return "", pending
+    cut = -1
+    for match in _BOUNDARY.finditer(pending):
+        cut = match.end()
+    if cut <= 0:
+        return "", pending
+    return pending[:cut], pending[cut:]

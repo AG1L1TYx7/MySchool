@@ -179,6 +179,7 @@ export class CreateLessonDto {
   @IsOptional()
   @IsString()
   @MaxLength(2000)
+  @Matches(/^https?:\/\//i, { message: 'contentUrl must be an http(s) URL' })
   contentUrl?: string;
   @ApiProperty({ required: false })
   @IsOptional()
