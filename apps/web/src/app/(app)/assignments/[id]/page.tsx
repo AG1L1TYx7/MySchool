@@ -200,7 +200,7 @@ function LearnerView({ assignment, canSubmit, onChange }: { assignment: Assignme
             </label>
             <div>
               <span className="mb-1 block text-sm font-medium text-slate-700">Attachments</span>
-              <input type="file" className="block text-sm" onChange={(e) => e.target.files?.[0] && void addFile(e.target.files[0])} />
+              <input type="file" aria-label="Attach a file to your submission" className="block text-sm" onChange={(e) => e.target.files?.[0] && void addFile(e.target.files[0])} />
               {files.length > 0 && (
                 <ul className="mt-2 text-sm text-slate-700">
                   {files.map((f) => (
@@ -321,7 +321,7 @@ function TeacherSubmissions({ assignment }: { assignment: Assignment }) {
                 <span className={`rounded-full px-2 py-0.5 ${MARK_TONES[r.mark]}`}>{MARK_LABELS[r.mark]}</span>
                 {r.submission ? `${label(r.submission.status)} · attempt ${r.submission.attemptNumber} · ${fmtDate(r.submission.submittedAt)}${r.submission.isLate ? ' · late' : ''}` : 'No submission'}
                 {r.grade ? ` · ${r.grade.score}/${r.grade.maxPoints}` : ''}
-                <select aria-label={`Mark for ${r.student.firstName} ${r.student.lastName}`} className="rounded-md border-0 py-0.5 text-xs ring-1 ring-inset ring-slate-300" value={TEACHER_MARKS.includes(r.mark as (typeof TEACHER_MARKS)[number]) ? r.mark : ''} onChange={(e) => void setMark(r.student.id, e.target.value)}>
+                <select aria-label={`Mark for ${r.student.firstName} ${r.student.lastName}`} className="rounded-md border-0 bg-white py-0.5 text-xs text-slate-900 ring-1 ring-inset ring-slate-300" value={TEACHER_MARKS.includes(r.mark as (typeof TEACHER_MARKS)[number]) ? r.mark : ''} onChange={(e) => void setMark(r.student.id, e.target.value)}>
                   <option value="">Set a mark…</option>
                   {TEACHER_MARKS.map((m) => (
                     <option key={m} value={m}>
