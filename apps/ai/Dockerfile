@@ -1,5 +1,5 @@
 # SmartSchool AI service (FastAPI). Build: docker compose build ai
-FROM python:3.12-slim
+FROM python:3.14-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 AI_DATA_DIR=/data
 WORKDIR /srv
 COPY pyproject.toml README.md ./
