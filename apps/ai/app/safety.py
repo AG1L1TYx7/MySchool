@@ -42,10 +42,11 @@ _BLOCK = {
     # The phrasings in tests/corpus/prompt_injection.jsonl; kept to wording that has no schoolwork reading.
     "prompt_injection": re.compile(
         r"((ignore|disregard|forget) (all |the |your |any )?(previous|above|prior|earlier|original) (instructions|rules|prompt)"
-        r"|you are now|pretend (you are|to be)|act as (an? )?(unfiltered|unrestricted|different)"
-        r"|system prompt|developer mode|jailbreak|do anything now|\bDAN\b"
+        r"|you are now|act as (an? )?(unfiltered|unrestricted|different)"
+        r"|pretend (you are|to be) (my |the |an? )?(teacher|admin|administrator|principal|parent|developer|human|unfiltered|unrestricted|different|another)"
+        r"|developer mode|jailbreak|do anything now|\bDAN\b"
         r"|(override|bypass|disable) (your|the|all) (rules|filters|safety|restrictions|guardrails)"
-        r"|reveal (your|the) (hidden|system|secret) (prompt|instructions)"
+        r"|(reveal|show|print|repeat|ignore|leak|output|dump) (me )?(your|the) (hidden|system|secret) (prompt|instructions)"
         r"|new instructions:|from now on you (are|will))",
         re.I,
     ),
