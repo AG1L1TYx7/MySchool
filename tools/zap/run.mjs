@@ -31,7 +31,7 @@ function zap(args, label) {
 // The web app: spider from the public pages for up to three minutes, passive rules only.
 zap(['zap-baseline.py', '-t', WEB, '-m', '3', '-I', '-J', 'web.json', '-r', 'web.html'], 'web');
 // The API: every route from its OpenAPI document, passive rules only (-S skips the active scan).
-zap(['zap-api-scan.py', '-t', `${API}/swagger/openapi.json`, '-f', 'openapi', '-S', '-I', '-J', 'api.json', '-r', 'api.html'], 'api');
+zap(['zap-api-scan.py', '-t', `${API}/openapi.json`, '-f', 'openapi', '-S', '-I', '-J', 'api.json', '-r', 'api.html'], 'api');
 
 const reports = ['web.json', 'api.json'].filter((f) => existsSync(join(out, f))).map((f) => JSON.parse(readFileSync(join(out, f), 'utf8')));
 if (reports.length < 2) {

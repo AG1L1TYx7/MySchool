@@ -50,6 +50,10 @@ A full audit of the code, configuration and dependencies (docs/21) found 41 issu
 
 Advisories ignored on purpose, all development-only: `GHSA-jmr9-qjv8-65gv` and `GHSA-7pqw-9j4j-h8q3` (extract-zip, in Lighthouse's browser download) and the OpenTelemetry instrumentation moderates reached through Lighthouse's Sentry dependency (`GHSA-qqmp-wf37-98f9`, `GHSA-8988-4f7v-96qf`); none is installed in the API, web or AI images, and CI fails on high and above.
 
+## 2e. First ZAP run (15 October 2026, slice 29)
+
+The passive scan's first run on CI found nothing at medium or high beyond the two accepted CSP alerts (`'unsafe-inline'` for scripts and styles, needed by Next.js hydration and its style injection). Low: the web app sent no `Cross-Origin-Opener-Policy` or `Cross-Origin-Resource-Policy` header; both are now `same-origin` in `next.config.ts`. `Cross-Origin-Embedder-Policy` stays unset on purpose, since it would require every embedded resource to opt in. The API scan's first run had pointed at the wrong document path (`/swagger/openapi.json`; the document is `/openapi.json`) and scanned nothing; the runner now uses the right path, so the API's routes are in the second run onward.
+
 ## 3. Not tested yet, and honest about it
 
 - **A human penetration test.** The suite is systematic but it only asks the questions we thought of. A third party should attack a test copy before a district signs the data-privacy agreement (docs/13 section 10); the brief they need is docs/22.

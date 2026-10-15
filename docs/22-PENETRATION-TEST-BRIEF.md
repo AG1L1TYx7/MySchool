@@ -11,7 +11,7 @@ Hosts in a test deployment (docs/14, Docker Compose):
 | Component | Address | Notes |
 |---|---|---|
 | Web client | `https://<host>/` | the only thing the public reaches; proxies `/api` to the API |
-| API | `https://<host>/api/v1/...` | OpenAPI at `/swagger/openapi.json` when `SWAGGER_ENABLED=true` (ask for it on the test copy); 392 paths |
+| API | `https://<host>/api/v1/...` | OpenAPI at `/openapi.json` (Swagger UI at `/swagger`) when `SWAGGER_ENABLED=true` (ask for it on the test copy); 392 paths |
 | AI service | internal only (`ai:8000` on the compose network) | reachable from the API with a bearer token; not meant to be public |
 | Sockets | `/hubs/notifications`, `/hubs/messaging` | Socket.IO with the same access token |
 | Public pages | `/login`, `/register`, `/status`, `/p/<slug>` (student portfolio pages), `/calendar/ical/<token>` feeds | no sign-in |
