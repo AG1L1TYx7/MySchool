@@ -406,3 +406,29 @@ export const stepHref = (
       return classId ? `/classes/${classId}` : null;
   }
 };
+
+// ---------------------------------------------------------------------------
+// Profile cache (slice 28)
+// ---------------------------------------------------------------------------
+
+/** How long an assembled learning profile is served before it is rebuilt. */
+export const PROFILE_CACHE_TTL_MS = 60_000;
+
+/**
+ * Events after which a student's profile is rebuilt early: anything that moves mastery, attendance,
+ * work, practice or paths. Visibility is checked on every request; only the assembly is cached.
+ */
+export const PROFILE_INVALIDATING_EVENTS: readonly string[] = [
+  'lesson.completed',
+  'h5p.result.recorded',
+  'assignment.submitted',
+  'grade.posted',
+  'practice.reviewed',
+  'attendance.marked',
+  'enrollment.changed',
+  'student.updated',
+];
+
+export function invalidatesProfile(eventType: string): boolean {
+  return PROFILE_INVALIDATING_EVENTS.includes(eventType);
+}

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { newId } from '../../common/utils/ids';
+import { TtlCache } from '../../common/ttl-cache';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { assertOrganizationAccess, isDistrictRole } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
@@ -31,6 +32,7 @@ import {
   type MasteryRow,
   type RecommendationInput,
   type StepEvent,
+  PROFILE_CACHE_TTL_MS,
 } from './paths-rules';
 
 type StudentRow = {
@@ -48,6 +50,13 @@ type StudentRow = {
  */
 @Injectable()
 export class PathsService {
+  /**
+   * Assembled profiles per student (slice 28): the five parts cost about 300 ms together under load, so
+   * one build serves every viewer for a minute, and any learning event or path change drops it early.
+   * Visibility is still checked on every request; the assembly itself does not depend on the viewer.
+   */
+  private readonly profiles = new TtlCache<ProfileView>(PROFILE_CACHE_TTL_MS);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -56,12 +65,30 @@ export class PathsService {
     private readonly tenants: TenantsService,
   ) {}
 
+  /** Forgets the cached profile of one student, or of everyone when no student is named. */
+  invalidateProfile(studentId?: string): void {
+    if (studentId) this.profiles.delete(studentId);
+    else this.profiles.clear();
+  }
+
   // ---------------------------------------------------------------------------
   // Profile and recommendations
   // ---------------------------------------------------------------------------
 
-  async profile(studentId: string, actor: AuthenticatedUser) {
+  async profile(
+    studentId: string,
+    actor: AuthenticatedUser,
+  ): Promise<ProfileView> {
     const student = await this.visibleStudent(studentId, actor);
+    const cached = this.profiles.get(student.id);
+    if (cached) return cached;
+    const built = await this.assembleProfile(student, actor);
+    this.profiles.set(student.id, built);
+    return built;
+  }
+
+  /** The uncached assembly; public only so its return type can name the cache's value type. */
+  async assembleProfile(student: StudentRow, actor: AuthenticatedUser) {
     const [mastery, insight, practice, paths] = await Promise.all([
       this.learning.masteryFor(student.id, actor),
       this.insight.studentInsight(student.id, actor),
@@ -358,6 +385,7 @@ export class PathsService {
     dto: GeneratePathDto,
     actor: AuthenticatedUser,
   ) {
+    this.profiles.clear();
     const student = await this.manageableStudent(studentId, actor);
     const mastery = await this.learning.masteryFor(student.id, actor);
     let rows: MasteryRow[] = mastery.standards.map((s) => ({
@@ -454,6 +482,7 @@ export class PathsService {
     dto: CreatePathDto,
     actor: AuthenticatedUser,
   ) {
+    this.profiles.clear();
     const student = await this.manageableStudent(studentId, actor);
     await this.checkRefs(dto.steps, student);
     const path = await this.prisma.learningPath.create({
@@ -494,6 +523,7 @@ export class PathsService {
   }
 
   async update(id: string, dto: UpdatePathDto, actor: AuthenticatedUser) {
+    this.profiles.clear();
     const p = await this.pathRow(id);
     await this.manageableStudent(p.studentId, actor);
     const updated = await this.prisma.learningPath.update({
@@ -519,6 +549,7 @@ export class PathsService {
   }
 
   async remove(id: string, actor: AuthenticatedUser): Promise<void> {
+    this.profiles.clear();
     const p = await this.pathRow(id);
     await this.manageableStudent(p.studentId, actor);
     await this.prisma.learningPath.delete({ where: { id } });
@@ -532,6 +563,7 @@ export class PathsService {
   }
 
   async addStep(id: string, dto: StepInputDto, actor: AuthenticatedUser) {
+    this.profiles.clear();
     const p = await this.pathRow(id);
     const student = await this.manageableStudent(p.studentId, actor);
     await this.checkRefs([dto], student);
@@ -562,6 +594,7 @@ export class PathsService {
     dto: UpdateStepDto,
     actor: AuthenticatedUser,
   ) {
+    this.profiles.clear();
     const p = await this.pathRow(id);
     const student = await this.visibleStudent(p.studentId, actor);
     const own = student.userId === actor.id;
@@ -635,6 +668,7 @@ export class PathsService {
   }
 
   async removeStep(id: string, stepId: string, actor: AuthenticatedUser) {
+    this.profiles.clear();
     const p = await this.pathRow(id);
     await this.manageableStudent(p.studentId, actor);
     await this.prisma.learningPathStep.deleteMany({
@@ -646,6 +680,7 @@ export class PathsService {
 
   /** Called by the listener: a learning event finishes matching pending steps on the student's active paths. */
   async applyEvent(studentId: string, event: StepEvent): Promise<number> {
+    this.profiles.delete(studentId);
     const paths = await this.prisma.learningPath.findMany({
       where: { studentId, status: 'active' },
       include: { steps: true },
@@ -969,3 +1004,6 @@ export class PathsService {
     };
   }
 }
+
+/** What `profile` answers: the assembled view, cached per student for a minute. */
+type ProfileView = Awaited<ReturnType<PathsService['assembleProfile']>>;

@@ -74,7 +74,7 @@ Data protection
 - No query inside a loop in request handlers (imports batch their lookups; rosters load students in one query).
 - Response payloads expose only the fields the client renders; detail endpoints include related summaries, not whole related rows.
 - Long work (imports over 1,000 rows, AI generation, exports over 10,000 rows) runs as a job with `202` and polling.
-- Caches: permissions (5 min per user), feature flags (1 min), AI content (24 h per request signature); every cache has an explicit invalidation path.
+- Caches: permissions (5 min per user), feature flags (1 min), AI content (24 h per request signature), the assembled learning profile (1 min per student, dropped by learning, work, attendance and path events: `paths-rules.ts`), the public status page (30 s in the API, 30 s on the web server); every cache has an explicit invalidation path.
 - Budgets: p95 under 300 ms for list and detail endpoints on the reference XAMPP machine with 10,000 students; sign-in under 500 ms including argon2.
 
 ## 5. Review and release

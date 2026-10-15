@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import type { DomainEvent } from '../../common/events/domain-event';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { PathsService } from './paths.service';
+import { invalidatesProfile } from './paths-rules';
 
 /** Learning events move paths forward without anyone ticking boxes. */
 @Injectable()
@@ -13,6 +14,14 @@ export class PathsListener {
     private readonly paths: PathsService,
     private readonly prisma: PrismaService,
   ) {}
+
+  /** Any event that moves the profile's inputs drops that student's cached profile (slice 28). */
+  @OnEvent('**', { async: true })
+  onAny(event: DomainEvent<{ studentId?: string }>) {
+    if (!event || typeof event.eventType !== 'string') return;
+    if (!invalidatesProfile(event.eventType)) return;
+    this.paths.invalidateProfile(event.data?.studentId);
+  }
 
   @OnEvent('lesson.completed', { async: true })
   async onLessonCompleted(

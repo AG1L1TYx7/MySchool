@@ -18,8 +18,8 @@ export function realFindings(findings) {
 /** Default budget: performance 80 on the public pages, accessibility, best practices and SEO 100. */
 export const DEFAULT_BUDGET = { performance: 80, accessibility: 100, bestPractices: 100, seo: 100 };
 
-/** Pages whose budget is informational only (the review names why), by path. */
-export const INFORMATIONAL = ['/status'];
+/** Pages whose budget is informational only, by path. Empty since slice 28: /status renders on the server now. */
+export const INFORMATIONAL = [];
 
 export function budgetVerdict(rows, budget = DEFAULT_BUDGET, informational = INFORMATIONAL) {
   const failures = [];

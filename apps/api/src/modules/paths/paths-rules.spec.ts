@@ -7,6 +7,7 @@ import {
   recommend,
   stepsFinishedBy,
   type MasteryRow,
+  invalidatesProfile,
 } from './paths-rules';
 
 const rows: MasteryRow[] = [
@@ -210,5 +211,24 @@ describe('gaps, recommendations and paths', () => {
     ).toEqual({ total: 3, done: 2, percent: 67, complete: false });
     expect(pathProgress([{ status: 'done' }]).complete).toBe(true);
     expect(pathProgress([]).complete).toBe(false);
+  });
+});
+
+describe('invalidatesProfile (slice 28)', () => {
+  it('rebuilds the profile after learning, work, attendance and roster events, not after chatter', () => {
+    for (const e of [
+      'lesson.completed',
+      'grade.posted',
+      'practice.reviewed',
+      'attendance.marked',
+      'student.updated',
+    ])
+      expect(invalidatesProfile(e)).toBe(true);
+    for (const e of [
+      'message.sent',
+      'announcement.published',
+      'community.post.created',
+    ])
+      expect(invalidatesProfile(e)).toBe(false);
   });
 });

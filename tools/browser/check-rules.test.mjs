@@ -16,7 +16,11 @@ test('the Lighthouse budget fails on a real page below budget and only notes an 
     { url: 'http://localhost:3000/login', performance: 90, accessibility: 100, bestPractices: 100, seo: 100 },
     { url: 'http://localhost:3000/status', performance: 78, accessibility: 100, bestPractices: 100, seo: 100 },
   ];
-  const ok = budgetVerdict(rows);
+  // Since slice 28 the status page is held to the budget like every other public page.
+  const strict = budgetVerdict(rows);
+  assert.equal(strict.ok, false);
+  assert.equal(strict.failures.length, 1);
+  const ok = budgetVerdict(rows, undefined, ['/status']);
   assert.equal(ok.ok, true);
   assert.equal(ok.failures.length, 1);
   assert.match(ok.failures[0].line, /informational/);
