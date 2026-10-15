@@ -24,6 +24,8 @@ export function configureApp(
   // The client address comes from the socket unless a proxy is trusted (docs/21 F03): the allowlist,
   // the rate limiter and the audit log must never read an X-Forwarded-For the client wrote itself.
   app.set('trust proxy', parseTrustProxy(options.trustProxy));
+  // Express would add X-Powered-By to the answers its body parser writes before helmet runs (ZAP 10037).
+  app.set('x-powered-by', false);
 
   // JSON for the API, raw text/csv for bulk imports (docs/09: imports accept a CSV body).
   app.useBodyParser('json', {
