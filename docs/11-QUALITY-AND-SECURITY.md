@@ -53,6 +53,7 @@ Input and output
 - Expensive routes (exports, PDFs, search, sandbox runs, probes) have per-route limits under the global one (`common/throttle-limits.ts`); wrong join codes and mail to one address have cooldowns (`auth/abuse-rules.ts`).
 - Sensitive student fields (date of birth, phone, address, needs, notes) are on the detail only, for administrators, counselors, the student's own teachers and the family (`students-rules.ts`); list rows carry identity and standing.
 - Security audit of 14 October 2026: docs/21 (findings, fixes, and the decisions still open).
+- Verification in CI (slice 29): OWASP ZAP passive scan of the web app and the API with an accepted list that carries reasons (`tools/zap/zap-rules.mjs`); the prompt-injection corpus against the AI service's rule layer and block fence; the penetration-test brief is docs/22.
 
 Secrets and configuration
 - Secrets only from the environment; placeholders refused in production; `.env` never committed; generated credentials for development.

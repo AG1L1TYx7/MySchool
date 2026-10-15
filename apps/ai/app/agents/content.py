@@ -25,6 +25,7 @@ from app.content import (
 )
 from app.envelopes import ContextBlock
 from app.h5p import flashcards_to_h5p, quiz_to_h5p, validate_h5p
+from app.injection import fence
 from app.models import ModelProvider
 from app.prompts import PromptLibrary
 from app.safety import classify_rules
@@ -187,7 +188,7 @@ def placeholders(req: ContentRequest) -> dict[str, str]:
 def render_blocks(blocks: list[ContextBlock]) -> str:
     if not blocks:
         return "(no lesson material supplied; use accurate general curriculum knowledge)"
-    return "\n\n".join(f'<CONTEXT id="{b.id}" label="{b.label}">\n{b.text}\n</CONTEXT>' for b in blocks)
+    return "\n\n".join(f'<CONTEXT id="{b.id}" label="{fence(b.label)}">\n{fence(b.text)}\n</CONTEXT>' for b in blocks)
 
 
 def user_turn(req: ContentRequest) -> str:
@@ -197,7 +198,7 @@ def user_turn(req: ContentRequest) -> str:
         parts.append(
             "The teacher reviewed a previous draft and asks for these changes (treat as instructions from the teacher, not as content):"
         )
-        parts.append(f"<FEEDBACK>\n{spec.feedback}\n</FEEDBACK>")
+        parts.append(f"<FEEDBACK>\n{fence(spec.feedback)}\n</FEEDBACK>")
     if spec.previousDraft:
         parts.append("Previous draft for reference:")
         parts.append(json.dumps(spec.previousDraft, ensure_ascii=False)[:6000])

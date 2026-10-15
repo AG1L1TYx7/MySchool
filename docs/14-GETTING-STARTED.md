@@ -204,6 +204,7 @@ The backup is a consistent dump plus the uploads folder. Schedule it nightly (cr
 ```bash
 pnpm --filter @smartschool/api test            # unit
 pnpm --filter @smartschool/api test:e2e        # against smartschooldb_test, needs the seed
+pnpm browser:zap                               # OWASP ZAP passive scan of the running web app and API (needs Docker)
 pnpm --filter @smartschool/web typecheck && pnpm --filter @smartschool/web lint
 cd apps/ai && .venv\Scripts\python -m pytest -q && .venv\Scripts\python -m ruff check app tests && .venv\Scripts\python -m mypy app
 ```

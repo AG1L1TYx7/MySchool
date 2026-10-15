@@ -20,6 +20,8 @@ How SmartSchool is attacked before it is trusted, what the first pass found on 6
 | Hardening headers | the health route's headers | missing `nosniff`, frame options or HSTS, or a server banner |
 | Stored HTML is defanged | an H5P question written with a script, an event handler, a frame and a javascript: link | any of them survives in what is stored or served |
 | File names are safe | an upload named with traversal and tags; a download path with traversal | the name survives unchanged, or the download answers anything but 400 or 404 |
+| Dynamic scan (slice 29) | the `Browser zap` CI job runs OWASP ZAP's passive baseline over the running web app (spidered from the public pages) and over every API route from the OpenAPI document (`tools/zap/run.mjs`); `tools/zap/zap-rules.mjs` decides | any alert at medium or high that is not on the accepted list with a written reason; low and informational alerts are printed and kept in the `browser-zap` artifact |
+| Prompt injection (slice 29) | `apps/ai/tests/corpus/prompt_injection.jsonl`: override phrasings, exfiltration asks, benign lookalikes, data that tries to leave its block, and canaries; `test_injection_corpus.py` runs the rule layer and the block fence over it on every change | an override phrasing passes the rules, a benign question is blocked, or a delimiter inside data survives `app/injection.py` |
 
 Besides the suite: `pnpm audit --audit-level=high` and `pip-audit` fail CI; `pnpm audit --audit-level=moderate` is checked by hand each slice; the two ignored advisories are a dev-only pattern (`braces` through the Next lint preset) and a dev-only string formatter (`sprintf-js` through Jest's coverage chain) with no patched version. Since slice 27 two more are ignored: `extract-zip` (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3), a dev-only archive extractor reached only through Lighthouse's own browser downloader, which the checks never call because Playwright supplies Chromium; it has no patched version. `basic-ftp` on the same chain is pinned to a patched version.
 
@@ -50,9 +52,9 @@ Advisories ignored on purpose, all development-only: `GHSA-jmr9-qjv8-65gv` and `
 
 ## 3. Not tested yet, and honest about it
 
-- **A human penetration test.** The suite is systematic but it only asks the questions we thought of. A third party should attack the pilot deployment before a district signs the data-privacy agreement (docs/13 section 10).
-- **Dynamic scanning** of the running web app (for example OWASP ZAP against the Next.js pages and the proxy), which would catch client-side issues the API suite cannot see.
-- **Prompt injection against the AI.** The prompts tell the model that text inside RUBRIC, SUBMISSION and DATA blocks is data, not instructions, and grading suggestions always wait for a teacher, but there is no adversarial corpus yet (docs/10 section 8 lists it as a quality gate).
+- **A human penetration test.** The suite is systematic but it only asks the questions we thought of. A third party should attack a test copy before a district signs the data-privacy agreement (docs/13 section 10); the brief they need is docs/22.
+- **Active dynamic scanning.** Since slice 29 ZAP's passive rules run in CI over the web app and the API; an authenticated active scan (injection payloads against every parameter) is not run, because it needs a dedicated copy and hours, so it is the penetration tester's (docs/22).
+- **Prompt injection against the real model.** The corpus runs against the rule layer and the block fence on every change (slice 29); the live run (`OLLAMA_LIVE=1 pytest apps/ai/tests/test_injection_live.py`, canaries in lesson material must never reach the student) is by hand before a release, since the chat model does not fit a CI runner. Last live run: not yet.
 - **Resource exhaustion.** Per-IP rate limits exist and are tested; per-account limits on expensive AI routes are only the daily tutor quota.
 - **Backup and secret handling** are reviewed by checklist (docs/15), not attacked.
 - **Physical and operational** matters (who holds the server, how logs are retained) are the district's, documented in docs/14.

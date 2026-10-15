@@ -128,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [sweep, a11y, lighthouse]
+        check: [sweep, a11y, lighthouse, zap]
     services:
       db:
         image: mariadb:10.4
@@ -183,7 +183,7 @@ jobs:
           (cd apps/ai && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../../ai.log 2>&1 &)
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:5000/api/v1/health >/dev/null && curl -sf http://localhost:3000/login >/dev/null && curl -sf http://127.0.0.1:8000/health >/dev/null && break; sleep 2; done
           curl -sf http://127.0.0.1:5000/api/v1/health && curl -sf -o /dev/null http://localhost:3000/login && curl -sf http://127.0.0.1:8000/health
-      - name: "Run the check (sweep: every page as every role; a11y: WCAG 2.2 AA with axe-core, six roles; lighthouse: the budget on the public pages)"
+      - name: "Run the check (sweep: every page as every role; a11y: WCAG 2.2 AA with axe-core, six roles; lighthouse: the budget on the public pages; zap: OWASP ZAP passive scan of the web app and the API)"
         run: pnpm browser:${{ matrix.check }} ci-${{ matrix.check }}
       - name: Logs on failure
         if: failure()
@@ -196,5 +196,7 @@ jobs:
         if: always()
         with:
           name: browser-${{ matrix.check }}
-          path: tools/browser/out/
+          path: |
+            tools/browser/out/
+            tools/zap/out/
           if-no-files-found: ignore

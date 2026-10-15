@@ -51,4 +51,5 @@ apps/web/public/h5p/
 backups/
 .env.docker
 tools/browser/out/
+tools/zap/out/
 coverage-e2e/

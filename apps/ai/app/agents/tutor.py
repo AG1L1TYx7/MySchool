@@ -18,6 +18,7 @@ from app.envelopes import (
     TutorOutput,
     Usage,
 )
+from app.injection import fence
 from app.models import ChatResult, ModelProvider, ModelUnavailable, ToolCall, ToolSpec
 from app.prompts import Prompt, PromptLibrary
 from app.safety import REFUSAL_OUTPUT, classify_rules, refusal_for, strip_personal_data
@@ -107,7 +108,7 @@ def render_system_prompt(prompt: Prompt, env: ContextEnvelope, blocks: list[Cont
     grade = ctx.gradeLevel or "unknown"
     accessibility = f"Accessibility notes from the teacher: {ctx.accessibilityNeeds}." if ctx.accessibilityNeeds else ""
     rendered_blocks = (
-        "\n\n".join(f'<CONTEXT id="{b.id}" label="{b.label}">\n{b.text}\n</CONTEXT>' for b in blocks)
+        "\n\n".join(f'<CONTEXT id="{b.id}" label="{fence(b.label)}">\n{fence(b.text)}\n</CONTEXT>' for b in blocks)
         or "(no context blocks)"
     )
     values = {
@@ -127,7 +128,7 @@ def render_system_prompt(prompt: Prompt, env: ContextEnvelope, blocks: list[Cont
 def build_messages(system_prompt: str, env: ContextEnvelope) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
     for m in env.input.messages:
-        content = f"<STUDENT>\n{m.content}\n</STUDENT>" if m.role == "user" else m.content
+        content = f"<STUDENT>\n{fence(m.content)}\n</STUDENT>" if m.role == "user" else m.content
         messages.append({"role": m.role, "content": content})
     return messages
 

@@ -162,4 +162,4 @@ Test counts after the fixes: API unit 258 of 258 (54 suites), API e2e all 27 sui
 - **GitHub settings:** enable secret scanning with push protection on the repository, and branch protection that requires the CI workflow. Dependabot is configured in the repository; its pull requests still need a reviewer.
 - **Pre-commit secret scan:** add `gitleaks` (or `git-secrets`) as a pre-commit hook on every developer machine, and run `gitleaks detect` once over the full history of this repository and the old one.
 - **Keep ignoring, knowingly:** the three Lighthouse browser-download advisories and the seven OpenTelemetry moderates are development-only; they are listed in docs/16 and re-checked by CI.
-- **Still untested** (docs/16 section 3): a human penetration test of the pilot server, dynamic scanning of the web app, an adversarial prompt corpus for the tutor.
+- **Still untested** (docs/16 section 3): a human penetration test (brief in docs/22) and the prompt corpus against the live model; the passive dynamic scan and the corpus against the rule layer run in CI since slice 29.

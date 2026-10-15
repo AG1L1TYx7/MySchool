@@ -39,8 +39,14 @@ _BLOCK = {
         r"(\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b|\b[\w.+-]+@[\w-]+\.[\w.]+\b|\bmy (home )?address is\b|\bmy password is\b)",
         re.I,
     ),
+    # The phrasings in tests/corpus/prompt_injection.jsonl; kept to wording that has no schoolwork reading.
     "prompt_injection": re.compile(
-        r"(ignore (all|the|your) (previous|above|prior) instructions|you are now|pretend (you are|to be)|system prompt|developer mode|jailbreak)",
+        r"((ignore|disregard|forget) (all |the |your |any )?(previous|above|prior|earlier|original) (instructions|rules|prompt)"
+        r"|you are now|pretend (you are|to be)|act as (an? )?(unfiltered|unrestricted|different)"
+        r"|system prompt|developer mode|jailbreak|do anything now|\bDAN\b"
+        r"|(override|bypass|disable) (your|the|all) (rules|filters|safety|restrictions|guardrails)"
+        r"|reveal (your|the) (hidden|system|secret) (prompt|instructions)"
+        r"|new instructions:|from now on you (are|will))",
         re.I,
     ),
 }

@@ -25,7 +25,8 @@
     "browser:a11y:mobile": "node tools/browser/a11y-mobile.mjs",
     "browser:lighthouse": "node tools/browser/lighthouse.mjs",
     "browser:flows": "node tools/browser/run-flows.mjs",
-    "browser:rules": "node --test tools/browser/check-rules.test.mjs"
+    "browser:rules": "node --test tools/browser/check-rules.test.mjs tools/zap/zap-rules.test.mjs",
+    "browser:zap": "node tools/zap/run.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
