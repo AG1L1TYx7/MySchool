@@ -52,7 +52,7 @@ Advisories ignored on purpose, all development-only: `GHSA-jmr9-qjv8-65gv` and `
 
 ## 2e. First ZAP run (15 October 2026, slice 29)
 
-The passive scan's first run on CI found nothing at medium or high beyond the two accepted CSP alerts (`'unsafe-inline'` for scripts and styles, needed by Next.js hydration and its style injection). Low: the web app sent no `Cross-Origin-Opener-Policy` or `Cross-Origin-Resource-Policy` header; both are now `same-origin` in `next.config.ts`. `Cross-Origin-Embedder-Policy` stays unset on purpose, since it would require every embedded resource to opt in. The API scan's first run had pointed at the wrong document path (`/swagger/openapi.json`; the document is `/openapi.json`) and scanned nothing; the runner now uses the right path, so the API's routes are in the second run onward.
+The passive scan's first run on CI found nothing at medium or high beyond the two accepted CSP alerts (`'unsafe-inline'` for scripts and styles, needed by Next.js hydration and its style injection). Low: the web app sent no `Cross-Origin-Opener-Policy` or `Cross-Origin-Resource-Policy` header; both are now `same-origin` in `next.config.mjs`. `Cross-Origin-Embedder-Policy` stays unset on purpose, since it would require every embedded resource to opt in. The API scan's first run had pointed at the wrong document path (`/swagger/openapi.json`; the document is `/openapi.json`) and scanned nothing; the runner now uses the right path, so the API's routes are in the second run onward.
 
 ## 3. Not tested yet, and honest about it
 
