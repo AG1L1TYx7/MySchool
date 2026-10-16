@@ -108,8 +108,8 @@ function startIdp(port: number): {
                 {
                   userId: 'g-teacher',
                   profile: {
-                    emailAddress: 'teacher@smartschool.local',
-                    name: { givenName: 'Taylor', familyName: 'Brooks' },
+                    emailAddress: 'gc-teacher@school.test',
+                    name: { givenName: 'Gail', familyName: 'Classroom' },
                   },
                 },
               ],
@@ -518,8 +518,9 @@ describe('Rostering and sign-in (e2e)', () => {
       'gc-s2@school.test',
     ]);
     const teacher = await prisma.user.findFirstOrThrow({
-      where: { email: 'teacher@smartschool.local' },
+      where: { email: 'gc-teacher@school.test' },
     });
+    expect(teacher).toMatchObject({ role: 'TEACHER', firstName: 'Gail' });
     expect(
       await prisma.classTeacher.count({
         where: { classId: klass.id, teacherId: teacher.id },
@@ -528,7 +529,7 @@ describe('Rostering and sign-in (e2e)', () => {
     // Grades go back: a published assignment becomes course work, each grade a submission patch.
     const created2 = await request(server)
       .post('/api/v1/assignments')
-      .set(as('teacher'))
+      .set(as('principal'))
       .send({
         classId: klass.id,
         title: 'Cell quiz',
@@ -539,7 +540,7 @@ describe('Rostering and sign-in (e2e)', () => {
     const assignmentId = (created2.body as { id: string }).id;
     await request(server)
       .post(`/api/v1/assignments/${assignmentId}/publish`)
-      .set(as('teacher'))
+      .set(as('principal'))
       .expect(200);
     const s1 = enrolled.find(
       (e) => e.student.user?.email === 'gc-s1@school.test',
@@ -558,13 +559,13 @@ describe('Rostering and sign-in (e2e)', () => {
       (
         await request(server)
           .get(`/api/v1/classes/${klass.id}/classroom`)
-          .set(as('teacher'))
+          .set(as('principal'))
           .expect(200)
       ).body,
     ).toMatchObject({ linked: true, courseId: 'gc-1' });
     const pushed = await request(server)
       .post(`/api/v1/classes/${klass.id}/classroom/push-grades`)
-      .set(as('teacher'))
+      .set(as('principal'))
       .expect(201);
     const counts = pushed.body as {
       assignments: number;
@@ -593,7 +594,7 @@ describe('Rostering and sign-in (e2e)', () => {
       (
         await request(server)
           .post(`/api/v1/classes/${klass.id}/classroom/push-grades`)
-          .set(as('teacher'))
+          .set(as('principal'))
           .expect(201)
       ).body,
     ).toMatchObject({ courseWorkCreated: 0, pushed: counts.pushed });
@@ -602,7 +603,7 @@ describe('Rostering and sign-in (e2e)', () => {
     });
     await request(server)
       .post(`/api/v1/classes/${manual.id}/classroom/push-grades`)
-      .set(as('teacher'))
+      .set(as('principal'))
       .expect(400);
     await request(server)
       .delete(
