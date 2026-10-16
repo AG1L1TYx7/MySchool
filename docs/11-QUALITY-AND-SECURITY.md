@@ -35,6 +35,7 @@ Identity and session
 - Sign-in: constant-time behaviour for unknown accounts, per-IP throttling, per-account lockout with notification, audit row for every attempt that changes state.
 - Tokens: short-lived access JWT in memory only; refresh token in an `HttpOnly`, `SameSite=Strict`, `Secure` cookie scoped to the auth path, rotated on every use, family revoked on reuse, absolute lifetime cap; sessions listable and revocable; all sessions revoked on password change or reset.
 - Two-factor: TOTP with encrypted secret, replay protection by time step, hashed single-use backup codes, required for administrator roles in production.
+- LTI services (slice 30): platform tokens are client-credentials with a client assertion signed by our key, never a stored secret; the deep-linking picker ticket is 192 random bits, ten minutes long, bound to the launching person and spent on use, so the unauthenticated form post that returns the signed answer cannot be replayed or guessed; service URLs are the platform's own claims and pass the outbound guard.
 - Registration: students and parents only; staff are invited; organisation membership only through an invitation or a join code; email verification before the account is usable; identical responses whether or not the email exists.
 - Email flows: hashed single-use tokens with expiry; reset invalidates sessions.
 

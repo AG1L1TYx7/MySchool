@@ -22,6 +22,17 @@ import {
   toolConfiguration,
   verifyWebhookSignature,
   type ExportBook,
+  clientAssertionClaims,
+  deepLinkContentItem,
+  deepLinkingResponseClaims,
+  launchServices,
+  LTI_AGS_CLAIM,
+  LTI_DL_CLAIM,
+  LTI_NRPS_CLAIM,
+  membersToRoster,
+  nextPageFrom,
+  scorePayload,
+  scoreUrl,
 } from './integration-rules';
 
 describe('webhook rules', () => {
@@ -250,7 +261,7 @@ describe('LTI 1.3 rules', () => {
     ).toBe('expired');
     expect(
       checkLaunchClaims(
-        { ...good, [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingRequest' },
+        { ...good, [`${LTI_CLAIM}message_type`]: 'LtiSomethingElse' },
         expected,
         now,
       ).reason,
@@ -370,5 +381,188 @@ describe('LTI 1.3 rules', () => {
     });
     expect(form).toContain('action="https://tool.test/login"');
     expect(form).toContain('value="a&quot;b"');
+  });
+});
+
+describe('LTI services (slice 30)', () => {
+  it('reads the service URLs and the deep-linking settings a launch carries', () => {
+    const claims = {
+      [LTI_NRPS_CLAIM]: {
+        context_memberships_url:
+          'https://lms.test/api/lti/courses/1/names_and_roles',
+        service_versions: ['2.0'],
+      },
+      [LTI_AGS_CLAIM]: {
+        scope: ['https://purl.imsglobal.org/spec/lti-ags/scope/score'],
+        lineitems: 'https://lms.test/api/lti/courses/1/line_items',
+        lineitem: 'https://lms.test/api/lti/courses/1/line_items/7',
+      },
+      [`${LTI_DL_CLAIM}deep_linking_settings`]: {
+        deep_link_return_url:
+          'https://lms.test/courses/1/deep_linking_response',
+        accept_types: ['ltiResourceLink'],
+        data: 'opaque',
+      },
+    };
+    expect(launchServices(claims)).toEqual({
+      membershipsUrl: 'https://lms.test/api/lti/courses/1/names_and_roles',
+      lineItemsUrl: 'https://lms.test/api/lti/courses/1/line_items',
+      lineItemUrl: 'https://lms.test/api/lti/courses/1/line_items/7',
+      scopes: ['https://purl.imsglobal.org/spec/lti-ags/scope/score'],
+    });
+    expect(
+      launchServices({ [LTI_AGS_CLAIM]: { lineitem: 'javascript:alert(1)' } })
+        .lineItemUrl,
+    ).toBeNull();
+    const sec = Math.floor(Date.now() / 1000);
+    const base = {
+      iss: 'https://lms.test',
+      aud: 'c1',
+      sub: 'u1',
+      exp: sec + 60,
+      iat: sec,
+      nonce: 'n',
+      [`${LTI_CLAIM}version`]: '1.3.0',
+      [`${LTI_CLAIM}deployment_id`]: 'd1',
+    };
+    const dl = checkLaunchClaims(
+      {
+        ...base,
+        [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingRequest',
+        ...claims,
+      },
+      {
+        issuer: 'https://lms.test',
+        clientId: 'c1',
+        nonce: 'n',
+        deploymentId: null,
+      },
+      new Date(),
+    );
+    expect(dl.ok).toBe(true);
+    expect(dl.messageType).toBe('LtiDeepLinkingRequest');
+    expect(dl.deepLinking).toEqual({
+      returnUrl: 'https://lms.test/courses/1/deep_linking_response',
+      data: 'opaque',
+      acceptTypes: ['ltiResourceLink'],
+      acceptMultiple: true,
+    });
+    const noSettings = checkLaunchClaims(
+      { ...base, [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingRequest' },
+      {
+        issuer: 'https://lms.test',
+        clientId: 'c1',
+        nonce: 'n',
+        deploymentId: null,
+      },
+      new Date(),
+    );
+    expect(noSettings.ok).toBe(false);
+    expect(noSettings.reason).toBe('deep_linking_settings');
+  });
+
+  it('turns a Names and Roles container into enrollable members and follows pagination', () => {
+    const roster = membersToRoster([
+      {
+        user_id: 't1',
+        roles: ['http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor'],
+        email: 'T@School.test',
+        name: 'Taylor Brooks',
+      },
+      {
+        user_id: 's1',
+        roles: ['http://purl.imsglobal.org/vocab/lis/v2/membership#Learner'],
+        given_name: 'Lee',
+        family_name: 'Learner',
+      },
+      {
+        user_id: 's2',
+        roles: ['http://purl.imsglobal.org/vocab/lis/v2/membership#Learner'],
+        status: 'Inactive',
+      },
+      {
+        user_id: 'm1',
+        roles: ['http://purl.imsglobal.org/vocab/lis/v2/membership#Mentor'],
+      },
+      { user_id: '' },
+    ]);
+    expect(roster.map((m) => [m.subject, m.isTeacher, m.enrollable])).toEqual([
+      ['t1', true, true],
+      ['s1', false, true],
+      ['s2', false, false],
+      ['m1', false, false],
+    ]);
+    expect(roster[0].email).toBe('t@school.test');
+    expect(roster[0].name).toEqual({ given: 'Taylor', family: 'Brooks' });
+    expect(
+      nextPageFrom(
+        '<https://lms.test/members?page=2>; rel="next", <https://lms.test/members?page=1>; rel="prev"',
+      ),
+    ).toBe('https://lms.test/members?page=2');
+    expect(
+      nextPageFrom('<https://lms.test/members?page=1>; rel="prev"'),
+    ).toBeNull();
+    expect(nextPageFrom(null)).toBeNull();
+  });
+
+  it('builds the token assertion, the score call and the deep-linking response', () => {
+    const now = new Date('2026-10-16T12:00:00Z');
+    expect(
+      clientAssertionClaims('client-1', 'https://lms.test/token', now, 'j1'),
+    ).toMatchObject({
+      iss: 'client-1',
+      sub: 'client-1',
+      aud: 'https://lms.test/token',
+      jti: 'j1',
+      exp: Math.floor(now.getTime() / 1000) + 300,
+    });
+    expect(scoreUrl('https://lms.test/line_items/7')).toBe(
+      'https://lms.test/line_items/7/scores',
+    );
+    expect(scoreUrl('https://lms.test/line_items/7?type_id=1')).toBe(
+      'https://lms.test/line_items/7/scores?type_id=1',
+    );
+    expect(scorePayload('s1', 8.5, 10, now)).toEqual({
+      userId: 's1',
+      scoreGiven: 8.5,
+      scoreMaximum: 10,
+      activityProgress: 'Completed',
+      gradingProgress: 'FullyGraded',
+      timestamp: '2026-10-16T12:00:00.000Z',
+    });
+    const item = deepLinkContentItem({
+      id: 'a1',
+      title: 'Essay',
+      maxPoints: 20,
+      launchUrl: 'http://localhost:5000/api/v1/lti/launch',
+      path: '/assignments/a1',
+    });
+    expect(item).toMatchObject({
+      type: 'ltiResourceLink',
+      url: 'http://localhost:5000/api/v1/lti/launch',
+      custom: {
+        smartschool_assignment_id: 'a1',
+        smartschool_path: '/assignments/a1',
+      },
+      lineItem: { scoreMaximum: 20, resourceId: 'a1' },
+    });
+    const claims = deepLinkingResponseClaims({
+      clientId: 'client-1',
+      issuer: 'https://lms.test',
+      deploymentId: 'd1',
+      data: 'opaque',
+      items: [item],
+      now,
+    });
+    expect(claims).toMatchObject({
+      iss: 'client-1',
+      aud: 'https://lms.test',
+      [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingResponse',
+      [`${LTI_CLAIM}deployment_id`]: 'd1',
+      [`${LTI_DL_CLAIM}data`]: 'opaque',
+    });
+    expect((claims[`${LTI_DL_CLAIM}content_items`] as unknown[]).length).toBe(
+      1,
+    );
   });
 });

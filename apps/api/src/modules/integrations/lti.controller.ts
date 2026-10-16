@@ -7,6 +7,8 @@ import { clientIp } from '../audit/audit.interceptor';
 import { REFRESH_COOKIE } from '../auth/auth.controller';
 import { Public } from '../auth/decorators/public.decorator';
 import { LtiError, LtiService } from './lti.service';
+import { LtiServicesService } from './lti-services.service';
+import { LTI_DEEP_LINK_REQUEST } from './integration-rules';
 
 const STATE_COOKIE = 'ss_lti';
 const REFRESH_PATH = '/api/v1/auth';
@@ -20,6 +22,7 @@ const REFRESH_PATH = '/api/v1/auth';
 export class LtiController {
   constructor(
     private readonly lti: LtiService,
+    private readonly services: LtiServicesService,
     private readonly config: AppConfigService,
   ) {}
 
@@ -100,12 +103,24 @@ export class LtiController {
     const cookies: Record<string, string | undefined> =
       (req as Request & { cookies?: Record<string, string> }).cookies ?? {};
     try {
-      const { result, next } = await this.lti.launch(
+      const launch = await this.lti.launch(
         body.id_token,
         body.state,
         cookies[STATE_COOKIE],
         { ip: clientIp(req), userAgent: req.headers['user-agent'] ?? null },
       );
+      const { result } = launch;
+      // The course and the services it offers are remembered on every launch (slice 30); a
+      // deep-linking request lands on the picker instead of the target link.
+      const { contextLinkId } = await this.services.recordLaunch(
+        launch.platform,
+        launch.check,
+        launch.claims,
+      );
+      const next =
+        launch.check.messageType === LTI_DEEP_LINK_REQUEST
+          ? `/integrations/lti/deep-link?dl=${this.services.startDeepLink(launch.platform, launch.check, launch.user.id, contextLinkId)}`
+          : launch.next;
       res.clearCookie(STATE_COOKIE, { path: '/api/v1/lti' });
       if (result.mfaRequired) {
         res.redirect(

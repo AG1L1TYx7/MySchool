@@ -419,6 +419,25 @@ export const LTI_ROLE_PREFIX =
   'http://purl.imsglobal.org/vocab/lis/v2/membership#';
 export const LTI_VERSION = '1.3.0';
 export const LTI_RESOURCE_LINK = 'LtiResourceLinkRequest';
+export const LTI_DEEP_LINK_REQUEST = 'LtiDeepLinkingRequest';
+export const LTI_DEEP_LINK_RESPONSE = 'LtiDeepLinkingResponse';
+export const LTI_AGS_CLAIM =
+  'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint';
+export const LTI_NRPS_CLAIM =
+  'https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice';
+export const LTI_DL_CLAIM = 'https://purl.imsglobal.org/spec/lti-dl/claim/';
+/** The service scopes SmartSchool asks a platform for (IMS AGS 2.0 and NRPS 2.0). */
+export const LTI_SCOPE = {
+  lineItem: 'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem',
+  lineItemRead:
+    'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem.readonly',
+  result: 'https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly',
+  score: 'https://purl.imsglobal.org/spec/lti-ags/scope/score',
+  memberships:
+    'https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly',
+} as const;
+/** How long a deep-linking picker stays open after the launch. */
+export const DEEP_LINK_TTL_MS = 10 * 60_000;
 
 /** Our role for a launch: the first recognised LTI membership role wins; everything else is a student. */
 export function roleFromLtiRoles(roles: readonly string[]): Role {
@@ -466,15 +485,90 @@ export interface LaunchClaims {
   [key: string]: unknown;
 }
 
+/** The service endpoints a launch offers (slice 30). */
+export interface LaunchServices {
+  membershipsUrl: string | null;
+  lineItemsUrl: string | null;
+  lineItemUrl: string | null;
+  scopes: string[];
+}
+
+/** What a deep-linking request asks for (IMS Deep Linking 2.0). */
+export interface DeepLinkingSettings {
+  returnUrl: string;
+  data: string | null;
+  acceptTypes: string[];
+  acceptMultiple: boolean;
+}
+
 export interface LaunchCheck {
   ok: boolean;
   reason?: string;
+  messageType: string;
   deploymentId?: string;
   targetLinkUri?: string;
+  resourceLinkId: string | null;
   roles: string[];
   email: string | null;
   name: { given: string; family: string };
   context: { id: string | null; title: string | null };
+  services: LaunchServices;
+  deepLinking: DeepLinkingSettings | null;
+}
+
+const NO_SERVICES: LaunchServices = {
+  membershipsUrl: null,
+  lineItemsUrl: null,
+  lineItemUrl: null,
+  scopes: [],
+};
+
+function urlClaim(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  try {
+    const u = new URL(v);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The memberships and line-item URLs a platform offers in a launch, each only when it is a URL. */
+export function launchServices(
+  claims: Record<string, unknown>,
+): LaunchServices {
+  const nrps = (claims[LTI_NRPS_CLAIM] ?? {}) as Record<string, unknown>;
+  const ags = (claims[LTI_AGS_CLAIM] ?? {}) as Record<string, unknown>;
+  const scopes = Array.isArray(ags.scope)
+    ? (ags.scope as unknown[]).filter((x): x is string => typeof x === 'string')
+    : [];
+  return {
+    membershipsUrl: urlClaim(nrps.context_memberships_url),
+    lineItemsUrl: urlClaim(ags.lineitems),
+    lineItemUrl: urlClaim(ags.lineitem),
+    scopes,
+  };
+}
+
+/** The deep-linking settings claim, or null when it is missing or has no usable return URL. */
+export function deepLinkingSettings(
+  claims: Record<string, unknown>,
+): DeepLinkingSettings | null {
+  const dl = claims[`${LTI_DL_CLAIM}deep_linking_settings`] as
+    Record<string, unknown> | undefined;
+  if (!dl) return null;
+  const returnUrl = urlClaim(dl.deep_link_return_url);
+  if (!returnUrl) return null;
+  return {
+    returnUrl,
+    data: typeof dl.data === 'string' ? dl.data : null,
+    acceptTypes: Array.isArray(dl.accept_types)
+      ? (dl.accept_types as unknown[]).filter(
+          (x): x is string => typeof x === 'string',
+        )
+      : [],
+    acceptMultiple: dl.accept_multiple !== false,
+  };
 }
 
 /** The checks an LTI 1.3 tool must make on a launch id_token after the signature (IMS Security Framework 5.1.3). */
@@ -491,10 +585,14 @@ export function checkLaunchClaims(
   const fail = (reason: string): LaunchCheck => ({
     ok: false,
     reason,
+    messageType: LTI_RESOURCE_LINK,
+    resourceLinkId: null,
     roles: [],
     email: null,
     name: { given: '', family: '' },
     context: { id: null, title: null },
+    services: NO_SERVICES,
+    deepLinking: null,
   });
   if (claims.iss !== expected.issuer) return fail('issuer');
   const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
@@ -507,8 +605,16 @@ export function checkLaunchClaims(
   if (typeof claims.iat !== 'number' || claims.iat > sec + 60)
     return fail('issued_in_future');
   if (claims.nonce !== expected.nonce) return fail('nonce');
-  if (claims[`${LTI_CLAIM}message_type`] !== LTI_RESOURCE_LINK)
+  const messageType = claims[`${LTI_CLAIM}message_type`];
+  if (
+    messageType !== LTI_RESOURCE_LINK &&
+    messageType !== LTI_DEEP_LINK_REQUEST
+  )
     return fail('message_type');
+  const deepLinking =
+    messageType === LTI_DEEP_LINK_REQUEST ? deepLinkingSettings(claims) : null;
+  if (messageType === LTI_DEEP_LINK_REQUEST && !deepLinking)
+    return fail('deep_linking_settings');
   if (claims[`${LTI_CLAIM}version`] !== LTI_VERSION) return fail('version');
   const deploymentId = claims[`${LTI_CLAIM}deployment_id`];
   if (typeof deploymentId !== 'string' || !deploymentId)
@@ -525,8 +631,16 @@ export function checkLaunchClaims(
     id?: unknown;
     title?: unknown;
   };
+  const resourceLink = (claims[`${LTI_CLAIM}resource_link`] ?? {}) as {
+    id?: unknown;
+  };
   return {
     ok: true,
+    messageType,
+    resourceLinkId:
+      typeof resourceLink.id === 'string' ? resourceLink.id : null,
+    services: launchServices(claims),
+    deepLinking,
     deploymentId,
     targetLinkUri:
       typeof claims[`${LTI_CLAIM}target_link_uri`] === 'string'
@@ -652,7 +766,13 @@ export function toolConfiguration(
     oidc_initiation_url: `${base}/api/v1/lti/login`,
     target_link_uri: `${base}/api/v1/lti/launch`,
     public_jwk_url: `${base}/api/v1/lti/jwks`,
-    scopes: [],
+    scopes: [
+      LTI_SCOPE.lineItem,
+      LTI_SCOPE.lineItemRead,
+      LTI_SCOPE.result,
+      LTI_SCOPE.score,
+      LTI_SCOPE.memberships,
+    ],
     extensions: [
       {
         platform: 'canvas.instructure.com',
@@ -669,8 +789,14 @@ export function toolConfiguration(
             },
             {
               placement: 'assignment_selection',
-              message_type: 'LtiResourceLinkRequest',
-              target_link_uri: `${base}/api/v1/lti/launch?path=%2Fassignments`,
+              message_type: 'LtiDeepLinkingRequest',
+              target_link_uri: `${base}/api/v1/lti/launch`,
+              text: 'SmartSchool assignment',
+            },
+            {
+              placement: 'link_selection',
+              message_type: 'LtiDeepLinkingRequest',
+              target_link_uri: `${base}/api/v1/lti/launch`,
               text: 'SmartSchool assignment',
             },
           ],
@@ -682,6 +808,159 @@ export function toolConfiguration(
 }
 
 /** Form that posts itself: how both LTI redirects (login initiation and the id_token) travel through the browser. */
+// ---------------------------------------------------------------------------
+// LTI services (slice 30): client assertions, Names and Roles, scores, Deep Linking
+// ---------------------------------------------------------------------------
+
+/** The JWT a tool presents to a platform's token endpoint (client_credentials with private_key_jwt). */
+export function clientAssertionClaims(
+  clientId: string,
+  tokenUrl: string,
+  now: Date,
+  jti: string,
+): Record<string, unknown> {
+  const sec = Math.floor(now.getTime() / 1000);
+  return {
+    iss: clientId,
+    sub: clientId,
+    aud: tokenUrl,
+    iat: sec,
+    exp: sec + 300,
+    jti,
+  };
+}
+
+/** One member of a Names and Roles container (the fields SmartSchool reads). */
+export interface NrpsMember {
+  user_id: string;
+  roles?: string[];
+  status?: string;
+  email?: string;
+  given_name?: string;
+  family_name?: string;
+  name?: string;
+}
+
+export interface RosterMember {
+  subject: string;
+  roles: string[];
+  email: string | null;
+  name: { given: string; family: string };
+  isTeacher: boolean;
+  /** Learners and instructors are enrolled; mentors, administrators and inactive members are left alone. */
+  enrollable: boolean;
+}
+
+/** Members as the class sync wants them: active learners and instructors, with their names split. */
+export function membersToRoster(members: NrpsMember[]): RosterMember[] {
+  const out: RosterMember[] = [];
+  for (const m of members) {
+    if (!m || typeof m.user_id !== 'string' || !m.user_id) continue;
+    const roles = Array.isArray(m.roles)
+      ? m.roles.filter((r): r is string => typeof r === 'string')
+      : [];
+    const role = roleFromLtiRoles(roles);
+    const active = (m.status ?? 'Active').toLowerCase() !== 'inactive';
+    const given =
+      typeof m.given_name === 'string'
+        ? m.given_name
+        : typeof m.name === 'string'
+          ? m.name.split(' ')[0]
+          : '';
+    const family =
+      typeof m.family_name === 'string'
+        ? m.family_name
+        : typeof m.name === 'string'
+          ? m.name.split(' ').slice(1).join(' ')
+          : '';
+    out.push({
+      subject: m.user_id,
+      roles,
+      email: typeof m.email === 'string' ? m.email.toLowerCase() : null,
+      name: { given, family },
+      isTeacher: role === 'TEACHER',
+      enrollable: active && (role === 'TEACHER' || role === 'STUDENT'),
+    });
+  }
+  return out;
+}
+
+/** The next page of a paginated service answer, from its Link header. */
+export function nextPageFrom(linkHeader: string | null): string | null {
+  if (!linkHeader) return null;
+  for (const part of linkHeader.split(',')) {
+    const m = /<([^>]+)>\s*;\s*rel="?next"?/i.exec(part.trim());
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/** Where scores are posted: the line item URL with "/scores" before any query string (AGS 2.0 section 3.3). */
+export function scoreUrl(lineItemUrl: string): string {
+  const q = lineItemUrl.indexOf('?');
+  const base = q >= 0 ? lineItemUrl.slice(0, q) : lineItemUrl;
+  const query = q >= 0 ? lineItemUrl.slice(q) : '';
+  return `${base.replace(/\/$/, '')}/scores${query}`;
+}
+
+/** A fully graded score for one learner. */
+export function scorePayload(
+  subject: string,
+  score: number,
+  max: number,
+  now: Date,
+): Record<string, unknown> {
+  return {
+    userId: subject,
+    scoreGiven: score,
+    scoreMaximum: max,
+    activityProgress: 'Completed',
+    gradingProgress: 'FullyGraded',
+    timestamp: now.toISOString(),
+  };
+}
+
+/** A SmartSchool assignment as a deep-linking content item: a resource link with its own line item. */
+export function deepLinkContentItem(a: {
+  id: string;
+  title: string;
+  maxPoints: number;
+  launchUrl: string;
+  path: string;
+}): Record<string, unknown> {
+  return {
+    type: 'ltiResourceLink',
+    title: a.title,
+    url: a.launchUrl,
+    custom: { smartschool_path: a.path, smartschool_assignment_id: a.id },
+    lineItem: { scoreMaximum: a.maxPoints, label: a.title, resourceId: a.id },
+  };
+}
+
+/** The claims of a deep-linking response JWT (IMS Deep Linking 2.0 section 3.5). */
+export function deepLinkingResponseClaims(input: {
+  clientId: string;
+  issuer: string;
+  deploymentId: string;
+  data: string | null;
+  items: Array<Record<string, unknown>>;
+  now: Date;
+}): Record<string, unknown> {
+  const sec = Math.floor(input.now.getTime() / 1000);
+  return {
+    iss: input.clientId,
+    aud: input.issuer,
+    iat: sec,
+    exp: sec + 300,
+    nonce: `${sec}-${Math.random().toString(36).slice(2, 10)}`,
+    [`${LTI_CLAIM}message_type`]: LTI_DEEP_LINK_RESPONSE,
+    [`${LTI_CLAIM}version`]: LTI_VERSION,
+    [`${LTI_CLAIM}deployment_id`]: input.deploymentId,
+    [`${LTI_DL_CLAIM}content_items`]: input.items,
+    ...(input.data ? { [`${LTI_DL_CLAIM}data`]: input.data } : {}),
+  };
+}
+
 /** The launch pages are self-submitting forms: only their own inline handler may run, and only a form post may leave. */
 export const LAUNCH_PAGE_CSP =
   "default-src 'none'; script-src 'unsafe-inline'; form-action *; base-uri 'none'; frame-ancestors 'none'";

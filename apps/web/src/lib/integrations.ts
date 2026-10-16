@@ -54,6 +54,32 @@ export interface LtiPlatform {
   createdAt: string;
 }
 
+/** A platform course that launched SmartSchool, and what it is linked to (slice 30). */
+export interface LtiContext {
+  id: string;
+  contextId: string;
+  title: string | null;
+  class: { id: string; name: string } | null;
+  services: { memberships: boolean; lineItems: boolean };
+  lastSyncAt: string | null;
+  lineItems: Array<{ assignmentId: string; title: string; lastPushAt: string | null; lastError: string | null }>;
+  createdAt: string;
+}
+
+export interface LtiSyncResult {
+  members: number;
+  users: number;
+  students: number;
+  teachers: number;
+  skipped: number;
+}
+
+export interface LtiDeepLinkContext {
+  platform: string;
+  context: string | null;
+  classes: Array<{ id: string; name: string; assignments: Array<{ id: string; title: string; maxPoints: number; status: string }> }>;
+}
+
 export interface LtiTool {
   id: string;
   name: string;

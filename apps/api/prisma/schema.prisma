@@ -263,6 +263,7 @@ enum RecordSource {
   ONEROSTER
   CLEVER
   CLASSLINK
+  LTI
 }
 
 enum RosterProvider {
@@ -810,6 +811,7 @@ model Class {
   teachers         ClassTeacher[]
   enrollments      ClassEnrollment[]
   assignments      Assignment[]
+  ltiContextLinks  LtiContextLink[]
   attendance       Attendance[]
   academicYear     AcademicYear?     @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
   termRef          Term?             @relation(fields: [termId], references: [id], onDelete: SetNull)
@@ -951,18 +953,19 @@ model Assignment {
   updatedAt          DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt          DateTime?        @map("DeletedAt") @db.DateTime(6)
 
-  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  class         Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
-  createdBy     User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  rubric        Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  h5pContent    H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
-  h5pResults    H5PContentResult[]
-  submissions   AssignmentSubmission[]
-  grades        Grade[]
-  gradeCategory GradeCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  gradingPeriod GradingPeriod?         @relation(fields: [gradingPeriodId], references: [id], onDelete: SetNull)
-  marks         AssignmentMark[]
-  standards     AssignmentStandard[]
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class            Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  ltiLineItemLinks LtiLineItemLink[]
+  createdBy        User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  rubric           Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  h5pContent       H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
+  h5pResults       H5PContentResult[]
+  submissions      AssignmentSubmission[]
+  grades           Grade[]
+  gradeCategory    GradeCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  gradingPeriod    GradingPeriod?         @relation(fields: [gradingPeriodId], references: [id], onDelete: SetNull)
+  marks            AssignmentMark[]
+  standards        AssignmentStandard[]
 
   suggestions GradingSuggestion[]
 
@@ -2645,8 +2648,9 @@ model LtiPlatform {
   createdAt        DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt        DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userLinks    LtiUserLink[]
+  contextLinks LtiContextLink[]
 
   @@unique([issuer, clientId])
   @@index([organizationId])
@@ -2688,6 +2692,49 @@ model LtiTool {
 
   @@index([organizationId, isActive])
   @@map("LtiTools")
+}
+
+/// LTI 1.3 services (slice 30): a platform's course (context) that launched SmartSchool, the class it is linked
+/// to, and the service URLs the platform offered (Names and Roles memberships, Assignment and Grade Services line items).
+model LtiContextLink {
+  id             String    @id @map("Id") @db.Char(36)
+  platformId     String    @map("PlatformId") @db.Char(36)
+  contextId      String    @map("ContextId") @db.VarChar(255)
+  contextTitle   String?   @map("ContextTitle") @db.VarChar(200)
+  classId        String?   @map("ClassId") @db.Char(36)
+  membershipsUrl String?   @map("MembershipsUrl") @db.VarChar(500)
+  lineItemsUrl   String?   @map("LineItemsUrl") @db.VarChar(500)
+  scopes         String?   @map("Scopes") @db.Text
+  lastSyncAt     DateTime? @map("LastSyncAt") @db.DateTime(6)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  platform  LtiPlatform       @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  class     Class?            @relation(fields: [classId], references: [id], onDelete: SetNull)
+  lineItems LtiLineItemLink[]
+
+  @@unique([platformId, contextId])
+  @@index([classId])
+  @@map("LtiContextLinks")
+}
+
+/// An assignment whose grades are pushed to a platform's line item (AGS scores).
+model LtiLineItemLink {
+  id             String    @id @map("Id") @db.Char(36)
+  contextLinkId  String    @map("ContextLinkId") @db.Char(36)
+  assignmentId   String    @map("AssignmentId") @db.Char(36)
+  lineItemUrl    String    @map("LineItemUrl") @db.VarChar(500)
+  resourceLinkId String?   @map("ResourceLinkId") @db.VarChar(255)
+  lastPushAt     DateTime? @map("LastPushAt") @db.DateTime(6)
+  lastError      String?   @map("LastError") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  contextLink LtiContextLink @relation(fields: [contextLinkId], references: [id], onDelete: Cascade)
+  assignment  Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([contextLinkId, assignmentId])
+  @@index([assignmentId])
+  @@map("LtiLineItemLinks")
 }
 
 /// The signing key SmartSchool uses for LTI (one active row; rotated by inserting a new one).

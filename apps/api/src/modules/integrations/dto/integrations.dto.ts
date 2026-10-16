@@ -180,6 +180,16 @@ export class UpdateLtiPlatformDto {
   @Length(2, 100)
   name?: string;
 
+  @ApiProperty({
+    required: false,
+    description:
+      "The platform's OAuth 2 token endpoint, needed for roster and grade services",
+  })
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @Length(8, 500)
+  tokenUrl?: string;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()

@@ -13328,6 +13328,251 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/lti/platforms/{platformId}/contexts": {
+      "get": {
+        "operationId": "LtiServicesController_contexts_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platformId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Courses this platform has launched SmartSchool from, with their class link, services and line items",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/platforms/{platformId}/contexts/{id}": {
+      "patch": {
+        "operationId": "LtiServicesController_link_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platformId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkContextDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Link a platform course to a class (null unlinks)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/platforms/{platformId}/contexts/{id}/sync": {
+      "post": {
+        "operationId": "LtiServicesController_sync_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platformId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fill the linked class from the platform's roster (Names and Roles Provisioning Service)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/lti/platforms/{platformId}/contexts/{id}/push-scores": {
+      "post": {
+        "operationId": "LtiServicesController_pushScores_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platformId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send every grade of the course's linked assignments to the platform again (Assignment and Grade Services)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/deep-link/{ticket}": {
+      "get": {
+        "operationId": "LtiServicesController_deepLink_api/v1",
+        "parameters": [
+          {
+            "name": "ticket",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What a deep-linking picker shows: the platform, the course and the classes with their assignments",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/deep-link/{ticket}/respond": {
+      "post": {
+        "operationId": "LtiServicesController_respond_api/v1",
+        "parameters": [
+          {
+            "name": "ticket",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeepLinkRespondDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "The picker form posts here; answers with a page that posts the signed deep-linking response to the platform",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
     "/api/v1/classes/{classId}/exports/canvas-gradebook.csv": {
       "get": {
         "operationId": "ExportsController_canvas_api/v1",
@@ -21625,6 +21870,10 @@
           "name": {
             "type": "string"
           },
+          "tokenUrl": {
+            "type": "string",
+            "description": "The platform's OAuth 2 token endpoint, needed for roster and grade services"
+          },
           "deploymentId": {
             "type": "string"
           },
@@ -21685,6 +21934,27 @@
           },
           "isActive": {
             "type": "boolean"
+          }
+        }
+      },
+      "LinkContextDto": {
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "object",
+            "nullable": true,
+            "description": "The class this platform course is; null unlinks"
+          }
+        }
+      },
+      "DeepLinkRespondDto": {
+        "type": "object",
+        "properties": {
+          "assignmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

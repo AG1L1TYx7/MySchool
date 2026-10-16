@@ -26,7 +26,7 @@ import {
   readBoundedText,
 } from '../../common/outbound-url';
 import { AppConfigService } from '../../config/app-config.service';
-import type { Role, User } from '../../generated/prisma/client';
+import type { LtiPlatform, Role, User } from '../../generated/prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { assertOrganizationAccess, isDistrictRole } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
@@ -51,6 +51,7 @@ import {
   platformLaunchClaims,
   roleFromLtiRoles,
   toolConfiguration,
+  type LaunchCheck,
   type LaunchClaims,
 } from './integration-rules';
 
@@ -313,7 +314,14 @@ export class LtiService {
     state: string | undefined,
     stateCookie: string | undefined,
     ctx: RequestContext,
-  ): Promise<{ result: LoginResult; next: string; user: User }> {
+  ): Promise<{
+    result: LoginResult;
+    next: string;
+    user: User;
+    platform: LtiPlatform;
+    check: LaunchCheck;
+    claims: LaunchClaims;
+  }> {
     if (!idToken || !state)
       throw new LtiError('params', 'id_token and state are required.');
     if (!stateCookie || !this.constantEqual(state, stateCookie))
@@ -356,7 +364,7 @@ export class LtiService {
       );
     if (!this.takeNonce(payload.n))
       throw new LtiError('replay', 'This launch was already used.');
-    const user = await this.resolveToolUser(
+    const user = await this.ensureUser(
       platform.id,
       platform.organizationId,
       claims.sub,
@@ -383,14 +391,22 @@ export class LtiService {
         custom,
       ),
       user,
+      platform,
+      check,
+      claims,
     };
   }
 
-  private async resolveToolUser(
+  /** The SmartSchool account for a platform subject: the linked one, else by email in this school, else a new one. */
+  async ensureUser(
     platformId: string,
     organizationId: string,
     subject: string,
-    check: ReturnType<typeof checkLaunchClaims>,
+    check: {
+      email: string | null;
+      name: { given: string; family: string };
+      roles: string[];
+    },
   ): Promise<User> {
     const link = await this.prisma.ltiUserLink.findUnique({
       where: { platformId_subject: { platformId, subject } },
@@ -549,6 +565,7 @@ export class LtiService {
     this.assertRegisteredUrls({
       authorizationUrl: dto.authorizationUrl,
       jwksUrl: dto.jwksUrl,
+      tokenUrl: dto.tokenUrl,
     });
     const row = await this.prisma.ltiPlatform.update({
       where: { id },

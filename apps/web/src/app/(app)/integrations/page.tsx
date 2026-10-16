@@ -7,7 +7,10 @@ import { NotForYou } from '@/components/not-for-you';
 import { Alert, Button, Card, Input } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { EVENT_LABELS, SCOPE_LABELS, statusClass, type ApiKey, type Delivery, type LtiPlatform, type LtiTool, type Webhook } from '@/lib/integrations';
+import { EVENT_LABELS, SCOPE_LABELS, statusClass, type ApiKey, type Delivery, type LtiContext, type LtiPlatform, type LtiSyncResult, type LtiTool, type Webhook } from '@/lib/integrations';
+import type { ClassItem } from '@/lib/curriculum';
+import type { Paged } from '@/lib/students';
+import { Select } from '@/components/ui';
 
 type Tab = 'webhooks' | 'api-keys' | 'lti';
 const TABS: readonly Tab[] = ['webhooks', 'api-keys', 'lti'];
@@ -356,7 +359,7 @@ function LtiView({ orgId }: { orgId: string }) {
   const [tools, setTools] = useState<LtiTool[] | null>(null);
   const [config, setConfig] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [p, setP] = useState({ name: '', issuer: '', clientId: '', deploymentId: '', authorizationUrl: '', jwksUrl: '' });
+  const [p, setP] = useState({ name: '', issuer: '', clientId: '', deploymentId: '', authorizationUrl: '', jwksUrl: '', tokenUrl: '' });
   const [t, setT] = useState({ name: '', loginUrl: '', launchUrl: '' });
   const [busy, setBusy] = useState('');
   const load = useCallback(() => {
@@ -371,8 +374,8 @@ function LtiView({ orgId }: { orgId: string }) {
     setError(null);
     try {
       if (what === 'platform') {
-        await api(`/organizations/${orgId}/lti/platforms`, { method: 'POST', body: { ...p, deploymentId: p.deploymentId || undefined } });
-        setP({ name: '', issuer: '', clientId: '', deploymentId: '', authorizationUrl: '', jwksUrl: '' });
+        await api(`/organizations/${orgId}/lti/platforms`, { method: 'POST', body: { ...p, deploymentId: p.deploymentId || undefined, tokenUrl: p.tokenUrl || undefined } });
+        setP({ name: '', issuer: '', clientId: '', deploymentId: '', authorizationUrl: '', jwksUrl: '', tokenUrl: '' });
       } else {
         await api(`/organizations/${orgId}/lti/tools`, { method: 'POST', body: t });
         setT({ name: '', loginUrl: '', launchUrl: '' });
@@ -424,6 +427,7 @@ function LtiView({ orgId }: { orgId: string }) {
           <Input label="Deployment id (optional)" id="p-deployment" value={p.deploymentId} onChange={(e) => setP({ ...p, deploymentId: e.target.value })} />
           <Input label="Authorization URL" id="p-auth" type="url" required value={p.authorizationUrl} onChange={(e) => setP({ ...p, authorizationUrl: e.target.value })} />
           <Input label="JWKS URL" id="p-jwks" type="url" required value={p.jwksUrl} onChange={(e) => setP({ ...p, jwksUrl: e.target.value })} />
+          <Input label="Token URL (for roster and grade services)" id="p-token" type="url" value={p.tokenUrl} onChange={(e) => setP({ ...p, tokenUrl: e.target.value })} placeholder="https://canvas.instructure.com/login/oauth2/token" />
           <div className="flex justify-end sm:col-span-2">
             <Button type="submit" loading={busy === 'platform'}>
               Add platform
@@ -445,6 +449,7 @@ function LtiView({ orgId }: { orgId: string }) {
           {platforms && platforms.length === 0 && <li className="py-2 text-sm text-slate-600">No platforms yet.</li>}
         </ul>
       </Card>
+      {platforms && platforms.length > 0 && <LtiContextsCard orgId={orgId} platforms={platforms} />}
       <Card title="Tools SmartSchool opens" description="Register an external LTI 1.3 tool; give the tool the details shown under it. Teachers and students open tools from a class page.">
         <form onSubmit={(e) => submit('tool', e)} className="grid gap-3 sm:grid-cols-3">
           <Input label="Name" id="t-name" required value={t.name} onChange={(e) => setT({ ...t, name: e.target.value })} />
@@ -478,5 +483,96 @@ function LtiView({ orgId }: { orgId: string }) {
         </ul>
       </Card>
     </div>
+  );
+}
+
+/** The LMS courses that launched SmartSchool: link each to a class, fill the class from the LMS roster, and push grades (slice 30). */
+function LtiContextsCard({ orgId, platforms }: { orgId: string; platforms: LtiPlatform[] }) {
+  const [rows, setRows] = useState<Array<LtiContext & { platformId: string; platformName: string }> | null>(null);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [busy, setBusy] = useState('');
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    Promise.all(platforms.map((pl) => api<LtiContext[]>(`/organizations/${orgId}/lti/platforms/${pl.id}/contexts`).then((list) => list.map((c) => ({ ...c, platformId: pl.id, platformName: pl.name })))))
+      .then((lists) => setRows(lists.flat()))
+      .catch((e) => setError(errorMessage(e)));
+    api<Paged<ClassItem>>('/classes?pageSize=200')
+      .then((r) => setClasses(r.data))
+      .catch(() => setClasses([]));
+  }, [orgId, platforms]);
+  useEffect(load, [load]);
+  const act = async (row: LtiContext & { platformId: string }, what: 'link' | 'sync' | 'push', classId?: string) => {
+    setBusy(`${row.id}:${what}`);
+    setError(null);
+    setNote(null);
+    try {
+      const base = `/organizations/${orgId}/lti/platforms/${row.platformId}/contexts/${row.id}`;
+      if (what === 'link') await api(base, { method: 'PATCH', body: { classId: classId || null } });
+      else if (what === 'sync') {
+        const r = await api<LtiSyncResult>(`${base}/sync`, { method: 'POST', body: {} });
+        setNote(`Roster synced: ${r.students} students and ${r.teachers} teachers from ${r.members} members (${r.skipped} skipped).`);
+      } else {
+        const r = await api<{ lineItems: number; grades: number; pushed: number }>(`${base}/push-scores`, { method: 'POST', body: {} });
+        setNote(`Grades pushed: ${r.pushed} of ${r.grades} across ${r.lineItems} linked assignments.`);
+      }
+      load();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy('');
+    }
+  };
+  return (
+    <Card title="Courses from your LMS" description="Each course that opened SmartSchool appears here. Link it to a class, then fill the class from the LMS roster and send grades back to the LMS gradebook.">
+      {error && <Alert>{error}</Alert>}
+      {note && <Alert kind="success">{note}</Alert>}
+      {!rows ? (
+        <SkeletonRows rows={2} />
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-slate-600">No course has launched SmartSchool yet. Open SmartSchool from a course in your LMS once; it will appear here.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {rows.map((row) => (
+            <li key={row.id} className="space-y-2 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">{row.title ?? row.contextId}</p>
+                  <p className="text-xs text-slate-600">
+                    {row.platformName} · roster service {row.services.memberships ? 'offered' : 'not offered'} · grade service {row.services.lineItems ? 'offered' : 'not offered'}
+                    {row.lastSyncAt ? ` · last roster sync ${new Date(row.lastSyncAt).toLocaleString()}` : ''}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  <Select label="Class" id={`ctx-class-${row.id}`} value={row.class?.id ?? ''} onChange={(e) => void act(row, 'link', e.target.value)}>
+                    <option value="">Not linked</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.section ? `${c.name} (${c.section})` : c.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button variant="secondary" disabled={!row.class || !row.services.memberships} loading={busy === `${row.id}:sync`} onClick={() => void act(row, 'sync')}>
+                    Sync roster
+                  </Button>
+                  <Button variant="secondary" disabled={row.lineItems.length === 0} loading={busy === `${row.id}:push`} onClick={() => void act(row, 'push')}>
+                    Push grades
+                  </Button>
+                </div>
+              </div>
+              {row.lineItems.length > 0 && (
+                <ul className="text-xs text-slate-600">
+                  {row.lineItems.map((l) => (
+                    <li key={l.assignmentId}>
+                      {l.title}: {l.lastError ? `last push failed (${l.lastError})` : l.lastPushAt ? `pushed ${new Date(l.lastPushAt).toLocaleString()}` : 'not pushed yet'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }

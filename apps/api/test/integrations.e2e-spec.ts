@@ -5,6 +5,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import {
   createPublicKey,
   generateKeyPairSync,
+  randomUUID,
   sign as cryptoSign,
   verify as cryptoVerify,
   type JsonWebKey,
@@ -18,7 +19,11 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 import {
+  LTI_AGS_CLAIM,
   LTI_CLAIM,
+  LTI_DL_CLAIM,
+  LTI_NRPS_CLAIM,
+  LTI_SCOPE,
   verifyWebhookSignature,
 } from '../src/modules/integrations/integration-rules';
 import { WebhooksService } from '../src/modules/integrations/webhooks.service';
@@ -75,6 +80,7 @@ describe('Integrations (e2e)', () => {
   const stamp = Date.now();
   let orgId = '';
   let classId = '';
+  let ltiClassId = '';
   let teacherId = '';
 
   // A receiver for webhooks and a JWKS endpoint for the pretend platform, on one local server.
@@ -134,6 +140,43 @@ describe('Integrations (e2e)', () => {
         if (path === '/jwks') {
           res.setHeader('content-type', 'application/json');
           res.end(JSON.stringify({ keys: [platformKey.jwk] }));
+          return;
+        }
+        // The platform's token endpoint and Names and Roles container (slice 30).
+        if (path === '/token') {
+          received.push({
+            path,
+            headers: {},
+            body: Buffer.concat(chunks).toString('utf8'),
+          });
+          res.setHeader('content-type', 'application/json');
+          res.end(
+            JSON.stringify({
+              access_token: 'tok-1',
+              token_type: 'Bearer',
+              expires_in: 3600,
+            }),
+          );
+          return;
+        }
+        if (path.startsWith('/memberships')) {
+          received.push({
+            path,
+            headers: { authorization: String(req.headers.authorization ?? '') },
+            body: '',
+          });
+          res.setHeader(
+            'content-type',
+            'application/vnd.ims.lti-nrps.v2.membershipcontainer+json',
+          );
+          if (!path.includes('page=2'))
+            res.setHeader(
+              'link',
+              `<${localBase}/memberships?page=2>; rel="next"`,
+            );
+          res.end(
+            JSON.stringify(membershipPage(path.includes('page=2') ? 2 : 1)),
+          );
           return;
         }
         received.push({
@@ -467,6 +510,78 @@ describe('Integrations (e2e)', () => {
   // ---------------------------------------------------------------------------
 
   const ISSUER = `https://canvas-${stamp}.test`;
+  const membershipPage = (page: number) => ({
+    id: `${localBase}/memberships`,
+    context: { id: 'canvas-course-1', title: 'Period 2' },
+    members:
+      page === 1
+        ? [
+            {
+              user_id: `sub-${stamp}`,
+              roles: [
+                'http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor',
+              ],
+              email: 'teacher@smartschool.local',
+              given_name: 'Taylor',
+              family_name: 'Brooks',
+            },
+            {
+              user_id: `nrps-a-${stamp}`,
+              roles: [
+                'http://purl.imsglobal.org/vocab/lis/v2/membership#Learner',
+              ],
+              email: `nrps-a-${stamp}@school.test`,
+              given_name: 'Ana',
+              family_name: 'Roster',
+            },
+          ]
+        : [
+            {
+              user_id: `nrps-b-${stamp}`,
+              roles: [
+                'http://purl.imsglobal.org/vocab/lis/v2/membership#Learner',
+              ],
+              email: `nrps-b-${stamp}@school.test`,
+              given_name: 'Ben',
+              family_name: 'Roster',
+            },
+            {
+              user_id: `nrps-gone-${stamp}`,
+              roles: [
+                'http://purl.imsglobal.org/vocab/lis/v2/membership#Learner',
+              ],
+              status: 'Inactive',
+            },
+          ],
+  });
+  const launchAs = async (claims: Record<string, unknown>) => {
+    const start = await request(server)
+      .get('/api/v1/lti/login')
+      .query({
+        iss: ISSUER,
+        login_hint: 'x',
+        client_id: 'client-1',
+        target_link_uri: 'http://localhost:5000/api/v1/lti/launch',
+      })
+      .expect(302);
+    const loc = new URL(start.headers.location);
+    const cookie = (
+      ([] as string[])
+        .concat(start.headers['set-cookie'] ?? [])
+        .find((c) => c.startsWith('ss_lti=')) ?? ''
+    ).split(';')[0];
+    const idToken = signWith(
+      platformKey.privateKey,
+      'platform-k1',
+      claimsFor({ nonce: loc.searchParams.get('nonce'), ...claims }),
+    );
+    return request(server)
+      .post('/api/v1/lti/launch')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ id_token: idToken, state: loc.searchParams.get('state') })
+      .expect(302);
+  };
   let launchNonce = '';
   let launchState = '';
   let stateCookie = '';
@@ -640,6 +755,283 @@ describe('Integrations (e2e)', () => {
     expect(
       await prisma.student.findFirst({ where: { userId: user.id } }),
     ).not.toBeNull();
+  });
+
+  it('remembers the course and its services at launch, links it to a class and fills the class from Names and Roles', async () => {
+    const platform = await prisma.ltiPlatform.findFirstOrThrow({
+      where: { issuer: ISSUER },
+    });
+    await request(server)
+      .patch(`/api/v1/organizations/${orgId}/lti/platforms/${platform.id}`)
+      .set(as('principal'))
+      .send({ tokenUrl: `${localBase}/token` })
+      .expect(200);
+    const res = await launchAs({
+      [LTI_NRPS_CLAIM]: {
+        context_memberships_url: `${localBase}/memberships`,
+        service_versions: ['2.0'],
+      },
+      [LTI_AGS_CLAIM]: {
+        scope: [LTI_SCOPE.score, LTI_SCOPE.memberships],
+        lineitems: `${localBase}/lineitems`,
+      },
+    });
+    expect(res.headers.location).toContain('/sso/complete');
+    const contexts = (
+      await request(server)
+        .get(
+          `/api/v1/organizations/${orgId}/lti/platforms/${platform.id}/contexts`,
+        )
+        .set(as('principal'))
+        .expect(200)
+    ).body as Array<{
+      id: string;
+      contextId: string;
+      title: string | null;
+      class: unknown;
+      services: { memberships: boolean; lineItems: boolean };
+    }>;
+    const ctx = contexts.find((c) => c.contextId === 'canvas-course-1');
+    expect(ctx).toBeDefined();
+    expect(ctx!.services).toEqual({ memberships: true, lineItems: true });
+    expect(ctx!.title).toBe('Period 2');
+    // Teachers cannot manage the link; the principal links the course to a fresh class.
+    await request(server)
+      .get(
+        `/api/v1/organizations/${orgId}/lti/platforms/${platform.id}/contexts`,
+      )
+      .set(as('teacher'))
+      .expect(403);
+    await request(server)
+      .post(
+        `/api/v1/organizations/${orgId}/lti/platforms/${platform.id}/contexts/${ctx!.id}/sync`,
+      )
+      .set(as('principal'))
+      .send({})
+      .expect(400);
+    const demo = await prisma.class.findUniqueOrThrow({
+      where: { id: classId },
+    });
+    ltiClassId = randomUUID();
+    await prisma.class.create({
+      data: {
+        id: ltiClassId,
+        organizationId: orgId,
+        courseId: demo.courseId,
+        name: `LTI course ${stamp}`,
+        term: demo.term,
+      },
+    });
+    const linked = await request(server)
+      .patch(
+        `/api/v1/organizations/${orgId}/lti/platforms/${platform.id}/contexts/${ctx!.id}`,
+      )
+      .set(as('principal'))
+      .send({ classId: ltiClassId })
+      .expect(200);
+    expect((linked.body as { class: { id: string } }).class.id).toBe(
+      ltiClassId,
+    );
+    const sync = await request(server)
+      .post(
+        `/api/v1/organizations/${orgId}/lti/platforms/${platform.id}/contexts/${ctx!.id}/sync`,
+      )
+      .set(as('principal'))
+      .send({})
+      .expect(201);
+    expect(sync.body).toEqual({
+      members: 4,
+      users: 3,
+      students: 2,
+      teachers: 1,
+      skipped: 1,
+    });
+    const tokenCall = received.find((r) => r.path === '/token');
+    expect(tokenCall?.body).toContain('grant_type=client_credentials');
+    expect(tokenCall?.body).toContain(
+      'client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer',
+    );
+    expect(
+      received
+        .filter((r) => r.path.startsWith('/memberships'))
+        .every((r) => r.headers.authorization === 'Bearer tok-1'),
+    ).toBe(true);
+    const enrolled = await prisma.classEnrollment.findMany({
+      where: { classId: ltiClassId },
+      include: { student: { include: { user: true } } },
+    });
+    expect(enrolled.map((e) => e.student.user?.email).sort()).toEqual([
+      `nrps-a-${stamp}@school.test`,
+      `nrps-b-${stamp}@school.test`,
+    ]);
+    expect(enrolled.every((e) => e.source === 'LTI')).toBe(true);
+    expect(
+      await prisma.classTeacher.count({
+        where: { classId: ltiClassId, teacherId },
+      }),
+    ).toBe(1);
+  });
+
+  it('links a deep-linked assignment to its line item and pushes posted grades to the platform', async () => {
+    const platform = await prisma.ltiPlatform.findFirstOrThrow({
+      where: { issuer: ISSUER },
+    });
+    const created = await request(server)
+      .post('/api/v1/assignments')
+      .set(as('teacher'))
+      .send({
+        classId: ltiClassId,
+        title: `LTI graded ${stamp}`,
+        maxPoints: 10,
+        dueAt: '2027-01-01T00:00:00Z',
+      })
+      .expect(201);
+    const assignmentId = (created.body as { id: string }).id;
+    // The platform launches the deep-linked resource: the line item it created arrives in the endpoint claim.
+    await launchAs({
+      [LTI_AGS_CLAIM]: {
+        scope: [LTI_SCOPE.score],
+        lineitems: `${localBase}/lineitems`,
+        lineitem: `${localBase}/lineitems/42`,
+      },
+      [`${LTI_CLAIM}custom`]: {
+        smartschool_assignment_id: assignmentId,
+        smartschool_path: `/assignments/${assignmentId}`,
+      },
+      [`${LTI_CLAIM}resource_link`]: { id: 'rl-1' },
+    });
+    const link = await prisma.ltiLineItemLink.findFirstOrThrow({
+      where: { assignmentId },
+    });
+    expect(link.lineItemUrl).toBe(`${localBase}/lineitems/42`);
+    // A grade for a learner the platform knows reaches its line item.
+    const learner = await prisma.ltiUserLink.findFirstOrThrow({
+      where: { platformId: platform.id, subject: `nrps-a-${stamp}` },
+      include: { user: { include: { student: true } } },
+    });
+    const studentId = learner.user.student!.id;
+    await prisma.grade.create({
+      data: {
+        id: randomUUID(),
+        assignmentId,
+        studentId,
+        score: 8.5,
+        maxPoints: 10,
+        percentage: 85,
+      },
+    });
+    const pushed = await request(server)
+      .post(
+        `/api/v1/organizations/${orgId}/lti/platforms/${platform.id}/contexts/${link.contextLinkId}/push-scores`,
+      )
+      .set(as('principal'))
+      .send({})
+      .expect(201);
+    expect(pushed.body).toEqual({ lineItems: 1, grades: 1, pushed: 1 });
+    const score = received.find((r) => r.path === '/lineitems/42/scores');
+    expect(score).toBeDefined();
+    expect(score!.headers['content-type']).toBe(
+      'application/vnd.ims.lis.v1.score+json',
+    );
+    expect(JSON.parse(score!.body)).toMatchObject({
+      userId: `nrps-a-${stamp}`,
+      scoreGiven: 8.5,
+      scoreMaximum: 10,
+      gradingProgress: 'FullyGraded',
+    });
+    expect(
+      (
+        await prisma.ltiLineItemLink.findUniqueOrThrow({
+          where: { id: link.id },
+        })
+      ).lastPushAt,
+    ).not.toBeNull();
+  });
+
+  it('answers a deep-linking request with a picker and a signed response the platform can verify', async () => {
+    const res = await launchAs({
+      [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingRequest',
+      [`${LTI_DL_CLAIM}deep_linking_settings`]: {
+        deep_link_return_url: `${localBase}/deep-link-return`,
+        accept_types: ['ltiResourceLink'],
+        accept_multiple: true,
+        data: 'opaque-1',
+      },
+    });
+    const next = new URL(res.headers.location).searchParams.get('next') ?? '';
+    expect(next.startsWith('/integrations/lti/deep-link?dl=')).toBe(true);
+    const ticket = new URLSearchParams(next.split('?')[1]).get('dl') ?? '';
+    const picker = await request(server)
+      .get(`/api/v1/lti/deep-link/${ticket}`)
+      .set(as('teacher'))
+      .expect(200);
+    const body = picker.body as {
+      platform: string;
+      context: string | null;
+      classes: Array<{ id: string; assignments: Array<{ id: string }> }>;
+    };
+    expect(body.context).toBe('Period 2');
+    const klass = body.classes.find((c) => c.id === ltiClassId);
+    expect(klass && klass.assignments.length).toBeGreaterThan(0);
+    await request(server)
+      .get(`/api/v1/lti/deep-link/${ticket}`)
+      .set(as('student'))
+      .expect(403);
+    const chosen = klass!.assignments[0].id;
+    const answer = await request(server)
+      .post(`/api/v1/lti/deep-link/${ticket}/respond`)
+      .type('form')
+      .send({ assignmentIds: chosen })
+      .expect(201);
+    expect(answer.headers['content-type']).toContain('text/html');
+    expect(answer.text).toContain(`action="${localBase}/deep-link-return"`);
+    const jwt = /name="JWT" value="([^"]+)"/.exec(answer.text)?.[1] ?? '';
+    const [h, p, sig] = jwt.split('.');
+    const header = JSON.parse(Buffer.from(h, 'base64url').toString()) as {
+      kid: string;
+    };
+    const keys = (await request(server).get('/api/v1/lti/jwks').expect(200))
+      .body as { keys: JsonWebKey[] };
+    const jwk = keys.keys.find(
+      (k) => (k as { kid?: string }).kid === header.kid,
+    )!;
+    expect(
+      cryptoVerify(
+        'sha256',
+        Buffer.from(`${h}.${p}`),
+        createPublicKey({ key: jwk, format: 'jwk' }),
+        Buffer.from(sig, 'base64url'),
+      ),
+    ).toBe(true);
+    const claims = JSON.parse(Buffer.from(p, 'base64url').toString()) as Record<
+      string,
+      unknown
+    >;
+    expect(claims).toMatchObject({
+      iss: 'client-1',
+      aud: ISSUER,
+      [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingResponse',
+      [`${LTI_CLAIM}deployment_id`]: 'dep-1',
+      [`${LTI_DL_CLAIM}data`]: 'opaque-1',
+    });
+    const items = claims[`${LTI_DL_CLAIM}content_items`] as Array<{
+      type: string;
+      url: string;
+      custom: { smartschool_assignment_id: string };
+      lineItem: { scoreMaximum: number };
+    }>;
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      type: 'ltiResourceLink',
+      url: 'http://localhost:5000/api/v1/lti/launch',
+      custom: { smartschool_assignment_id: chosen },
+    });
+    // The ticket is spent.
+    await request(server)
+      .post(`/api/v1/lti/deep-link/${ticket}/respond`)
+      .type('form')
+      .send({ assignmentIds: chosen })
+      .expect(404);
   });
 
   it('publishes its key set and a tool configuration', async () => {

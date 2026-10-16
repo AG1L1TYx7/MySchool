@@ -199,6 +199,17 @@ See the architecture document section 4.4 for the table. Contract: each job is i
 
 A provider is enabled when its credentials are present; there is no separate enabled flag.
 
+### 8a. LTI 1.3 services, SmartSchool as the tool (slice 30)
+
+| Call | Direction and auth | Body and answer | On failure |
+|---|---|---|---|
+| Token | `POST {platform.tokenUrl}`, `grant_type=client_credentials`, `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`, `client_assertion` = RS256 JWT signed by our LTI key (`iss` and `sub` the client id, `aud` the token URL, five-minute expiry, `jti`), `scope` | `{ access_token, expires_in }`; cached per platform and scope set for fifty minutes | 400 `lti.token_refused` or `lti.no_token_url` to the administrator; nothing is synced or pushed |
+| Names and Roles | `GET {membershipsUrl}` with the token and `Accept: application/vnd.ims.lti-nrps.v2.membershipcontainer+json`, following `Link: <...>; rel="next"` up to twenty pages, bodies capped at 4 MB | `members[]` with `user_id`, `roles`, `status`, `email`, names | 400 `lti.service_error` with the HTTP status |
+| Scores | `POST {lineItemUrl}/scores` (the suffix goes before any query string) with the token and `Content-Type: application/vnd.ims.lis.v1.score+json`: `{ userId: <platform subject>, scoreGiven, scoreMaximum, activityProgress: "Completed", gradingProgress: "FullyGraded", timestamp }` | 2xx | the line item link records `lastError`; the grade stays posted in SmartSchool; **Push grades** retries |
+| Deep Linking response | the browser posts `JWT` to the platform's `deep_link_return_url`: RS256, `iss` client id, `aud` issuer, `message_type` `LtiDeepLinkingResponse`, `deployment_id`, `content_items`, the request's `data` echoed | the platform creates the links and line items | the platform shows its own error; the ticket is already spent, so the teacher launches again |
+
+Every URL above comes from the platform's launch claims or registration and passes `assertPublicHttpUrl` (docs/21 F08) before each call; plain http on localhost is allowed outside production for tests.
+
 ---
 
 ## 9. Configuration keys that must agree between services
