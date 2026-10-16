@@ -5,6 +5,7 @@ import {
   IsEmail,
   IsIn,
   IsInt,
+  IsNumber,
   IsISO8601,
   IsOptional,
   IsString,
@@ -16,6 +17,16 @@ import {
 } from 'class-validator';
 
 export class SetSubscriptionDto {
+  @ApiProperty({
+    required: false,
+    description: 'Sales tax rate in percent (platform administrator only)',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(30)
+  taxRatePercent?: number;
+
   @ApiProperty({
     required: false,
     description:

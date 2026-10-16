@@ -113,6 +113,8 @@ export const envSchema = z
     STRIPE_SECRET_KEY: z.string().optional().default(''),
     STRIPE_PUBLISHABLE_KEY: z.string().optional().default(''),
     STRIPE_WEBHOOK_SECRET: z.string().optional().default(''),
+    /** The provider's API origin; overridden in tests by a local fixture. */
+    STRIPE_BASE_URL: z.string().url().default('https://api.stripe.com'),
     RECAPTCHA_SITE_KEY: z.string().optional().default(''),
     RECAPTCHA_SECRET_KEY: z.string().optional().default(''),
     RECAPTCHA_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.5),

@@ -13,6 +13,7 @@ import {
 
 export const ROSTER_PROVIDERS = [
   'oneroster_api',
+  'google_classroom',
   'clever',
   'classlink',
 ] as const;

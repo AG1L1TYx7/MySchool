@@ -11,6 +11,7 @@ import { AppConfigModule } from './config/config.module';
 import { AppConfigService } from './config/app-config.service';
 import { CaptchaModule } from './infra/captcha/captcha.module';
 import { CryptoModule } from './infra/crypto/crypto.module';
+import { PaymentsModule } from './infra/payments/payments.module';
 import { MailModule } from './infra/mail/mail.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { AccessModule } from './modules/access/access.module';
@@ -113,6 +114,7 @@ import { UsersModule } from './modules/users/users.module';
     ScheduleModule.forRoot(),
     PrismaModule,
     CryptoModule,
+    PaymentsModule,
     CaptchaModule,
     MailModule,
     AuditModule,

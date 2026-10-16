@@ -188,6 +188,19 @@ export class BillingController {
     res.send(out.buffer);
   }
 
+  @Post('invoices/:id/checkout')
+  @RequireFeature('billing.view')
+  @ApiOperation({
+    summary:
+      'Pay an open invoice by card: a hosted checkout page from the configured provider (404 when none)',
+  })
+  checkout(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.billing.checkout(id, actor);
+  }
+
   @Post('invoices/:id/pay')
   @RequireFeature('billing.manage')
   @ApiOperation({ summary: 'Record a payment received outside the platform' })

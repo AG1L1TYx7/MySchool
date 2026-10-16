@@ -46,7 +46,7 @@ export interface SsoSettings {
   schoolExternalId: string | null;
 }
 
-export const PROVIDER_LABELS: Record<string, string> = { oneroster_api: 'OneRoster API', oneroster_csv: 'OneRoster CSV', clever: 'Clever', classlink: 'ClassLink', google: 'Google', microsoft: 'Microsoft' };
+export const PROVIDER_LABELS: Record<string, string> = { oneroster_api: 'OneRoster API', oneroster_csv: 'OneRoster CSV', clever: 'Clever', classlink: 'ClassLink', google_classroom: 'Google Classroom', google: 'Google', microsoft: 'Microsoft' };
 
 /** Uploads one or more OneRoster files (a zip or the CSVs) to the import endpoint. */
 export async function uploadRoster(organizationId: string, files: File[], dryRun: boolean): Promise<RosterRun> {

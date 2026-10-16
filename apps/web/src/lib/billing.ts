@@ -24,6 +24,9 @@ export interface Subscription {
   currentPeriodEnd: string;
   trialEndsAt: string | null;
   provider: string;
+  taxRatePercent: number;
+  pendingAdjustmentCents: number;
+  cardPayments: boolean;
   canceledAt: string | null;
 }
 

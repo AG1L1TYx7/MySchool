@@ -4,10 +4,12 @@ import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { AI_STUB_PORT, AI_STUB_TOKEN } from './ai-env';
+import { PAYMENTS_STUB_PORT } from './payments-env';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/infra/prisma/prisma.service';
 import { signProviderPayload } from '../src/modules/billing/billing-rules';
+import { createServer, type Server as HttpServer } from 'node:http';
 import { startAiStub } from './ai-stub';
 
 interface Problem {
@@ -57,6 +59,12 @@ const PASSWORD = 'SmartSchool!Demo2026';
 describe('Billing and operations (e2e)', () => {
   let app: INestApplication;
   let server: Server;
+  let paymentServer: HttpServer;
+  const paymentCalls: Array<{
+    path: string;
+    body: string;
+    authorization: string;
+  }> = [];
   let prisma: PrismaService;
   let stub: Awaited<ReturnType<typeof startAiStub>>;
   const tokens: Record<string, string> = {};
@@ -82,6 +90,27 @@ describe('Billing and operations (e2e)', () => {
 
   beforeAll(async () => {
     stub = await startAiStub(AI_STUB_TOKEN, AI_STUB_PORT);
+    paymentServer = createServer((req, res) => {
+      let body = '';
+      req.on('data', (c: Buffer) => (body += c.toString()));
+      req.on('end', () => {
+        paymentCalls.push({
+          path: req.url ?? '',
+          body,
+          authorization: String(req.headers.authorization ?? ''),
+        });
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            id: 'cs_test_1',
+            url: 'https://checkout.stripe.test/cs_test_1',
+          }),
+        );
+      });
+    });
+    await new Promise<void>((r) =>
+      paymentServer.listen(PAYMENTS_STUB_PORT, '127.0.0.1', r),
+    );
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -114,6 +143,7 @@ describe('Billing and operations (e2e)', () => {
   });
 
   afterAll(async () => {
+    paymentServer?.close();
     if (prisma)
       await prisma.tenant.update({
         where: { id: tenantId },
@@ -249,6 +279,137 @@ describe('Billing and operations (e2e)', () => {
     await request(server)
       .post(`/api/v1/billing/invoices/${invoiceId}/void`)
       .set(as('superadmin'))
+      .send({})
+      .expect(400);
+  });
+
+  it('prorates a mid-period plan change, taxes the next invoice and takes card payment through the provider seam', async () => {
+    // A district on the District plan upgrades to Enterprise halfway through: the difference for the rest of
+    // the period waits for the next invoice, which also carries the sales tax the platform administrator set.
+    const before = (
+      await request(server)
+        .get('/api/v1/billing/subscription')
+        .set(as('superintendent'))
+        .expect(200)
+    ).body as {
+      subscription: {
+        plan: { code: string };
+        pendingAdjustmentCents: number;
+        cardPayments: boolean;
+      };
+    };
+    expect(before.subscription.cardPayments).toBe(true);
+    await request(server)
+      .put('/api/v1/billing/subscription')
+      .set(as('superintendent'))
+      .set('Idempotency-Key', `tax-${stamp}`)
+      .send({ planCode: 'enterprise', taxRatePercent: 8.25 })
+      .expect(403);
+    const changed = (
+      await request(server)
+        .put('/api/v1/billing/subscription')
+        .set(as('superadmin'))
+        .set('Idempotency-Key', `up-${stamp}`)
+        .send({ tenantId, planCode: 'enterprise', taxRatePercent: 8.25 })
+        .expect(201)
+    ).body as {
+      subscription: {
+        plan: { code: string };
+        pendingAdjustmentCents: number;
+        taxRatePercent: number;
+      };
+    };
+    expect(changed.subscription.plan.code).toBe('enterprise');
+    expect(changed.subscription.taxRatePercent).toBe(8.25);
+    expect(changed.subscription.pendingAdjustmentCents).toBeGreaterThan(0);
+    const adjustment = changed.subscription.pendingAdjustmentCents;
+    const issued = (
+      await request(server)
+        .post('/api/v1/billing/invoices')
+        .set(as('superadmin'))
+        .set('Idempotency-Key', `inv-tax-${stamp}`)
+        .send({ tenantId, periodStart: '2031-03-01T00:00:00Z' })
+        .expect(201)
+    ).body as {
+      id: string;
+      number: string;
+      lines: Array<{ description: string; amountCents: number }>;
+      subtotalCents: number;
+      taxCents: number;
+      totalCents: number;
+    };
+    expect(
+      issued.lines.some(
+        (l) =>
+          l.description.startsWith('Proration') && l.amountCents === adjustment,
+      ),
+    ).toBe(true);
+    expect(issued.taxCents).toBe(
+      Math.round((issued.subtotalCents * 8.25) / 100),
+    );
+    expect(issued.totalCents).toBe(issued.subtotalCents + issued.taxCents);
+    expect(
+      (
+        (
+          await request(server)
+            .get('/api/v1/billing/subscription')
+            .set(as('superintendent'))
+            .expect(200)
+        ).body as { subscription: { pendingAdjustmentCents: number } }
+      ).subscription.pendingAdjustmentCents,
+    ).toBe(0);
+    // Card payment: the provider seam answers with a hosted checkout URL and the signed webhook settles it.
+    const checkout = (
+      await request(server)
+        .post(`/api/v1/billing/invoices/${issued.id}/checkout`)
+        .set(as('superintendent'))
+        .send({})
+        .expect(201)
+    ).body as { url: string; provider: string };
+    expect(checkout).toEqual({
+      url: 'https://checkout.stripe.test/cs_test_1',
+      provider: 'stripe',
+    });
+    const session = paymentCalls.find(
+      (c) => c.path === '/v1/checkout/sessions',
+    );
+    expect(session).toBeDefined();
+    const form = new URLSearchParams(session!.body);
+    expect(form.get('metadata[invoiceNumber]')).toBe(issued.number);
+    expect(form.get('line_items[0][price_data][unit_amount]')).toBe(
+      String(issued.totalCents),
+    );
+    expect(session!.authorization).toBe('Bearer sk_test_fixture');
+    const event = JSON.stringify({
+      type: 'checkout.session.completed',
+      data: {
+        object: { id: 'cs_test_1', metadata: { invoiceNumber: issued.number } },
+      },
+    });
+    await request(server)
+      .post('/api/v1/billing/webhooks/provider')
+      .set('Content-Type', 'application/json')
+      .set(
+        'Stripe-Signature',
+        signProviderPayload(
+          event,
+          process.env.STRIPE_WEBHOOK_SECRET ?? '',
+          new Date(),
+        ),
+      )
+      .send(event)
+      .expect(200);
+    const paid = (
+      await request(server)
+        .get(`/api/v1/billing/invoices/${issued.id}`)
+        .set(as('superintendent'))
+        .expect(200)
+    ).body as { status: string; providerRef: string | null };
+    expect(paid.status).toBe('paid');
+    expect(paid.providerRef).toBe('cs_test_1');
+    await request(server)
+      .post(`/api/v1/billing/invoices/${issued.id}/checkout`)
+      .set(as('superintendent'))
       .send({})
       .expect(400);
   });

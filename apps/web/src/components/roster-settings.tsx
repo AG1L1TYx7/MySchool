@@ -26,6 +26,10 @@ const SOURCE_FIELDS: Record<string, Array<{ key: string; label: string; secret?:
     { key: 'districtToken', label: 'District token', secret: true },
     { key: 'schoolExternalId', label: 'School id (optional, for district tokens)' },
   ],
+  google_classroom: [
+    { key: 'serviceAccountJson', label: 'Service account JSON key', secret: true, hint: 'A Google Cloud service account with domain-wide delegation for the Classroom courses, rosters, profile emails and course work scopes' },
+    { key: 'adminEmail', label: 'Workspace administrator to act as', hint: 'The service account reads courses as this person' },
+  ],
 };
 
 /** Administrator section on the organisation page: where people and classes come from, and how they sign in. */

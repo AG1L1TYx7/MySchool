@@ -170,6 +170,69 @@ export function buildInvoiceLines(
   return { lines, subtotalCents, taxCents: 0, totalCents: subtotalCents };
 }
 
+/**
+ * What a mid-period change costs or credits (slice 30): the difference between the new and the old monthly
+ * amount for the fraction of the period still ahead, in whole cents. Settled on the next invoice.
+ */
+export function prorationCents(
+  oldMonthlyCents: number,
+  newMonthlyCents: number,
+  period: { start: Date; end: Date },
+  at: Date,
+): number {
+  const total = period.end.getTime() - period.start.getTime();
+  if (total <= 0) return 0;
+  const remaining = Math.min(
+    Math.max(period.end.getTime() - at.getTime(), 0),
+    total,
+  );
+  return Math.round((newMonthlyCents - oldMonthlyCents) * (remaining / total));
+}
+
+/** Sales tax on a subtotal at a percentage rate, in whole cents; never negative. */
+export function taxCentsFor(
+  subtotalCents: number,
+  ratePercent: number,
+): number {
+  if (!(ratePercent > 0) || subtotalCents <= 0) return 0;
+  return Math.round((subtotalCents * ratePercent) / 100);
+}
+
+/** The period's lines plus a proration adjustment and tax, totalled (slice 30). */
+export function settleInvoice(
+  built: { lines: InvoiceLine[]; subtotalCents: number },
+  adjustmentCents: number,
+  taxRatePercent: number,
+): {
+  lines: InvoiceLine[];
+  subtotalCents: number;
+  taxCents: number;
+  totalCents: number;
+} {
+  const lines = [...built.lines];
+  if (adjustmentCents !== 0)
+    lines.push({
+      description:
+        adjustmentCents > 0
+          ? 'Proration for a plan or seat change during the previous period'
+          : 'Credit for a plan or seat change during the previous period',
+      quantity: 1,
+      unitCents: adjustmentCents,
+      amountCents: adjustmentCents,
+    });
+  const subtotalCents = Math.max(
+    0,
+    lines.reduce((a, l) => a + l.amountCents, 0),
+  );
+  const taxCents = taxCentsFor(subtotalCents, taxRatePercent);
+  return {
+    lines,
+    subtotalCents,
+    taxCents,
+    totalCents: subtotalCents + taxCents,
+  };
+}
+
 export function dueDateFor(issuedAt: Date, netDays = NET_DAYS): Date {
   return new Date(issuedAt.getTime() + netDays * 86_400_000);
 }

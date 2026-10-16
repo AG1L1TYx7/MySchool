@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 import { createServer, type Server as HttpServer } from 'node:http';
 import type { Server } from 'node:http';
 import request from 'supertest';
@@ -34,11 +35,13 @@ function startIdp(port: number): {
   server: HttpServer;
   nextProfile: Record<string, unknown>;
   seen: Array<{ url: string; body: string }>;
+  courseWork: Array<{ id: string; title: string }>;
 } {
   const state = {
     server: null as unknown as HttpServer,
     nextProfile: {} as Record<string, unknown>,
     seen: [] as Array<{ url: string; body: string }>,
+    courseWork: [] as Array<{ id: string; title: string }>,
   };
   const codes = new Map<string, Record<string, unknown>>();
   state.server = createServer((req, res) => {
@@ -71,6 +74,95 @@ function startIdp(port: number): {
             token_type: 'Bearer',
           }),
         );
+        return;
+      }
+      // Google Classroom (slice 30): the service-account token, courses, rosters, course work, submissions.
+      if (url.pathname === '/classroom-token') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(
+          JSON.stringify({ access_token: 'classroom-at', expires_in: 3600 }),
+        );
+        return;
+      }
+      if (url.pathname.startsWith('/classroom/')) {
+        const p = url.pathname.replace('/classroom', '');
+        res.writeHead(200, { 'content-type': 'application/json' });
+        if (p === '/courses')
+          res.end(
+            JSON.stringify({
+              courses: [
+                {
+                  id: 'gc-1',
+                  name: 'Biology 9',
+                  section: 'Period 4',
+                  courseState: 'ACTIVE',
+                },
+                { id: 'gc-2', name: 'Archived', courseState: 'ARCHIVED' },
+              ],
+            }),
+          );
+        else if (p === '/courses/gc-1/teachers')
+          res.end(
+            JSON.stringify({
+              teachers: [
+                {
+                  userId: 'g-teacher',
+                  profile: {
+                    emailAddress: 'teacher@smartschool.local',
+                    name: { givenName: 'Taylor', familyName: 'Brooks' },
+                  },
+                },
+              ],
+            }),
+          );
+        else if (p === '/courses/gc-1/students')
+          res.end(
+            JSON.stringify({
+              students: [
+                {
+                  userId: 'g-s1',
+                  profile: {
+                    emailAddress: 'gc-s1@school.test',
+                    name: { givenName: 'Gia', familyName: 'Classroom' },
+                  },
+                },
+                {
+                  userId: 'g-s2',
+                  profile: {
+                    emailAddress: 'gc-s2@school.test',
+                    name: { fullName: 'Gus Classroom' },
+                  },
+                },
+              ],
+            }),
+          );
+        else if (p === '/courses/gc-1/courseWork' && req.method === 'GET')
+          res.end(JSON.stringify({ courseWork: state.courseWork }));
+        else if (p === '/courses/gc-1/courseWork' && req.method === 'POST') {
+          const w = {
+            id: `cw-${state.courseWork.length + 1}`,
+            ...(JSON.parse(body) as Record<string, unknown>),
+          };
+          state.courseWork.push(w as { id: string; title: string });
+          res.end(JSON.stringify(w));
+        } else if (
+          /^\/courses\/gc-1\/courseWork\/[^/]+\/studentSubmissions$/.test(p) &&
+          req.method === 'GET'
+        )
+          res.end(
+            JSON.stringify({
+              studentSubmissions: [
+                { id: 'sub-s1', userId: 'g-s1' },
+                { id: 'sub-s2', userId: 'g-s2' },
+              ],
+            }),
+          );
+        else if (
+          /studentSubmissions\/[^/?]+$/.test(p) &&
+          req.method === 'PATCH'
+        )
+          res.end(JSON.stringify({ ok: true }));
+        else res.end('{}');
         return;
       }
       if (url.pathname === '/v1/userinfo') {
@@ -337,6 +429,184 @@ describe('Rostering and sign-in (e2e)', () => {
     await request(server)
       .delete(
         `/api/v1/organizations/${organizationId}/roster/sources/${body.id}`,
+      )
+      .set(as('principal'))
+      .expect(204);
+  });
+
+  it('rosters a Google Classroom course through a service account and writes grades back (slice 30)', async () => {
+    const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const serviceAccountJson = JSON.stringify({
+      project_id: 'demo',
+      client_email: 'sync@demo.iam.gserviceaccount.com',
+      private_key: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    });
+    await request(server)
+      .post(`/api/v1/organizations/${organizationId}/roster/sources`)
+      .set(as('principal'))
+      .send({
+        provider: 'google_classroom',
+        name: 'Classroom',
+        config: {
+          serviceAccountJson: '{"nope":1}',
+          adminEmail: 'admin@school.test',
+        },
+      })
+      .expect(400);
+    const created = await request(server)
+      .post(`/api/v1/organizations/${organizationId}/roster/sources`)
+      .set(as('principal'))
+      .send({
+        provider: 'google_classroom',
+        name: 'Classroom',
+        config: {
+          serviceAccountJson,
+          adminEmail: 'admin@school.test',
+          baseUrl: `http://127.0.0.1:${SSO_STUB_PORT}/classroom`,
+          tokenUrl: `http://127.0.0.1:${SSO_STUB_PORT}/classroom-token`,
+        },
+      })
+      .expect(201);
+    const source = created.body as {
+      id: string;
+      config: Record<string, string>;
+    };
+    expect(source.config.serviceAccountJson).toBe('••••••••');
+    const run = (
+      await request(server)
+        .post(
+          `/api/v1/organizations/${organizationId}/roster/sources/${source.id}/run`,
+        )
+        .set(as('principal'))
+        .send({})
+        .expect(202)
+    ).body as { id: string };
+    let finished: {
+      status: string;
+      counts?: Record<string, unknown>;
+      errors?: unknown[];
+    } = { status: 'RUNNING' };
+    for (
+      let i = 0;
+      i < 80 && finished.status !== 'done' && finished.status !== 'failed';
+      i += 1
+    ) {
+      await new Promise((r) => setTimeout(r, 250));
+      finished = (
+        await request(server)
+          .get(`/api/v1/organizations/${organizationId}/roster/runs/${run.id}`)
+          .set(as('principal'))
+          .expect(200)
+      ).body as typeof finished;
+    }
+    expect(finished.status).toBe('done');
+    const klass = await prisma.class.findFirstOrThrow({
+      where: { organizationId, externalId: 'gc-1', deletedAt: null },
+    });
+    expect(klass).toMatchObject({ name: 'Biology 9', source: 'CLASSROOM' });
+    expect(
+      await prisma.class.count({
+        where: { organizationId, externalId: 'gc-2' },
+      }),
+    ).toBe(0);
+    const enrolled = await prisma.classEnrollment.findMany({
+      where: { classId: klass.id },
+      include: { student: { include: { user: true } } },
+    });
+    expect(enrolled.map((e) => e.student.user?.email).sort()).toEqual([
+      'gc-s1@school.test',
+      'gc-s2@school.test',
+    ]);
+    const teacher = await prisma.user.findFirstOrThrow({
+      where: { email: 'teacher@smartschool.local' },
+    });
+    expect(
+      await prisma.classTeacher.count({
+        where: { classId: klass.id, teacherId: teacher.id },
+      }),
+    ).toBe(1);
+    // Grades go back: a published assignment becomes course work, each grade a submission patch.
+    const created2 = await request(server)
+      .post('/api/v1/assignments')
+      .set(as('teacher'))
+      .send({
+        classId: klass.id,
+        title: 'Cell quiz',
+        maxPoints: 10,
+        dueAt: '2027-01-01T00:00:00Z',
+      })
+      .expect(201);
+    const assignmentId = (created2.body as { id: string }).id;
+    await request(server)
+      .post(`/api/v1/assignments/${assignmentId}/publish`)
+      .set(as('teacher'))
+      .expect(200);
+    const s1 = enrolled.find(
+      (e) => e.student.user?.email === 'gc-s1@school.test',
+    )!;
+    await prisma.grade.create({
+      data: {
+        id: randomUUID(),
+        assignmentId,
+        studentId: s1.studentId,
+        score: 9,
+        maxPoints: 10,
+        percentage: 90,
+      },
+    });
+    expect(
+      (
+        await request(server)
+          .get(`/api/v1/classes/${klass.id}/classroom`)
+          .set(as('teacher'))
+          .expect(200)
+      ).body,
+    ).toMatchObject({ linked: true, courseId: 'gc-1' });
+    const pushed = await request(server)
+      .post(`/api/v1/classes/${klass.id}/classroom/push-grades`)
+      .set(as('teacher'))
+      .expect(201);
+    const counts = pushed.body as {
+      assignments: number;
+      courseWorkCreated: number;
+      grades: number;
+      pushed: number;
+      skipped: number;
+    };
+    // Earlier runs of this suite may have left assignments in the course; every one gets course work.
+    expect(counts.assignments).toBeGreaterThanOrEqual(1);
+    expect(counts.courseWorkCreated).toBe(counts.assignments);
+    expect(counts.pushed).toBe(counts.grades);
+    expect(counts.grades).toBeGreaterThanOrEqual(1);
+    expect(counts.skipped).toBe(0);
+    const patch = idp.seen.find((r) =>
+      r.url.includes('/studentSubmissions/sub-s1'),
+    );
+    expect(patch).toBeDefined();
+    expect(JSON.parse(patch!.body)).toEqual({
+      assignedGrade: 9,
+      draftGrade: 9,
+    });
+    expect(idp.courseWork.some((w) => w.title === 'Cell quiz')).toBe(true);
+    // A second push reuses the course work.
+    expect(
+      (
+        await request(server)
+          .post(`/api/v1/classes/${klass.id}/classroom/push-grades`)
+          .set(as('teacher'))
+          .expect(201)
+      ).body,
+    ).toMatchObject({ courseWorkCreated: 0, pushed: counts.pushed });
+    const manual = await prisma.class.findFirstOrThrow({
+      where: { organizationId, source: 'MANUAL', deletedAt: null },
+    });
+    await request(server)
+      .post(`/api/v1/classes/${manual.id}/classroom/push-grades`)
+      .set(as('teacher'))
+      .expect(400);
+    await request(server)
+      .delete(
+        `/api/v1/organizations/${organizationId}/roster/sources/${source.id}`,
       )
       .set(as('principal'))
       .expect(204);

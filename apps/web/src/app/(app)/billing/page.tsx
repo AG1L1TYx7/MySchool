@@ -139,7 +139,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 function SubscriptionView({ q, manage }: { q: string; manage: boolean }) {
   const [view, setView] = useState<SubscriptionView | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [form, setForm] = useState({ planCode: '', billingEmail: '', billingName: '', trialDays: '' });
+  const [form, setForm] = useState({ planCode: '', billingEmail: '', billingName: '', trialDays: '', taxRatePercent: '' });
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
@@ -147,7 +147,7 @@ function SubscriptionView({ q, manage }: { q: string; manage: boolean }) {
     api<SubscriptionView>(`/billing/subscription${q ? `?${q}` : ''}`)
       .then((v) => {
         setView(v);
-        setForm({ planCode: v.subscription?.plan.code ?? 'district', billingEmail: v.subscription?.billingEmail ?? '', billingName: v.subscription?.billingName ?? '', trialDays: '' });
+        setForm({ planCode: v.subscription?.plan.code ?? 'district', billingEmail: v.subscription?.billingEmail ?? '', billingName: v.subscription?.billingName ?? '', trialDays: '', taxRatePercent: v.subscription ? String(v.subscription.taxRatePercent) : '' });
       })
       .catch((e) => setError(errorMessage(e)));
     api<Plan[]>('/billing/plans').then(setPlans).catch(() => setPlans([]));
@@ -162,7 +162,7 @@ function SubscriptionView({ q, manage }: { q: string; manage: boolean }) {
       await api('/billing/subscription', {
         method: 'PUT',
         headers: { 'Idempotency-Key': `web-${view?.tenant.id}-${Date.now()}` },
-        body: { ...(view ? { tenantId: view.tenant.id } : {}), planCode: form.planCode, billingEmail: form.billingEmail || undefined, billingName: form.billingName || undefined, trialDays: form.trialDays ? Number(form.trialDays) : undefined },
+        body: { ...(view ? { tenantId: view.tenant.id } : {}), planCode: form.planCode, billingEmail: form.billingEmail || undefined, billingName: form.billingName || undefined, trialDays: form.trialDays ? Number(form.trialDays) : undefined, ...(manage && form.taxRatePercent !== '' ? { taxRatePercent: Number(form.taxRatePercent) } : {}) },
       });
       setNote('Saved.');
       load();
@@ -206,6 +206,16 @@ function SubscriptionView({ q, manage }: { q: string; manage: boolean }) {
             <dt className="text-xs text-slate-500">Per month</dt>
             <dd className="font-medium">{view.estimate ? view.estimate.monthly : '–'}</dd>
           </div>
+          {s && (s.taxRatePercent > 0 || s.pendingAdjustmentCents !== 0) && (
+            <div>
+              <dt className="text-xs text-slate-500">On the next invoice</dt>
+              <dd className="font-medium">
+                {s.taxRatePercent > 0 ? `${s.taxRatePercent}% sales tax` : ''}
+                {s.taxRatePercent > 0 && s.pendingAdjustmentCents !== 0 ? ' · ' : ''}
+                {s.pendingAdjustmentCents > 0 ? `${dollars(s.pendingAdjustmentCents)} proration` : s.pendingAdjustmentCents < 0 ? `${dollars(-s.pendingAdjustmentCents)} credit` : ''}
+              </dd>
+            </div>
+          )}
           {s?.billingEmail && (
             <div>
               <dt className="text-xs text-slate-500">Billing contact</dt>
@@ -225,6 +235,7 @@ function SubscriptionView({ q, manage }: { q: string; manage: boolean }) {
               ))}
             </Select>
             <Input label="Trial days (optional)" id="sub-trial" type="number" min={0} max={365} value={form.trialDays} onChange={(e) => setForm({ ...form, trialDays: e.target.value })} />
+            <Input label="Sales tax rate (%)" id="sub-tax" type="number" min={0} max={30} step={0.01} value={form.taxRatePercent} onChange={(e) => setForm({ ...form, taxRatePercent: e.target.value })} />
             <Input label="Billing contact name" id="sub-name" value={form.billingName} onChange={(e) => setForm({ ...form, billingName: e.target.value })} />
             <Input label="Billing email" id="sub-email" type="email" value={form.billingEmail} onChange={(e) => setForm({ ...form, billingEmail: e.target.value })} />
             <div className="flex flex-wrap justify-between gap-2 sm:col-span-2">
@@ -253,9 +264,24 @@ function InvoicesView({ q, manage }: { q: string; manage: boolean }) {
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
   const [reference, setReference] = useState('');
+  const [cardPayments, setCardPayments] = useState(false);
   const load = useCallback(() => {
     api<Invoice[]>(`/billing/invoices${q ? `?${q}` : ''}`).then(setRows).catch((e) => setError(errorMessage(e)));
+    api<SubscriptionView>(`/billing/subscription${q ? `?${q}` : ''}`)
+      .then((v) => setCardPayments(!!v.subscription?.cardPayments))
+      .catch(() => setCardPayments(false));
   }, [q]);
+  const payByCard = async (id: string) => {
+    setBusy(`card-${id}`);
+    setError(null);
+    try {
+      const r = await api<{ url: string }>(`/billing/invoices/${id}/checkout`, { method: 'POST', body: {} });
+      window.location.assign(r.url);
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy('');
+    }
+  };
   useEffect(load, [load]);
   const act = async (label: string, fn: () => Promise<unknown>, done: string) => {
     setBusy(label);
@@ -308,6 +334,11 @@ function InvoicesView({ q, manage }: { q: string; manage: boolean }) {
                   <Button variant="ghost" onClick={() => void download(`/billing/invoices/${i.id}/pdf`, `${i.number}.pdf`)}>
                     PDF
                   </Button>
+                  {cardPayments && (i.status === 'open' || i.status === 'overdue') && i.totalCents > 0 && (
+                    <Button loading={busy === `card-${i.id}`} onClick={() => void payByCard(i.id)}>
+                      Pay by card
+                    </Button>
+                  )}
                 </div>
                 {open?.id === i.id && (
                   <div className="w-full rounded-md bg-slate-50 p-3">

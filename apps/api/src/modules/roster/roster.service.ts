@@ -23,6 +23,8 @@ import { assertOrganizationAccess, isDistrictRole } from '../access/scope';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CleverClient } from './clever';
+import { GoogleClassroomClient } from './google-classroom';
+import { serviceAccountFrom } from '../push/push-rules';
 import {
   CreateRosterSourceDto,
   SsoSettingsDto,
@@ -41,7 +43,7 @@ import { parseList, type SsoProvider } from '../sso/sso-rules';
 /** UTF-8 byte-order mark some exporters prepend; stripped before parsing. */
 const BOM = String.fromCharCode(0xfeff);
 
-const SECRET_KEYS = ['clientSecret', 'districtToken'];
+const SECRET_KEYS = ['clientSecret', 'districtToken', 'serviceAccountJson'];
 
 export interface PublicSource {
   id: string;
@@ -78,6 +80,7 @@ const SOURCE_FOR: Record<RosterProvider, RecordSource> = {
   ONEROSTER_API: 'ONEROSTER',
   CLEVER: 'CLEVER',
   CLASSLINK: 'CLASSLINK',
+  GOOGLE_CLASSROOM: 'CLASSROOM',
 };
 
 /** Roster sources, runs and the organisation's sign-in settings (docs/13 section 2). */
@@ -438,6 +441,18 @@ export class RosterService {
         baseUrl: config.baseUrl,
         schoolExternalId: config.schoolExternalId || null,
       }).snapshot();
+    if (source.provider === 'GOOGLE_CLASSROOM') {
+      const org = await this.prisma.organization.findUniqueOrThrow({
+        where: { id: source.organizationId },
+        select: { name: true },
+      });
+      return new GoogleClassroomClient({
+        serviceAccountJson: config.serviceAccountJson,
+        adminEmail: config.adminEmail,
+        baseUrl: config.baseUrl || undefined,
+        tokenUrl: config.tokenUrl || undefined,
+      }).snapshot({ externalId: 'classroom', name: org.name });
+    }
     if (source.provider === 'ONEROSTER_API' || source.provider === 'CLASSLINK')
       return new OneRosterApiClient({
         baseUrl: config.baseUrl,
@@ -535,7 +550,17 @@ export class RosterService {
     const need =
       provider === 'CLEVER'
         ? ['districtToken']
-        : ['baseUrl', 'tokenUrl', 'clientId', 'clientSecret'];
+        : provider === 'GOOGLE_CLASSROOM'
+          ? ['serviceAccountJson', 'adminEmail']
+          : ['baseUrl', 'tokenUrl', 'clientId', 'clientSecret'];
+    if (provider === 'GOOGLE_CLASSROOM' && config.serviceAccountJson) {
+      if (!serviceAccountFrom(config.serviceAccountJson))
+        throw new BadRequestException({
+          code: 'request.invalid',
+          detail:
+            'serviceAccountJson must be the JSON key of a Google service account (client_email, private_key, project_id).',
+        });
+    }
     const missing = need.filter((k) => !config[k]?.trim());
     if (missing.length)
       throw new BadRequestException({

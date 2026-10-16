@@ -15,6 +15,9 @@ import {
   signProviderPayload,
   subscriptionStatusFrom,
   verifyProviderSignature,
+  prorationCents,
+  settleInvoice,
+  taxCentsFor,
 } from './billing-rules';
 
 const plan = (code: string) => PLATFORM_PLANS.find((p) => p.code === code)!;
@@ -180,5 +183,60 @@ describe('billing rules', () => {
     expect(isAiRoute('/api/v1/ai/tutor/chat')).toBe(true);
     expect(isAiRoute('/api/v1/assistant/plan')).toBe(true);
     expect(isAiRoute('/api/v1/classes')).toBe(false);
+  });
+});
+
+describe('proration and tax (slice 30)', () => {
+  const period = {
+    start: new Date('2026-10-01T00:00:00Z'),
+    end: new Date('2026-11-01T00:00:00Z'),
+  };
+  it('charges the difference for the rest of the period and credits a downgrade', () => {
+    const mid = new Date('2026-10-16T12:00:00Z'); // exactly half of 31 days
+    expect(prorationCents(50000, 80000, period, mid)).toBe(15000);
+    expect(prorationCents(80000, 50000, period, mid)).toBe(-15000);
+    expect(
+      prorationCents(50000, 80000, period, new Date('2026-12-01T00:00:00Z')),
+    ).toBe(0);
+    expect(
+      prorationCents(50000, 80000, period, new Date('2026-09-01T00:00:00Z')),
+    ).toBe(30000);
+    expect(
+      prorationCents(1, 2, { start: period.end, end: period.start }, mid),
+    ).toBe(0);
+  });
+  it('taxes the subtotal and settles the adjustment onto the lines', () => {
+    expect(taxCentsFor(50000, 8.25)).toBe(4125);
+    expect(taxCentsFor(50000, 0)).toBe(0);
+    expect(taxCentsFor(-5, 10)).toBe(0);
+    const settled = settleInvoice(
+      {
+        lines: [
+          {
+            description: 'Plan',
+            quantity: 1,
+            unitCents: 50000,
+            amountCents: 50000,
+          },
+        ],
+        subtotalCents: 50000,
+      },
+      15000,
+      8.25,
+    );
+    expect(settled.lines).toHaveLength(2);
+    expect(settled.lines[1].description).toMatch(/^Proration/);
+    expect(settled).toMatchObject({
+      subtotalCents: 65000,
+      taxCents: 5363,
+      totalCents: 70363,
+    });
+    const credited = settleInvoice({ lines: [], subtotalCents: 0 }, -99999, 5);
+    expect(credited).toMatchObject({
+      subtotalCents: 0,
+      taxCents: 0,
+      totalCents: 0,
+    });
+    expect(credited.lines[0].description).toMatch(/^Credit/);
   });
 });

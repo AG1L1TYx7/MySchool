@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -8,6 +9,10 @@ import {
 } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 import { AppConfigService } from '../../config/app-config.service';
+import {
+  PAYMENT_PROVIDER,
+  type PaymentProvider,
+} from '../../infra/payments/payment-provider';
 import { newId } from '../../common/utils/ids';
 import type {
   Invoice,
@@ -39,6 +44,8 @@ import {
   verifyProviderSignature,
   type InvoiceLine,
   type UsageRow,
+  prorationCents,
+  settleInvoice,
 } from './billing-rules';
 import type {
   GenerateInvoiceDto,
@@ -65,6 +72,7 @@ export class BillingService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
+    @Inject(PAYMENT_PROVIDER) private readonly payments: PaymentProvider,
   ) {}
 
   // Plans ----------------------------------------------------------------------------------------------
@@ -185,21 +193,35 @@ export class BillingService {
         code: 'tenant.not_found',
         detail: 'District not found.',
       });
-    if (actor.role !== 'SUPER_ADMIN' && dto.trialDays !== undefined) {
+    if (
+      actor.role !== 'SUPER_ADMIN' &&
+      (dto.trialDays !== undefined || dto.taxRatePercent !== undefined)
+    ) {
       throw new ForbiddenException({
         code: 'authz.forbidden',
-        detail: 'Only the platform administrator sets trials.',
+        detail: 'Only the platform administrator sets trials and tax rates.',
       });
     }
     const now = new Date();
     const seats = dto.seats ?? (await this.countSeats(tenantId));
     const existing = await this.prisma.subscription.findUnique({
       where: { tenantId },
+      include: { plan: true },
     });
     const period =
       existing && existing.currentPeriodEnd > now
         ? { start: existing.currentPeriodStart, end: existing.currentPeriodEnd }
         : periodFrom(now);
+    // A plan or seat change inside a paid period is settled on the next invoice (slice 30).
+    const adjustment =
+      existing && existing.currentPeriodEnd > now && !existing.canceledAt
+        ? prorationCents(
+            monthlyAmountCents(existing.plan, existing.seats),
+            monthlyAmountCents(plan, seats),
+            period,
+            now,
+          )
+        : 0;
     const trialEndsAt = dto.trialDays
       ? new Date(now.getTime() + dto.trialDays * 86_400_000)
       : (existing?.trialEndsAt ?? null);
@@ -213,6 +235,11 @@ export class BillingService {
       trialEndsAt,
       canceledAt: null,
       status: trialEndsAt && trialEndsAt > now ? 'trialing' : 'active',
+      ...(dto.taxRatePercent !== undefined
+        ? { taxRatePercent: dto.taxRatePercent }
+        : {}),
+      pendingAdjustmentCents:
+        (existing?.pendingAdjustmentCents ?? 0) + adjustment,
     };
     const row = await this.prisma.subscription.upsert({
       where: { tenantId },
@@ -236,6 +263,8 @@ export class BillingService {
         planCode: plan.code,
         seats,
         trialDays: dto.trialDays,
+        prorationCents: adjustment,
+        taxRatePercent: dto.taxRatePercent,
       },
     });
     return {
@@ -336,7 +365,11 @@ export class BillingService {
         detail: `This period already has invoice ${duplicate.number}.`,
       });
     const seats = await this.countSeats(tenantId);
-    const built = buildInvoiceLines(sub.plan, seats, period);
+    const built = settleInvoice(
+      buildInvoiceLines(sub.plan, seats, period),
+      sub.pendingAdjustmentCents,
+      Number(sub.taxRatePercent),
+    );
     const now = new Date();
     const year = now.getUTCFullYear();
     const count = await this.prisma.invoice.count({
@@ -361,10 +394,10 @@ export class BillingService {
       },
       include: { tenant: { select: { id: true, name: true, slug: true } } },
     });
-    if (sub.seats !== seats)
+    if (sub.seats !== seats || sub.pendingAdjustmentCents !== 0)
       await this.prisma.subscription.update({
         where: { id: sub.id },
-        data: { seats },
+        data: { seats, pendingAdjustmentCents: 0 },
       });
     // The next period starts when this one ends.
     if (period.end.getTime() === sub.currentPeriodEnd.getTime()) {
@@ -418,6 +451,62 @@ export class BillingService {
       details: { provider, reference: dto.reference },
     });
     return this.toInvoice(updated, new Date());
+  }
+
+  /** A hosted card checkout for an open invoice through the configured provider (slice 30). */
+  async checkout(id: string, actor: AuthenticatedUser) {
+    if (!this.payments.configured)
+      throw new NotFoundException({
+        code: 'billing.provider_off',
+        detail:
+          'Card payments are not set up; record payments received by hand.',
+      });
+    const row = await this.loadInvoice(id, actor);
+    const status = effectiveInvoiceStatus(row, new Date());
+    if (status !== 'open' && status !== 'overdue')
+      throw new BadRequestException({
+        code: 'billing.invoice_not_open',
+        detail: `Invoice is ${status}.`,
+      });
+    if (row.totalCents <= 0)
+      throw new BadRequestException({
+        code: 'billing.nothing_to_pay',
+        detail: 'This invoice has no amount due.',
+      });
+    const sub = row.subscriptionId
+      ? await this.prisma.subscription.findUnique({
+          where: { id: row.subscriptionId },
+          select: { billingEmail: true },
+        })
+      : null;
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: row.tenantId },
+      select: { name: true },
+    });
+    const web = this.config.get('WEB_APP_URL').replace(/\/$/, '');
+    const session = await this.payments.createCheckout({
+      invoiceId: row.id,
+      invoiceNumber: row.number,
+      description: `SmartSchool invoice ${row.number} (${tenant?.name ?? ''})`,
+      amountCents: row.totalCents,
+      currency: row.currency,
+      customerEmail: sub?.billingEmail ?? null,
+      successUrl: `${web}/billing?paid=${encodeURIComponent(row.number)}`,
+      cancelUrl: `${web}/billing`,
+    });
+    await this.prisma.invoice.update({
+      where: { id: row.id },
+      data: { provider: this.payments.name, providerRef: session.id },
+    });
+    await this.audit.record({
+      userId: actor.id,
+      organizationId: actor.organizationId,
+      action: 'billing.invoice.checkout',
+      entityType: 'Invoice',
+      entityId: row.id,
+      details: { provider: this.payments.name, session: session.id },
+    });
+    return { url: session.url, provider: this.payments.name };
   }
 
   async voidInvoice(
@@ -717,7 +806,11 @@ export class BillingService {
       });
     }
     const number = event.data?.object?.metadata?.invoiceNumber;
-    if (event.type === 'invoice.paid' && number) {
+    if (
+      (event.type === 'invoice.paid' ||
+        event.type === 'checkout.session.completed') &&
+      number
+    ) {
       const inv = await this.prisma.invoice.findUnique({ where: { number } });
       if (inv && inv.status === 'open') {
         await this.prisma.invoice.update({
@@ -868,8 +961,11 @@ export class BillingService {
       currentPeriodEnd: s.currentPeriodEnd,
       trialEndsAt: s.trialEndsAt,
       provider: s.provider,
+      taxRatePercent: Number(s.taxRatePercent),
+      pendingAdjustmentCents: s.pendingAdjustmentCents,
       canceledAt: s.canceledAt,
       createdAt: s.createdAt,
+      cardPayments: this.payments.configured,
     };
   }
 

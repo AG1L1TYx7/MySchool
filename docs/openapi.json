@@ -7811,6 +7811,64 @@
         ]
       }
     },
+    "/api/v1/classes/{classId}/classroom": {
+      "get": {
+        "operationId": "ClassroomController_status_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether this class is a Google Classroom course and what was pushed",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/classroom/push-grades": {
+      "post": {
+        "operationId": "ClassroomController_push_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write every grade of the class's published assignments to the Classroom course (course work is created as needed)",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
     "/api/v1/auth/sso/providers": {
       "get": {
         "operationId": "SsoController_providers_api/v1",
@@ -17675,6 +17733,35 @@
         ]
       }
     },
+    "/api/v1/billing/invoices/{id}/checkout": {
+      "post": {
+        "operationId": "BillingController_checkout_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pay an open invoice by card: a hosted checkout page from the configured provider (404 when none)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
     "/api/v1/billing/invoices/{id}/pay": {
       "post": {
         "operationId": "BillingController_pay_api/v1",
@@ -20664,6 +20751,7 @@
             "type": "string",
             "enum": [
               "oneroster_api",
+              "google_classroom",
               "clever",
               "classlink"
             ]
@@ -23295,6 +23383,10 @@
       "SetSubscriptionDto": {
         "type": "object",
         "properties": {
+          "taxRatePercent": {
+            "type": "number",
+            "description": "Sales tax rate in percent (platform administrator only)"
+          },
           "tenantId": {
             "type": "string",
             "description": "Platform administrators choose the district; a superintendent gets their own"

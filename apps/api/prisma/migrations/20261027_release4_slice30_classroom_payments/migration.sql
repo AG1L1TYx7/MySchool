@@ -1,0 +1,45 @@
+-- AlterTable
+ALTER TABLE `Users` MODIFY `Source` ENUM('MANUAL', 'ONEROSTER', 'CLEVER', 'CLASSLINK', 'LTI', 'CLASSROOM') NOT NULL DEFAULT 'MANUAL';
+
+-- AlterTable
+ALTER TABLE `Students` MODIFY `Source` ENUM('MANUAL', 'ONEROSTER', 'CLEVER', 'CLASSLINK', 'LTI', 'CLASSROOM') NOT NULL DEFAULT 'MANUAL';
+
+-- AlterTable
+ALTER TABLE `StudentGuardians` MODIFY `Source` ENUM('MANUAL', 'ONEROSTER', 'CLEVER', 'CLASSLINK', 'LTI', 'CLASSROOM') NOT NULL DEFAULT 'MANUAL';
+
+-- AlterTable
+ALTER TABLE `Courses` MODIFY `Source` ENUM('MANUAL', 'ONEROSTER', 'CLEVER', 'CLASSLINK', 'LTI', 'CLASSROOM') NOT NULL DEFAULT 'MANUAL';
+
+-- AlterTable
+ALTER TABLE `Classes` MODIFY `Source` ENUM('MANUAL', 'ONEROSTER', 'CLEVER', 'CLASSLINK', 'LTI', 'CLASSROOM') NOT NULL DEFAULT 'MANUAL';
+
+-- AlterTable
+ALTER TABLE `ClassEnrollments` MODIFY `Source` ENUM('MANUAL', 'ONEROSTER', 'CLEVER', 'CLASSLINK', 'LTI', 'CLASSROOM') NOT NULL DEFAULT 'MANUAL';
+
+-- AlterTable
+ALTER TABLE `RosterSources` MODIFY `Provider` ENUM('ONEROSTER_CSV', 'ONEROSTER_API', 'CLEVER', 'CLASSLINK', 'GOOGLE_CLASSROOM') NOT NULL;
+
+-- AlterTable
+ALTER TABLE `RosterSyncRuns` MODIFY `Provider` ENUM('ONEROSTER_CSV', 'ONEROSTER_API', 'CLEVER', 'CLASSLINK', 'GOOGLE_CLASSROOM') NOT NULL;
+
+-- AlterTable
+ALTER TABLE `Subscriptions` ADD COLUMN `PendingAdjustmentCents` INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN `TaxRatePercent` DECIMAL(5, 2) NOT NULL DEFAULT 0;
+
+-- CreateTable
+CREATE TABLE `ClassroomCourseWork` (
+    `Id` CHAR(36) NOT NULL,
+    `AssignmentId` CHAR(36) NOT NULL,
+    `CourseId` VARCHAR(128) NOT NULL,
+    `CourseWorkId` VARCHAR(128) NOT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `UpdatedAt` DATETIME(6) NOT NULL,
+
+    UNIQUE INDEX `ClassroomCourseWork_AssignmentId_key`(`AssignmentId`),
+    INDEX `ClassroomCourseWork_CourseId_idx`(`CourseId`),
+    PRIMARY KEY (`Id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `ClassroomCourseWork` ADD CONSTRAINT `ClassroomCourseWork_AssignmentId_fkey` FOREIGN KEY (`AssignmentId`) REFERENCES `Assignments`(`Id`) ON DELETE CASCADE ON UPDATE CASCADE;
+

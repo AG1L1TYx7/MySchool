@@ -264,6 +264,7 @@ enum RecordSource {
   CLEVER
   CLASSLINK
   LTI
+  CLASSROOM
 }
 
 enum RosterProvider {
@@ -271,6 +272,7 @@ enum RosterProvider {
   ONEROSTER_API
   CLEVER
   CLASSLINK
+  GOOGLE_CLASSROOM
 }
 
 enum RosterRunStatus {
@@ -955,20 +957,21 @@ model Assignment {
   updatedAt          DateTime         @updatedAt @map("UpdatedAt") @db.DateTime(6)
   deletedAt          DateTime?        @map("DeletedAt") @db.DateTime(6)
 
-  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  class            Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
-  ltiLineItemLinks LtiLineItemLink[]
-  ltiLineItem      LtiLineItem?
-  createdBy        User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  rubric           Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  h5pContent       H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
-  h5pResults       H5PContentResult[]
-  submissions      AssignmentSubmission[]
-  grades           Grade[]
-  gradeCategory    GradeCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  gradingPeriod    GradingPeriod?         @relation(fields: [gradingPeriodId], references: [id], onDelete: SetNull)
-  marks            AssignmentMark[]
-  standards        AssignmentStandard[]
+  organization        Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class               Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  ltiLineItemLinks    LtiLineItemLink[]
+  ltiLineItem         LtiLineItem?
+  classroomCourseWork ClassroomCourseWork?
+  createdBy           User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  rubric              Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  h5pContent          H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
+  h5pResults          H5PContentResult[]
+  submissions         AssignmentSubmission[]
+  grades              Grade[]
+  gradeCategory       GradeCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  gradingPeriod       GradingPeriod?         @relation(fields: [gradingPeriodId], references: [id], onDelete: SetNull)
+  marks               AssignmentMark[]
+  standards           AssignmentStandard[]
 
   suggestions GradingSuggestion[]
 
@@ -2763,6 +2766,21 @@ model LtiScore {
   @@map("LtiScores")
 }
 
+/// The Google Classroom course work an assignment was written to (slice 30); grades go to its student submissions.
+model ClassroomCourseWork {
+  id           String   @id @map("Id") @db.Char(36)
+  assignmentId String   @unique @map("AssignmentId") @db.Char(36)
+  courseId     String   @map("CourseId") @db.VarChar(128)
+  courseWorkId String   @map("CourseWorkId") @db.VarChar(128)
+  createdAt    DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt    DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@map("ClassroomCourseWork")
+}
+
 /// LTI 1.3 services (slice 30): a platform's course (context) that launched SmartSchool, the class it is linked
 /// to, and the service URLs the platform offered (Names and Roles memberships, Assignment and Grade Services line items).
 model LtiContextLink {
@@ -3358,21 +3376,25 @@ model SubscriptionPlan {
 }
 
 model Subscription {
-  id                 String    @id @map("Id") @db.Char(36)
-  tenantId           String    @unique @map("TenantId") @db.Char(36)
-  planId             String    @map("PlanId") @db.Char(36)
-  status             String    @default("active") @map("Status") @db.VarChar(16)
-  seats              Int       @default(0) @map("Seats")
-  billingEmail       String?   @map("BillingEmail") @db.VarChar(120)
-  billingName        String?   @map("BillingName") @db.VarChar(200)
-  currentPeriodStart DateTime  @map("CurrentPeriodStart") @db.DateTime(6)
-  currentPeriodEnd   DateTime  @map("CurrentPeriodEnd") @db.DateTime(6)
-  trialEndsAt        DateTime? @map("TrialEndsAt") @db.DateTime(6)
-  provider           String    @default("manual") @map("Provider") @db.VarChar(16)
-  providerRef        String?   @map("ProviderRef") @db.VarChar(120)
-  canceledAt         DateTime? @map("CanceledAt") @db.DateTime(6)
-  createdAt          DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
-  updatedAt          DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
+  id                     String    @id @map("Id") @db.Char(36)
+  tenantId               String    @unique @map("TenantId") @db.Char(36)
+  planId                 String    @map("PlanId") @db.Char(36)
+  status                 String    @default("active") @map("Status") @db.VarChar(16)
+  seats                  Int       @default(0) @map("Seats")
+  billingEmail           String?   @map("BillingEmail") @db.VarChar(120)
+  billingName            String?   @map("BillingName") @db.VarChar(200)
+  currentPeriodStart     DateTime  @map("CurrentPeriodStart") @db.DateTime(6)
+  currentPeriodEnd       DateTime  @map("CurrentPeriodEnd") @db.DateTime(6)
+  trialEndsAt            DateTime? @map("TrialEndsAt") @db.DateTime(6)
+  provider               String    @default("manual") @map("Provider") @db.VarChar(16)
+  providerRef            String?   @map("ProviderRef") @db.VarChar(120)
+  /// Sales tax applied to invoices, set by the platform administrator (slice 30).
+  taxRatePercent         Decimal   @default(0) @map("TaxRatePercent") @db.Decimal(5, 2)
+  /// Proration owed (or credited, when negative) after a mid-period plan or seat change; settled on the next invoice.
+  pendingAdjustmentCents Int       @default(0) @map("PendingAdjustmentCents")
+  canceledAt             DateTime? @map("CanceledAt") @db.DateTime(6)
+  createdAt              DateTime  @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt              DateTime  @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
   tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   plan     SubscriptionPlan @relation(fields: [planId], references: [id])
