@@ -152,6 +152,19 @@ export class LtiService {
     return `${header}.${body}.${base64url(signature)}`;
   }
 
+  /** A JWT a tool signed (client assertion, deep-linking response), verified against the tool's key set. */
+  verifyToolJwt(
+    token: string,
+    jwksUrl: string,
+  ): Promise<Record<string, unknown>> {
+    return this.verifyIdToken(token, jwksUrl);
+  }
+
+  /** The payload of a state SmartSchool signed, or null when it is forged or expired. */
+  readState(state: string): Record<string, unknown> | null {
+    return this.verifyState(state);
+  }
+
   /** Verifies an RS256 id_token against a platform's JWKS (fetched and cached; refetched once on an unknown kid). */
   private async verifyIdToken(
     token: string,
@@ -734,6 +747,7 @@ export class LtiService {
     toolId: string,
     classId: string | undefined,
     actor: AuthenticatedUser,
+    options: { linkId?: string; deepLinking?: boolean } = {},
   ): Promise<string> {
     assertOrganizationAccess(actor, organizationId);
     const tool = await this.ownTool(organizationId, toolId);
@@ -753,10 +767,27 @@ export class LtiService {
           detail: 'Class not found.',
         });
     }
+    if (options.linkId) {
+      const link = await this.prisma.ltiToolLink.findFirst({
+        where: {
+          id: options.linkId,
+          toolId: tool.id,
+          ...(classId ? { classId } : {}),
+        },
+        select: { id: true },
+      });
+      if (!link)
+        throw new NotFoundException({
+          code: 'resource.not_found',
+          detail: 'Tool link not found.',
+        });
+    }
     const hint = this.signState({
       tool: tool.id,
       c: classId ?? null,
       u: actor.id,
+      ...(options.linkId ? { l: options.linkId } : {}),
+      ...(options.deepLinking ? { dl: 1 } : {}),
       exp: Date.now() + STATE_TTL_MS,
     });
     await this.audit.record({
@@ -829,14 +860,47 @@ export class LtiService {
             select: { id: true, name: true, section: true },
           })
         : null;
+    // A deep-linked piece of content carries its own target, custom parameters and line item (slice 30).
+    const link =
+      typeof hint.l === 'string'
+        ? await this.prisma.ltiToolLink.findFirst({
+            where: { id: hint.l, toolId: tool.id },
+          })
+        : null;
     const custom = {
       ...(tool.customParams
         ? (JSON.parse(tool.customParams) as Record<string, string>)
         : {}),
+      ...(link?.custom
+        ? (JSON.parse(link.custom) as Record<string, string>)
+        : {}),
       smartschool_user_id: user.id,
       ...(klass ? { smartschool_class_id: klass.id } : {}),
     };
+    const base = this.apiBase();
+    const deepLinking =
+      hint.dl === 1
+        ? {
+            returnUrl: `${base}/api/v1/lti/platform/deep-link-return`,
+            data: this.signState({
+              tool: tool.id,
+              c: klass?.id ?? null,
+              u: user.id,
+              exp: Date.now() + STATE_TTL_MS,
+            }),
+          }
+        : undefined;
     const claims = platformLaunchClaims({
+      services: klass
+        ? {
+            membershipsUrl: `${base}/api/v1/lti/nrps/classes/${klass.id}/memberships`,
+            lineItemsUrl: `${base}/api/v1/lti/ags/classes/${klass.id}/lineitems`,
+            lineItemUrl: link?.lineItemId
+              ? `${base}/api/v1/lti/ags/lineitems/${link.lineItemId}`
+              : null,
+          }
+        : undefined,
+      deepLinking,
       issuer: this.apiBase(),
       clientId: tool.clientId,
       deploymentId: tool.deploymentId,
@@ -848,8 +912,12 @@ export class LtiService {
         lastName: user.lastName,
         role: user.role,
       },
-      targetLinkUri: tool.launchUrl,
-      resourceLinkId: klass ? `${tool.id}:${klass.id}` : tool.id,
+      targetLinkUri: link?.url ?? tool.launchUrl,
+      resourceLinkId: link
+        ? link.id
+        : klass
+          ? `${tool.id}:${klass.id}`
+          : tool.id,
       context: klass
         ? {
             id: klass.id,

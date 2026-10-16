@@ -31,6 +31,7 @@ import {
   UpdateWebhookDto,
 } from './dto/integrations.dto';
 import { LtiService } from './lti.service';
+import { LtiPlatformService } from './lti-platform.service';
 import { WebhooksService } from './webhooks.service';
 
 /** Integrations an administrator manages for one school: webhooks, API keys, LTI platforms and tools. */
@@ -42,6 +43,7 @@ export class IntegrationsController {
     private readonly webhooks: WebhooksService,
     private readonly apiKeys: ApiKeysService,
     private readonly lti: LtiService,
+    private readonly platform: LtiPlatformService,
   ) {}
 
   // Webhooks -----------------------------------------------------------------
@@ -286,6 +288,31 @@ export class IntegrationsController {
     return this.lti.removeTool(organizationId, id, actor);
   }
 
+  @Post('lti/tools/:id/deep-link')
+  @RequireFeature('lti.launch')
+  @ApiOperation({
+    summary:
+      'Pick content from a tool for a class: an HTML page that starts a deep-linking launch (?classId=)',
+  })
+  async deepLink(
+    @Param('organizationId', ParseUUIDPipe) organizationId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('classId', ParseUUIDPipe) classId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const html = await this.platform.deepLinkRequest(
+      organizationId,
+      id,
+      classId,
+      actor,
+    );
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Security-Policy', LAUNCH_PAGE_CSP);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(html);
+  }
+
   @Get('lti/tools/:id/launch')
   @RequireFeature('lti.launch')
   @ApiOperation({
@@ -296,6 +323,7 @@ export class IntegrationsController {
     @Param('organizationId', ParseUUIDPipe) organizationId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Query('classId') classId: string | undefined,
+    @Query('linkId') linkId: string | undefined,
     @CurrentUser() actor: AuthenticatedUser,
     @Res() res: Response,
   ) {
@@ -304,6 +332,7 @@ export class IntegrationsController {
       id,
       classId || undefined,
       actor,
+      { linkId: linkId || undefined },
     );
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Security-Policy', LAUNCH_PAGE_CSP);

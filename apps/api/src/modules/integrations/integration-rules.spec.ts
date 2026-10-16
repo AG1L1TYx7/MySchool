@@ -33,6 +33,14 @@ import {
   nextPageFrom,
   scorePayload,
   scoreUrl,
+  checkDeepLinkingResponse,
+  lineItemView,
+  membershipsView,
+  resultView,
+  scoreToPercentage,
+  signServiceToken,
+  verifyServiceToken,
+  LTI_SCOPE,
 } from './integration-rules';
 
 describe('webhook rules', () => {
@@ -564,5 +572,194 @@ describe('LTI services (slice 30)', () => {
     expect((claims[`${LTI_DL_CLAIM}content_items`] as unknown[]).length).toBe(
       1,
     );
+  });
+});
+
+describe('LTI services as the platform (slice 30)', () => {
+  const now = new Date('2026-10-16T12:00:00Z');
+  it('issues and checks service tokens by tool, scope and expiry', () => {
+    const token = signServiceToken('secret', {
+      tool: 't1',
+      scopes: [LTI_SCOPE.score],
+      exp: now.getTime() + 1000,
+    });
+    expect(verifyServiceToken('secret', token, now.getTime())).toEqual({
+      tool: 't1',
+      scopes: [LTI_SCOPE.score],
+      exp: now.getTime() + 1000,
+    });
+    expect(verifyServiceToken('other', token, now.getTime())).toBeNull();
+    expect(
+      verifyServiceToken('secret', token, now.getTime() + 2000),
+    ).toBeNull();
+    expect(verifyServiceToken('secret', token + 'x', now.getTime())).toBeNull();
+    expect(verifyServiceToken('secret', 'nonsense', now.getTime())).toBeNull();
+  });
+
+  it('describes line items, results and memberships the way the services do', () => {
+    expect(
+      lineItemView('http://api/lineitems', {
+        id: 'li1',
+        label: 'Quiz',
+        scoreMaximum: '10.00',
+        resourceId: 'r1',
+        resourceLinkId: null,
+        tag: null,
+      }),
+    ).toEqual({
+      id: 'http://api/lineitems/li1',
+      label: 'Quiz',
+      scoreMaximum: 10,
+      resourceId: 'r1',
+    });
+    expect(
+      resultView('http://api/lineitems/li1', {
+        id: 's1',
+        userId: 'u1',
+        scoreGiven: '8.50',
+        scoreMaximum: '10',
+        comment: null,
+        timestamp: now,
+      }),
+    ).toEqual({
+      id: 'http://api/lineitems/li1/results/s1',
+      scoreOf: 'http://api/lineitems/li1',
+      userId: 'u1',
+      resultScore: 8.5,
+      resultMaximum: 10,
+      timestamp: '2026-10-16T12:00:00.000Z',
+    });
+    const m = membershipsView(
+      'http://api/m',
+      { id: 'c1', title: 'Math 8', label: 'A' },
+      [
+        {
+          userId: 'u1',
+          email: 'a@x',
+          firstName: 'Ana',
+          lastName: 'Roster',
+          roles: ['r'],
+        },
+      ],
+    );
+    expect(m).toMatchObject({ id: 'http://api/m', context: { id: 'c1' } });
+    expect((m.members as Array<Record<string, unknown>>)[0]).toMatchObject({
+      status: 'Active',
+      user_id: 'u1',
+      name: 'Ana Roster',
+    });
+    expect(scoreToPercentage(8.5, 10)).toBe(85);
+    expect(scoreToPercentage(1, 3)).toBe(33.33);
+    expect(scoreToPercentage(5, 0)).toBe(0);
+  });
+
+  it('adds the service and deep-linking claims to a platform launch', () => {
+    const base = {
+      issuer: 'http://api',
+      clientId: 'tool-1',
+      deploymentId: 'dep',
+      nonce: 'n',
+      user: {
+        id: 'u1',
+        email: 'e',
+        firstName: 'A',
+        lastName: 'B',
+        role: 'TEACHER' as const,
+      },
+      targetLinkUri: 'https://tool.test/launch',
+      resourceLinkId: 'rl',
+      context: { id: 'c1', title: 'Math' },
+      custom: {},
+      now,
+    };
+    const launch = platformLaunchClaims({
+      ...base,
+      services: {
+        membershipsUrl: 'http://api/nrps',
+        lineItemsUrl: 'http://api/ags',
+        lineItemUrl: 'http://api/ags/li1',
+      },
+    });
+    expect(launch[LTI_NRPS_CLAIM]).toEqual({
+      context_memberships_url: 'http://api/nrps',
+      service_versions: ['2.0'],
+    });
+    expect(launch[LTI_AGS_CLAIM]).toMatchObject({
+      lineitems: 'http://api/ags',
+      lineitem: 'http://api/ags/li1',
+    });
+    expect(launch[`${LTI_CLAIM}message_type`]).toBe('LtiResourceLinkRequest');
+    const dl = platformLaunchClaims({
+      ...base,
+      deepLinking: { returnUrl: 'http://api/return', data: 'state' },
+    });
+    expect(dl[`${LTI_CLAIM}message_type`]).toBe('LtiDeepLinkingRequest');
+    expect(dl[`${LTI_DL_CLAIM}deep_linking_settings`]).toMatchObject({
+      deep_link_return_url: 'http://api/return',
+      accept_types: ['ltiResourceLink'],
+      data: 'state',
+    });
+    expect(dl[`${LTI_CLAIM}resource_link`]).toBeUndefined();
+  });
+
+  it('checks a deep-linking response and keeps only usable resource links', () => {
+    const sec = Math.floor(now.getTime() / 1000);
+    const good = {
+      iss: 'tool-1',
+      aud: 'http://api',
+      exp: sec + 60,
+      iat: sec,
+      [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingResponse',
+      [`${LTI_CLAIM}version`]: '1.3.0',
+      [`${LTI_CLAIM}deployment_id`]: 'dep',
+      [`${LTI_DL_CLAIM}data`]: 'state',
+      [`${LTI_DL_CLAIM}content_items`]: [
+        {
+          type: 'ltiResourceLink',
+          title: 'Lab 3',
+          url: 'https://tool.test/labs/3',
+          custom: { lab: '3', bad: 5 },
+          lineItem: { scoreMaximum: 20, label: 'Lab 3' },
+        },
+        { type: 'ltiResourceLink', url: 'javascript:alert(1)' },
+        { type: 'link', url: 'https://tool.test/x' },
+        { type: 'ltiResourceLink', url: 'https://tool.test/ungraded' },
+      ],
+    };
+    const expected = {
+      clientId: 'tool-1',
+      issuer: 'http://api',
+      deploymentId: 'dep',
+      now,
+    };
+    const ok = checkDeepLinkingResponse(good, expected);
+    expect(ok.ok).toBe(true);
+    expect(ok.data).toBe('state');
+    expect(ok.items).toEqual([
+      {
+        title: 'Lab 3',
+        url: 'https://tool.test/labs/3',
+        custom: { lab: '3' },
+        lineItem: { scoreMaximum: 20, label: 'Lab 3' },
+      },
+      {
+        title: 'Tool content',
+        url: 'https://tool.test/ungraded',
+        custom: null,
+        lineItem: null,
+      },
+    ]);
+    expect(
+      checkDeepLinkingResponse({ ...good, iss: 'other' }, expected).reason,
+    ).toBe('issuer');
+    expect(
+      checkDeepLinkingResponse(
+        { ...good, [`${LTI_CLAIM}deployment_id`]: 'x' },
+        expected,
+      ).reason,
+    ).toBe('deployment');
+    expect(
+      checkDeepLinkingResponse({ ...good, exp: sec - 600 }, expected).reason,
+    ).toBe('expired');
   });
 });

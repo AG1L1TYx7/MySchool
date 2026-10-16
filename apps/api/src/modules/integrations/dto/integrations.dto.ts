@@ -246,6 +246,16 @@ export class CreateLtiToolDto {
 }
 
 export class UpdateLtiToolDto {
+  @ApiProperty({
+    required: false,
+    description:
+      "The tool's key set URL; needed for the token endpoint and deep-linking responses",
+  })
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @Length(8, 500)
+  jwksUrl?: string;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()

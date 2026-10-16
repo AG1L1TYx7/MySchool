@@ -812,6 +812,8 @@ model Class {
   enrollments      ClassEnrollment[]
   assignments      Assignment[]
   ltiContextLinks  LtiContextLink[]
+  ltiToolLinks     LtiToolLink[]
+  ltiLineItems     LtiLineItem[]
   attendance       Attendance[]
   academicYear     AcademicYear?     @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
   termRef          Term?             @relation(fields: [termId], references: [id], onDelete: SetNull)
@@ -956,6 +958,7 @@ model Assignment {
   organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   class            Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
   ltiLineItemLinks LtiLineItemLink[]
+  ltiLineItem      LtiLineItem?
   createdBy        User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
   rubric           Rubric?                @relation(fields: [rubricId], references: [id], onDelete: SetNull)
   h5pContent       H5PContent?            @relation(fields: [h5pContentId], references: [id], onDelete: SetNull)
@@ -2688,10 +2691,76 @@ model LtiTool {
   createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
   updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  links        LtiToolLink[]
+  lineItems    LtiLineItem[]
 
   @@index([organizationId, isActive])
   @@map("LtiTools")
+}
+
+/// Content a tool placed in a class through Deep Linking (SmartSchool as the platform, slice 30).
+model LtiToolLink {
+  id          String   @id @map("Id") @db.Char(36)
+  toolId      String   @map("ToolId") @db.Char(36)
+  classId     String   @map("ClassId") @db.Char(36)
+  title       String   @map("Title") @db.VarChar(200)
+  url         String   @map("Url") @db.VarChar(500)
+  custom      String?  @map("Custom") @db.Text
+  lineItemId  String?  @unique @map("LineItemId") @db.Char(36)
+  createdById String?  @map("CreatedById") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+
+  tool     LtiTool      @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  class    Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  lineItem LtiLineItem? @relation(fields: [lineItemId], references: [id], onDelete: SetNull)
+
+  @@index([classId])
+  @@map("LtiToolLinks")
+}
+
+/// A line item a tool owns in a class (Assignment and Grade Services as the platform); its scores reach the
+/// gradebook through the assignment created with it.
+model LtiLineItem {
+  id             String   @id @map("Id") @db.Char(36)
+  toolId         String   @map("ToolId") @db.Char(36)
+  classId        String   @map("ClassId") @db.Char(36)
+  assignmentId   String?  @unique @map("AssignmentId") @db.Char(36)
+  label          String   @map("Label") @db.VarChar(200)
+  scoreMaximum   Decimal  @map("ScoreMaximum") @db.Decimal(9, 2)
+  resourceId     String?  @map("ResourceId") @db.VarChar(255)
+  resourceLinkId String?  @map("ResourceLinkId") @db.VarChar(255)
+  tag            String?  @map("Tag") @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("CreatedAt") @db.DateTime(6)
+  updatedAt      DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  tool       LtiTool      @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  class      Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  assignment Assignment?  @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  scores     LtiScore[]
+  link       LtiToolLink?
+
+  @@index([toolId, classId])
+  @@map("LtiLineItems")
+}
+
+/// A score a tool posted for one learner on one line item (the result the tool can read back).
+model LtiScore {
+  id               String   @id @map("Id") @db.Char(36)
+  lineItemId       String   @map("LineItemId") @db.Char(36)
+  userId           String   @map("UserId") @db.Char(36)
+  scoreGiven       Decimal? @map("ScoreGiven") @db.Decimal(9, 2)
+  scoreMaximum     Decimal  @map("ScoreMaximum") @db.Decimal(9, 2)
+  activityProgress String   @map("ActivityProgress") @db.VarChar(32)
+  gradingProgress  String   @map("GradingProgress") @db.VarChar(32)
+  comment          String?  @map("Comment") @db.Text
+  timestamp        DateTime @map("Timestamp") @db.DateTime(6)
+  updatedAt        DateTime @updatedAt @map("UpdatedAt") @db.DateTime(6)
+
+  lineItem LtiLineItem @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+
+  @@unique([lineItemId, userId])
+  @@map("LtiScores")
 }
 
 /// LTI 1.3 services (slice 30): a platform's course (context) that launched SmartSchool, the class it is linked

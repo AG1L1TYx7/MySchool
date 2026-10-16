@@ -7,6 +7,9 @@ import { ExportsService } from './exports.service';
 import { IntegrationsController } from './integrations.controller';
 import { LtiController } from './lti.controller';
 import { LtiService } from './lti.service';
+import { LtiLinksController } from './lti-links.controller';
+import { LtiPlatformController } from './lti-platform.controller';
+import { LtiPlatformService } from './lti-platform.service';
 import { LtiServicesController } from './lti-services.controller';
 import { LtiServicesListener } from './lti-services.listener';
 import { LtiServicesService } from './lti-services.service';
@@ -20,6 +23,8 @@ import { WebhooksService } from './webhooks.service';
     IntegrationsController,
     LtiController,
     LtiServicesController,
+    LtiPlatformController,
+    LtiLinksController,
     ExportsController,
   ],
   providers: [
@@ -29,6 +34,7 @@ import { WebhooksService } from './webhooks.service';
     LtiService,
     LtiServicesService,
     LtiServicesListener,
+    LtiPlatformService,
   ],
   exports: [ApiKeysService, WebhooksService],
 })

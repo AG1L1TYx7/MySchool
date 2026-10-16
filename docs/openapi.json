@@ -13181,6 +13181,51 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/lti/tools/{id}/deep-link": {
+      "post": {
+        "operationId": "IntegrationsController_deepLink_api/v1",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "classId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pick content from a tool for a class: an HTML page that starts a deep-linking launch (?classId=)",
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/lti/tools/{id}/launch": {
       "get": {
         "operationId": "IntegrationsController_launchTool_api/v1",
@@ -13568,6 +13613,288 @@
           }
         },
         "summary": "The picker form posts here; answers with a page that posts the signed deep-linking response to the platform",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/token": {
+      "post": {
+        "operationId": "LtiPlatformController_token_api/v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "OAuth 2 token endpoint for tools: client_credentials with a client assertion signed by the tool key",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/nrps/classes/{classId}/memberships": {
+      "get": {
+        "operationId": "LtiPlatformController_memberships_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Names and Roles: the members of a class, for a tool with the membership scope",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/ags/classes/{classId}/lineitems": {
+      "get": {
+        "operationId": "LtiPlatformController_lineItems_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Assignment and Grade Services: a tool's line items in a class",
+        "tags": [
+          "LTI"
+        ]
+      },
+      "post": {
+        "operationId": "LtiPlatformController_createLineItem_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Assignment and Grade Services: create a line item (an assignment in the class)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/ags/lineitems/{id}": {
+      "get": {
+        "operationId": "LtiPlatformController_lineItem_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Assignment and Grade Services: one line item",
+        "tags": [
+          "LTI"
+        ]
+      },
+      "put": {
+        "operationId": "LtiPlatformController_updateLineItem_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Assignment and Grade Services: update a line item",
+        "tags": [
+          "LTI"
+        ]
+      },
+      "delete": {
+        "operationId": "LtiPlatformController_deleteLineItem_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Assignment and Grade Services: delete a line item",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/ags/lineitems/{id}/scores": {
+      "post": {
+        "operationId": "LtiPlatformController_score_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Assignment and Grade Services: post a score; a fully graded score becomes a grade in the gradebook",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/ags/lineitems/{id}/results": {
+      "get": {
+        "operationId": "LtiPlatformController_results_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Assignment and Grade Services: the results of a line item",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/lti/platform/deep-link-return": {
+      "post": {
+        "operationId": "LtiPlatformController_deepLinkReturn_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Deep Linking return: the tool posts its signed content items; they become links in the class",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/lti-links": {
+      "get": {
+        "operationId": "LtiLinksController_list_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tool content placed in this class, openable by its people",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/lti-links/{id}": {
+      "delete": {
+        "operationId": "LtiLinksController_remove_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a piece of tool content from the class (its teachers)",
         "tags": [
           "LTI"
         ]
@@ -21920,6 +22247,10 @@
       "UpdateLtiToolDto": {
         "type": "object",
         "properties": {
+          "jwksUrl": {
+            "type": "string",
+            "description": "The tool's key set URL; needed for the token endpoint and deep-linking responses"
+          },
           "name": {
             "type": "string"
           },

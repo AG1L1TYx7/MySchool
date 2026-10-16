@@ -712,9 +712,49 @@ export function platformLaunchClaims(input: {
   custom: Record<string, string>;
   now: Date;
   ttlSeconds?: number;
+  /** Service endpoints SmartSchool offers the tool for this class (slice 30). */
+  services?: {
+    membershipsUrl: string;
+    lineItemsUrl: string;
+    lineItemUrl?: string | null;
+  };
+  /** When set, the launch is a deep-linking request instead of a resource link. */
+  deepLinking?: { returnUrl: string; data: string };
 }): Record<string, unknown> {
   const iat = Math.floor(input.now.getTime() / 1000);
   return {
+    ...(input.services
+      ? {
+          [LTI_NRPS_CLAIM]: {
+            context_memberships_url: input.services.membershipsUrl,
+            service_versions: ['2.0'],
+          },
+          [LTI_AGS_CLAIM]: {
+            scope: [
+              LTI_SCOPE.lineItem,
+              LTI_SCOPE.lineItemRead,
+              LTI_SCOPE.result,
+              LTI_SCOPE.score,
+            ],
+            lineitems: input.services.lineItemsUrl,
+            ...(input.services.lineItemUrl
+              ? { lineitem: input.services.lineItemUrl }
+              : {}),
+          },
+        }
+      : {}),
+    ...(input.deepLinking
+      ? {
+          [`${LTI_DL_CLAIM}deep_linking_settings`]: {
+            deep_link_return_url: input.deepLinking.returnUrl,
+            accept_types: ['ltiResourceLink'],
+            accept_presentation_document_targets: ['iframe', 'window'],
+            accept_multiple: true,
+            auto_create: true,
+            data: input.deepLinking.data,
+          },
+        }
+      : {}),
     iss: input.issuer,
     sub: input.user.id,
     aud: input.clientId,
@@ -725,11 +765,15 @@ export function platformLaunchClaims(input: {
     given_name: input.user.firstName,
     family_name: input.user.lastName,
     name: `${input.user.firstName} ${input.user.lastName}`.trim(),
-    [`${LTI_CLAIM}message_type`]: LTI_RESOURCE_LINK,
+    [`${LTI_CLAIM}message_type`]: input.deepLinking
+      ? LTI_DEEP_LINK_REQUEST
+      : LTI_RESOURCE_LINK,
     [`${LTI_CLAIM}version`]: LTI_VERSION,
     [`${LTI_CLAIM}deployment_id`]: input.deploymentId,
     [`${LTI_CLAIM}target_link_uri`]: input.targetLinkUri,
-    [`${LTI_CLAIM}resource_link`]: { id: input.resourceLinkId },
+    ...(input.deepLinking
+      ? {}
+      : { [`${LTI_CLAIM}resource_link`]: { id: input.resourceLinkId } }),
     [`${LTI_CLAIM}roles`]: ltiRolesFor(input.user.role),
     ...(input.context
       ? {
@@ -958,6 +1002,250 @@ export function deepLinkingResponseClaims(input: {
     [`${LTI_CLAIM}deployment_id`]: input.deploymentId,
     [`${LTI_DL_CLAIM}content_items`]: input.items,
     ...(input.data ? { [`${LTI_DL_CLAIM}data`]: input.data } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// LTI services with SmartSchool as the platform (slice 30)
+// ---------------------------------------------------------------------------
+
+/** What a tool sends to create or update a line item (AGS 2.0 section 3.2). */
+export interface LineItemInput {
+  label: string;
+  scoreMaximum: number;
+  resourceId?: string;
+  resourceLinkId?: string;
+  tag?: string;
+}
+
+/** A score a tool posts (AGS 2.0 section 3.3); userId is the SmartSchool user id the launch carried. */
+export interface ScoreInput {
+  userId: string;
+  scoreGiven?: number;
+  scoreMaximum?: number;
+  activityProgress?: string;
+  gradingProgress?: string;
+  comment?: string;
+  timestamp?: string;
+}
+
+export interface ServiceTokenPayload {
+  tool: string;
+  scopes: string[];
+  exp: number;
+}
+
+/** The access token SmartSchool issues to a tool: an HMAC-signed payload naming the tool, its scopes and the expiry. */
+export function signServiceToken(
+  secret: string,
+  payload: ServiceTokenPayload,
+): string {
+  const body = base64url(JSON.stringify(payload));
+  const sig = createHmac('sha256', secret)
+    .update(`lti-service:${body}`)
+    .digest('base64url');
+  return `${body}.${sig}`;
+}
+
+export function verifyServiceToken(
+  secret: string,
+  token: string,
+  nowMs: number,
+): ServiceTokenPayload | null {
+  const [body, sig] = token.split('.');
+  if (!body || !sig) return null;
+  const expected = createHmac('sha256', secret)
+    .update(`lti-service:${body}`)
+    .digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(body, 'base64url').toString('utf8'),
+    ) as ServiceTokenPayload;
+    if (
+      typeof payload.tool !== 'string' ||
+      !Array.isArray(payload.scopes) ||
+      typeof payload.exp !== 'number' ||
+      payload.exp < nowMs
+    )
+      return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/** A percentage with two decimals, never above 100 for extra credit beyond the maximum. */
+export function scoreToPercentage(given: number, max: number): number {
+  if (!(max > 0)) return 0;
+  return Math.round((given / max) * 10000) / 100;
+}
+
+/** A line item as AGS describes it; `id` is its own URL. */
+export function lineItemView(
+  base: string,
+  item: {
+    id: string;
+    label: string;
+    scoreMaximum: unknown;
+    resourceId: string | null;
+    resourceLinkId: string | null;
+    tag: string | null;
+  },
+): Record<string, unknown> {
+  return {
+    id: `${base}/${item.id}`,
+    label: item.label,
+    scoreMaximum: Number(item.scoreMaximum),
+    ...(item.resourceId ? { resourceId: item.resourceId } : {}),
+    ...(item.resourceLinkId ? { resourceLinkId: item.resourceLinkId } : {}),
+    ...(item.tag ? { tag: item.tag } : {}),
+  };
+}
+
+export function resultView(
+  lineItemUrl: string,
+  score: {
+    id: string;
+    userId: string;
+    scoreGiven: unknown;
+    scoreMaximum: unknown;
+    comment: string | null;
+    timestamp: Date;
+  },
+): Record<string, unknown> {
+  return {
+    id: `${lineItemUrl}/results/${score.id}`,
+    scoreOf: lineItemUrl,
+    userId: score.userId,
+    ...(score.scoreGiven === null || score.scoreGiven === undefined
+      ? {}
+      : { resultScore: Number(score.scoreGiven) }),
+    resultMaximum: Number(score.scoreMaximum),
+    ...(score.comment ? { comment: score.comment } : {}),
+    timestamp: score.timestamp.toISOString(),
+  };
+}
+
+/** A Names and Roles membership container for a class (NRPS 2.0 section 4). */
+export function membershipsView(
+  id: string,
+  context: { id: string; title: string; label: string },
+  members: Array<{
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    roles: string[];
+  }>,
+): Record<string, unknown> {
+  return {
+    id,
+    context,
+    members: members.map((m) => ({
+      status: 'Active',
+      user_id: m.userId,
+      roles: m.roles,
+      email: m.email,
+      given_name: m.firstName,
+      family_name: m.lastName,
+      name: `${m.firstName} ${m.lastName}`.trim(),
+    })),
+  };
+}
+
+export interface DeepLinkItem {
+  title: string;
+  url: string;
+  custom: Record<string, string> | null;
+  lineItem: {
+    scoreMaximum: number;
+    label?: string;
+    resourceId?: string;
+    tag?: string;
+  } | null;
+}
+
+export interface DeepLinkResponseCheck {
+  ok: boolean;
+  reason?: string;
+  data: string | null;
+  items: DeepLinkItem[];
+}
+
+/** The checks on a tool's deep-linking response after its signature (Deep Linking 2.0 section 3.5). */
+export function checkDeepLinkingResponse(
+  claims: Record<string, unknown>,
+  expected: {
+    clientId: string;
+    issuer: string;
+    deploymentId: string;
+    now: Date;
+  },
+): DeepLinkResponseCheck {
+  const fail = (reason: string): DeepLinkResponseCheck => ({
+    ok: false,
+    reason,
+    data: null,
+    items: [],
+  });
+  if (claims.iss !== expected.clientId) return fail('issuer');
+  const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  if (!aud.includes(expected.issuer)) return fail('audience');
+  const sec = expected.now.getTime() / 1000;
+  if (typeof claims.exp !== 'number' || claims.exp < sec - 60)
+    return fail('expired');
+  if (claims[`${LTI_CLAIM}message_type`] !== LTI_DEEP_LINK_RESPONSE)
+    return fail('message_type');
+  if (claims[`${LTI_CLAIM}version`] !== LTI_VERSION) return fail('version');
+  if (claims[`${LTI_CLAIM}deployment_id`] !== expected.deploymentId)
+    return fail('deployment');
+  const raw = claims[`${LTI_DL_CLAIM}content_items`];
+  if (!Array.isArray(raw)) return fail('content_items');
+  const items: DeepLinkItem[] = [];
+  for (const entry of raw.slice(0, 50)) {
+    const it = (entry ?? {}) as Record<string, unknown>;
+    if (it.type !== 'ltiResourceLink') continue;
+    const url = urlClaim(it.url);
+    if (!url) continue;
+    const title =
+      typeof it.title === 'string' && it.title.trim()
+        ? it.title.trim()
+        : 'Tool content';
+    const custom =
+      it.custom && typeof it.custom === 'object'
+        ? Object.fromEntries(
+            Object.entries(it.custom as Record<string, unknown>)
+              .filter(
+                ([k, v]) =>
+                  /^[A-Za-z0-9_]{1,64}$/.test(k) && typeof v === 'string',
+              )
+              .map(([k, v]) => [k, (v as string).slice(0, 500)]),
+          )
+        : null;
+    const li = (it.lineItem ?? null) as Record<string, unknown> | null;
+    const lineItem =
+      li && typeof li.scoreMaximum === 'number' && li.scoreMaximum > 0
+        ? {
+            scoreMaximum: li.scoreMaximum,
+            ...(typeof li.label === 'string' ? { label: li.label } : {}),
+            ...(typeof li.resourceId === 'string'
+              ? { resourceId: li.resourceId }
+              : {}),
+            ...(typeof li.tag === 'string' ? { tag: li.tag } : {}),
+          }
+        : null;
+    items.push({ title, url, custom, lineItem });
+  }
+  return {
+    ok: true,
+    data:
+      typeof claims[`${LTI_DL_CLAIM}data`] === 'string'
+        ? (claims[`${LTI_DL_CLAIM}data`] as string)
+        : null,
+    items,
   };
 }
 

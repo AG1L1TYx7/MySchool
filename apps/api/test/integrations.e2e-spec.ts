@@ -81,6 +81,7 @@ describe('Integrations (e2e)', () => {
   let orgId = '';
   let classId = '';
   let ltiClassId = '';
+  let toolKey: { privateKey: KeyObject; jwk: JsonWebKey & { kid: string } };
   let teacherId = '';
 
   // A receiver for webhooks and a JWKS endpoint for the pretend platform, on one local server.
@@ -122,6 +123,16 @@ describe('Integrations (e2e)', () => {
 
   beforeAll(async () => {
     stub = await startAiStub(AI_STUB_TOKEN, AI_STUB_PORT);
+    const toolPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    toolKey = {
+      privateKey: toolPair.privateKey,
+      jwk: {
+        ...toolPair.publicKey.export({ format: 'jwk' }),
+        kid: 'tool-k1',
+        alg: 'RS256',
+        use: 'sig',
+      },
+    };
     const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
     platformKey = {
       privateKey: pair.privateKey,
@@ -140,6 +151,11 @@ describe('Integrations (e2e)', () => {
         if (path === '/jwks') {
           res.setHeader('content-type', 'application/json');
           res.end(JSON.stringify({ keys: [platformKey.jwk] }));
+          return;
+        }
+        if (path === '/tool-jwks') {
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({ keys: [toolKey.jwk] }));
           return;
         }
         // The platform's token endpoint and Names and Roles container (slice 30).
@@ -1159,6 +1175,365 @@ describe('Integrations (e2e)', () => {
         lti_message_hint: hint,
       })
       .expect(400);
+  });
+
+  it('gives a tool a service token for a signed assertion, and the roster and line items of a class', async () => {
+    const tool = await prisma.ltiTool.findFirstOrThrow({
+      where: { name: `Graphing ${stamp}` },
+    });
+    await request(server)
+      .patch(`/api/v1/organizations/${orgId}/lti/tools/${tool.id}`)
+      .set(as('principal'))
+      .send({ jwksUrl: `${localBase}/tool-jwks` })
+      .expect(200);
+    const sec = Math.floor(Date.now() / 1000);
+    const assertion = (over: Record<string, unknown> = {}) =>
+      signWith(toolKey.privateKey, 'tool-k1', {
+        iss: tool.clientId,
+        sub: tool.clientId,
+        aud: 'http://localhost:5000/api/v1/lti/token',
+        iat: sec,
+        exp: sec + 300,
+        jti: `j-${stamp}`,
+        ...over,
+      });
+    const tokenReq = (client_assertion: string, scope?: string) =>
+      request(server)
+        .post('/api/v1/lti/token')
+        .type('form')
+        .send({
+          grant_type: 'client_credentials',
+          client_assertion_type:
+            'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+          client_assertion,
+          ...(scope ? { scope } : {}),
+        });
+    await tokenReq(assertion({ aud: 'https://elsewhere.test/token' })).expect(
+      401,
+    );
+    await tokenReq(
+      signWith(platformKey.privateKey, 'platform-k1', {
+        iss: tool.clientId,
+        sub: tool.clientId,
+        aud: 'http://localhost:5000/api/v1/lti/token',
+        iat: sec,
+        exp: sec + 300,
+      }),
+    ).expect(401);
+    const granted = await tokenReq(
+      assertion(),
+      `${LTI_SCOPE.memberships} ${LTI_SCOPE.lineItem} ${LTI_SCOPE.score} ${LTI_SCOPE.result}`,
+    ).expect(200);
+    const token = (granted.body as { access_token: string }).access_token;
+    expect(token).toBeTruthy();
+    const bearer = { Authorization: `Bearer ${token}` };
+    // Names and Roles for the demo class: the teacher and the enrolled students.
+    const members = await request(server)
+      .get(`/api/v1/lti/nrps/classes/${classId}/memberships`)
+      .set(bearer)
+      .expect(200);
+    expect(members.headers['content-type']).toContain('membershipcontainer');
+    const container = members.body as {
+      context: { id: string };
+      members: Array<{ user_id: string; roles: string[]; status: string }>;
+    };
+    expect(container.context.id).toBe(classId);
+    expect(
+      container.members.some(
+        (m) => m.user_id === teacherId && m.roles[0].endsWith('#Instructor'),
+      ),
+    ).toBe(true);
+    expect(
+      container.members.filter((m) => m.roles[0].endsWith('#Learner')).length,
+    ).toBeGreaterThan(0);
+    await request(server)
+      .get(`/api/v1/lti/nrps/classes/${classId}/memberships`)
+      .set({ Authorization: 'Bearer nonsense' })
+      .expect(401);
+    // A line item is an assignment in the class; a fully graded score becomes a grade.
+    const created = await request(server)
+      .post(`/api/v1/lti/ags/classes/${classId}/lineitems`)
+      .set(bearer)
+      .send({
+        label: `Tool quiz ${stamp}`,
+        scoreMaximum: 20,
+        resourceId: 'quiz-9',
+      })
+      .expect(201);
+    const item = created.body as {
+      id: string;
+      label: string;
+      scoreMaximum: number;
+    };
+    expect(item.scoreMaximum).toBe(20);
+    const lineItemId = item.id.split('/').pop() ?? '';
+    const assignment = await prisma.assignment.findFirstOrThrow({
+      where: { classId, title: `Tool quiz ${stamp}` },
+    });
+    expect(assignment).toMatchObject({
+      submissionType: 'EXTERNAL',
+      status: 'PUBLISHED',
+    });
+    const listed = await request(server)
+      .get(`/api/v1/lti/ags/classes/${classId}/lineitems`)
+      .set(bearer)
+      .expect(200);
+    expect((listed.body as Array<{ id: string }>).map((l) => l.id)).toContain(
+      item.id,
+    );
+    const learner = container.members.find((m) =>
+      m.roles[0].endsWith('#Learner'),
+    )!;
+    await request(server)
+      .post(`/api/v1/lti/ags/lineitems/${lineItemId}/scores`)
+      .set(bearer)
+      .send({
+        userId: learner.user_id,
+        scoreGiven: 17,
+        scoreMaximum: 20,
+        activityProgress: 'Completed',
+        gradingProgress: 'FullyGraded',
+        timestamp: new Date().toISOString(),
+        comment: 'Nice work',
+      })
+      .expect(200);
+    const student = await prisma.student.findFirstOrThrow({
+      where: { userId: learner.user_id },
+    });
+    const grade = await prisma.grade.findUniqueOrThrow({
+      where: {
+        assignmentId_studentId: {
+          assignmentId: assignment.id,
+          studentId: student.id,
+        },
+      },
+    });
+    expect(Number(grade.score)).toBe(17);
+    expect(Number(grade.percentage)).toBe(85);
+    const results = await request(server)
+      .get(`/api/v1/lti/ags/lineitems/${lineItemId}/results`)
+      .set(bearer)
+      .expect(200);
+    expect(
+      (
+        results.body as Array<{
+          userId: string;
+          resultScore: number;
+          comment: string;
+        }>
+      )[0],
+    ).toMatchObject({
+      userId: learner.user_id,
+      resultScore: 17,
+      comment: 'Nice work',
+    });
+    // An older score does not overwrite a newer one.
+    await request(server)
+      .post(`/api/v1/lti/ags/lineitems/${lineItemId}/scores`)
+      .set(bearer)
+      .send({
+        userId: learner.user_id,
+        scoreGiven: 2,
+        scoreMaximum: 20,
+        timestamp: '2020-01-01T00:00:00Z',
+      })
+      .expect(200);
+    expect(
+      Number(
+        (await prisma.grade.findUniqueOrThrow({ where: { id: grade.id } }))
+          .score,
+      ),
+    ).toBe(17);
+    // A token without the scope is refused.
+    const narrow = await tokenReq(
+      assertion({ jti: `j2-${stamp}` }),
+      LTI_SCOPE.result,
+    ).expect(200);
+    await request(server)
+      .post(`/api/v1/lti/ags/classes/${classId}/lineitems`)
+      .set({
+        Authorization: `Bearer ${(narrow.body as { access_token: string }).access_token}`,
+      })
+      .send({ label: 'x', scoreMaximum: 1 })
+      .expect(403);
+  });
+
+  it('lets a teacher pick content from a tool and places it in the class with its line item', async () => {
+    const tool = await prisma.ltiTool.findFirstOrThrow({
+      where: { name: `Graphing ${stamp}` },
+    });
+    await request(server)
+      .post(
+        `/api/v1/organizations/${orgId}/lti/tools/${tool.id}/deep-link?classId=${classId}`,
+      )
+      .set(as('student'))
+      .expect(403);
+    const page = await request(server)
+      .post(
+        `/api/v1/organizations/${orgId}/lti/tools/${tool.id}/deep-link?classId=${classId}`,
+      )
+      .set(as('teacher'))
+      .expect(201);
+    const hint =
+      /name="lti_message_hint" value="([^"]+)"/.exec(page.text)?.[1] ?? '';
+    const auth = await request(server)
+      .get('/api/v1/lti/platform/auth')
+      .query({
+        scope: 'openid',
+        response_type: 'id_token',
+        client_id: tool.clientId,
+        redirect_uri: 'https://tool.test/launch',
+        login_hint: teacherId,
+        nonce: 'nonce-dl',
+        state: 's',
+        lti_message_hint: hint,
+      })
+      .expect(200);
+    const idToken =
+      /name="id_token" value="([^"]+)"/.exec(auth.text)?.[1] ?? '';
+    const claims = JSON.parse(
+      Buffer.from(idToken.split('.')[1], 'base64url').toString(),
+    ) as Record<string, unknown>;
+    expect(claims[`${LTI_CLAIM}message_type`]).toBe('LtiDeepLinkingRequest');
+    const settings = claims[`${LTI_DL_CLAIM}deep_linking_settings`] as {
+      deep_link_return_url: string;
+      data: string;
+    };
+    expect(settings.deep_link_return_url).toBe(
+      'http://localhost:5000/api/v1/lti/platform/deep-link-return',
+    );
+    // The tool answers with two resource links, one graded.
+    const sec = Math.floor(Date.now() / 1000);
+    const response = signWith(toolKey.privateKey, 'tool-k1', {
+      iss: tool.clientId,
+      aud: 'http://localhost:5000',
+      iat: sec,
+      exp: sec + 300,
+      nonce: 'r1',
+      [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingResponse',
+      [`${LTI_CLAIM}version`]: '1.3.0',
+      [`${LTI_CLAIM}deployment_id`]: tool.deploymentId,
+      [`${LTI_DL_CLAIM}data`]: settings.data,
+      [`${LTI_DL_CLAIM}content_items`]: [
+        {
+          type: 'ltiResourceLink',
+          title: `Graph lab ${stamp}`,
+          url: 'https://tool.test/labs/1',
+          custom: { lab: '1' },
+          lineItem: { scoreMaximum: 25, label: `Graph lab ${stamp}` },
+        },
+        {
+          type: 'ltiResourceLink',
+          title: `Graph reading ${stamp}`,
+          url: 'https://tool.test/read/1',
+        },
+      ],
+    });
+    const back = await request(server)
+      .post('/api/v1/lti/platform/deep-link-return')
+      .type('form')
+      .send({ JWT: response })
+      .expect(302);
+    expect(back.headers.location).toBe(
+      `http://localhost:3000/classes/${classId}?tools=2`,
+    );
+    const links = (
+      await request(server)
+        .get(`/api/v1/classes/${classId}/lti-links`)
+        .set(as('student'))
+        .expect(200)
+    ).body as Array<{
+      id: string;
+      title: string;
+      graded: boolean;
+      tool: { id: string };
+    }>;
+    const lab = links.find((l) => l.title === `Graph lab ${stamp}`)!;
+    expect(lab.graded).toBe(true);
+    expect(
+      links.find((l) => l.title === `Graph reading ${stamp}`)?.graded,
+    ).toBe(false);
+    expect(
+      await prisma.assignment.count({
+        where: {
+          classId,
+          title: `Graph lab ${stamp}`,
+          submissionType: 'EXTERNAL',
+        },
+      }),
+    ).toBe(1);
+    // Launching the placed content targets its URL, carries its custom parameters and its line item.
+    const launch = await request(server)
+      .get(
+        `/api/v1/organizations/${orgId}/lti/tools/${tool.id}/launch?classId=${classId}&linkId=${lab.id}`,
+      )
+      .set(as('teacher'))
+      .expect(200);
+    const hint2 =
+      /name="lti_message_hint" value="([^"]+)"/.exec(launch.text)?.[1] ?? '';
+    const auth2 = await request(server)
+      .get('/api/v1/lti/platform/auth')
+      .query({
+        scope: 'openid',
+        response_type: 'id_token',
+        client_id: tool.clientId,
+        redirect_uri: 'https://tool.test/launch',
+        login_hint: teacherId,
+        nonce: 'nonce-link',
+        lti_message_hint: hint2,
+      })
+      .expect(200);
+    const claims2 = JSON.parse(
+      Buffer.from(
+        (/name="id_token" value="([^"]+)"/.exec(auth2.text)?.[1] ?? '').split(
+          '.',
+        )[1],
+        'base64url',
+      ).toString(),
+    ) as Record<string, unknown>;
+    expect(claims2[`${LTI_CLAIM}target_link_uri`]).toBe(
+      'https://tool.test/labs/1',
+    );
+    expect(claims2[`${LTI_CLAIM}resource_link`]).toEqual({ id: lab.id });
+    expect(claims2[`${LTI_CLAIM}custom`]).toMatchObject({
+      lab: '1',
+      smartschool_class_id: classId,
+    });
+    expect((claims2[LTI_AGS_CLAIM] as { lineitem: string }).lineitem).toMatch(
+      /\/api\/v1\/lti\/ags\/lineitems\//,
+    );
+    expect(
+      (claims2[LTI_NRPS_CLAIM] as { context_memberships_url: string })
+        .context_memberships_url,
+    ).toBe(
+      `http://localhost:5000/api/v1/lti/nrps/classes/${classId}/memberships`,
+    );
+    // A forged response (signed by the platform key, not the tool's) is refused.
+    const forged = signWith(platformKey.privateKey, 'platform-k1', {
+      iss: tool.clientId,
+      aud: 'http://localhost:5000',
+      iat: sec,
+      exp: sec + 300,
+      [`${LTI_CLAIM}message_type`]: 'LtiDeepLinkingResponse',
+      [`${LTI_CLAIM}version`]: '1.3.0',
+      [`${LTI_CLAIM}deployment_id`]: tool.deploymentId,
+      [`${LTI_DL_CLAIM}data`]: settings.data,
+      [`${LTI_DL_CLAIM}content_items`]: [],
+    });
+    const refused = await request(server)
+      .post('/api/v1/lti/platform/deep-link-return')
+      .type('form')
+      .send({ JWT: forged })
+      .expect(302);
+    expect(refused.headers.location).toContain('error=lti_');
+    await request(server)
+      .delete(`/api/v1/classes/${classId}/lti-links/${lab.id}`)
+      .set(as('student'))
+      .expect(403);
+    await request(server)
+      .delete(`/api/v1/classes/${classId}/lti-links/${lab.id}`)
+      .set(as('teacher'))
+      .expect(204);
   });
 
   // ---------------------------------------------------------------------------

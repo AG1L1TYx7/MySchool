@@ -210,6 +210,19 @@ A provider is enabled when its credentials are present; there is no separate ena
 
 Every URL above comes from the platform's launch claims or registration and passes `assertPublicHttpUrl` (docs/21 F08) before each call; plain http on localhost is allowed outside production for tests.
 
+### 8b. LTI 1.3 services, SmartSchool as the platform (slice 30)
+
+| Endpoint | Auth | Contract |
+|---|---|---|
+| `POST /lti/token` | the tool's client assertion (RS256 JWT, `iss` = `sub` = client id, `aud` = this URL, `exp` within five minutes, verified against the tool's registered JWKS URL) | form fields `grant_type=client_credentials`, `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`, `client_assertion`, optional `scope`; answers `{ access_token, token_type: "Bearer", expires_in: 3600, scope }`; unknown or unverifiable assertions get 401 |
+| `GET /lti/nrps/classes/{classId}/memberships` | `Authorization: Bearer <service token>` with the contextmembership scope | NRPS 2.0 container (`id`, `context`, `members[]` with `status`, `user_id`, `roles`, `email`, names); the class must belong to the tool's school |
+| `GET|POST /lti/ags/classes/{classId}/lineitems`, `GET|PUT|DELETE /lti/ags/lineitems/{id}` | lineitem (or lineitem.readonly for reads) | AGS 2.0 line items (`id` is the item's URL, `label`, `scoreMaximum`, `resourceId`, `resourceLinkId`, `tag`); creating one creates a published `EXTERNAL` assignment in the class; deleting removes the assignment only when it has no grades |
+| `POST /lti/ags/lineitems/{id}/scores` | score | `{ userId, scoreGiven?, scoreMaximum?, activityProgress?, gradingProgress?, comment?, timestamp? }`; answers `{ accepted }` (false when an older timestamp arrives after a newer one); a fully graded score with a value upserts the learner's grade and emits `grade.posted` |
+| `GET /lti/ags/lineitems/{id}/results?user_id=` | result.readonly | AGS results (`scoreOf`, `userId`, `resultScore`, `resultMaximum`, `comment`, `timestamp`) |
+| `POST /lti/platform/deep-link-return` | the tool's signed `JWT` form field (verified against its JWKS; `iss` client id, `aud` our issuer, `deployment_id`, `data` = the state we signed in the request) | `ltiResourceLink` items become class links and, with `lineItem`, assignments; redirects the browser to the class page |
+
+Launches SmartSchool sends into a class carry the `namesroleservice` claim (the memberships URL), the `endpoint` claim (the four AGS scopes, the class line-items URL and the content's own line item when it has one) and, for a deep-linking launch, `deep_linking_settings` with the return URL, accepted types and signed `data`.
+
 ---
 
 ## 9. Configuration keys that must agree between services
