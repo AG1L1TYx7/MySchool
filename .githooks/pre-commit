@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Pre-commit secret scan (docs/21 section 5, slice 33). Enable once per clone:
+#   git config core.hooksPath .githooks
+# It scans only the staged files and takes well under a second; CI runs the same scan over the whole tree.
+node tools/secrets/scan.mjs --staged

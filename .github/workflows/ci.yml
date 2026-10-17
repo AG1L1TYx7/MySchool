@@ -84,6 +84,19 @@ jobs:
           exit $status
       - run: pnpm audit --audit-level=high
 
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tools/secrets/secret-rules.test.mjs
+      - name: "Every tracked file against the credential patterns (tools/secrets/secret-rules.mjs)"
+        run: node tools/secrets/scan.mjs
+
   web:
     name: Web client
     runs-on: ubuntu-latest

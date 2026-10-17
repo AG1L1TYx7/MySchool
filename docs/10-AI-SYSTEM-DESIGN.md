@@ -102,7 +102,7 @@ All `lms.*` tools are HTTP GETs to the LMS service API (`/api/v1/internal/ai/*`,
 
 | Tool | Returns |
 |---|---|
-| `lms.student_context(studentId)` | grade level, preferred learning style, accessibility needs (teacher-entered), current classes, recent mastery summary (no names of other students) |
+| `lms.student_context(studentId)` | removed in slice 33 (docs/21 F31): the route answered any student's profile to the service token and no agent called it; the envelope carries what the tutor needs. It returns with a per-request scoped token design. |
 | `lms.lesson_content(lessonId)` | lesson title, text content (capped at 6,000 characters), module and course titles |
 | `lms.course_outline(courseId)` | modules and lesson titles |
 | `lms.assignment_rubric(assignmentId)` | rubric criteria, points, instructions |

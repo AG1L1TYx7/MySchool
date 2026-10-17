@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Literal
@@ -90,6 +91,34 @@ REFUSAL_BLOCK = (
 )
 
 REFUSAL_OUTPUT = "Sorry, I couldn't produce a safe answer for that. Let's try the question a different way."
+
+
+_VERDICTS = ("allow", "block", "escalate")
+
+
+def parse_model_verdict(text: str) -> SafetyResult | None:
+    """The model classifier's JSON answer as a SafetyResult, or None when it is not a usable verdict.
+
+    The model layer is additive to the rules (docs/10 section 7): a missing or malformed answer never
+    blocks a student on its own, it is logged and the rules' decision stands.
+    """
+    if not text:
+        return None
+    body = text.strip()
+    fence = re.search(r"\{.*\}", body, re.S)
+    if not fence:
+        return None
+    try:
+        data = json.loads(fence.group(0))
+    except json.JSONDecodeError:
+        return None
+    decision = data.get("decision") if isinstance(data, dict) else None
+    if decision not in _VERDICTS:
+        return None
+    scores = data.get("scores") if isinstance(data.get("scores"), dict) else {}
+    categories = sorted(k for k, v in scores.items() if isinstance(v, (int, float)) and v >= 0.5)
+    reason = data.get("reason") if isinstance(data.get("reason"), str) else ""
+    return SafetyResult(decision=decision, categories=categories, reason=reason[:300])
 
 
 def refusal_for(result: SafetyResult) -> str:

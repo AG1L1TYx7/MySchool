@@ -26,7 +26,9 @@
     "browser:lighthouse": "node tools/browser/lighthouse.mjs",
     "browser:flows": "node tools/browser/run-flows.mjs",
     "browser:rules": "node --test tools/browser/check-rules.test.mjs tools/zap/zap-rules.test.mjs",
-    "browser:zap": "node tools/zap/run.mjs"
+    "browser:zap": "node tools/zap/run.mjs",
+    "secrets:rules": "node --test tools/secrets/secret-rules.test.mjs",
+    "secrets:scan": "node tools/secrets/scan.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

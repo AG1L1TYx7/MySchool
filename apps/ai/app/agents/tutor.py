@@ -21,7 +21,14 @@ from app.envelopes import (
 from app.injection import fence
 from app.models import ChatResult, ModelProvider, ModelUnavailable, ToolCall, ToolSpec
 from app.prompts import Prompt, PromptLibrary
-from app.safety import REFUSAL_OUTPUT, classify_rules, refusal_for, strip_personal_data
+from app.safety import (
+    REFUSAL_OUTPUT,
+    SafetyResult,
+    classify_rules,
+    parse_model_verdict,
+    refusal_for,
+    strip_personal_data,
+)
 from app.tools import math_tool
 
 ResultStatus = Literal["ok", "refused", "degraded", "unavailable"]
@@ -172,6 +179,33 @@ class TutorAgent:
         profile = PROFILE_BY_CAPABILITY.get(env.capability, "default")
         return self.library.get("tutor.chat" if env.capability == "tutor.chat" else env.capability, profile)
 
+    async def model_check(self, text: str, age_band: str) -> SafetyResult | None:
+        """The optional model classifier (SAFETY_MODEL_CHECK): one short call with the safety prompt.
+
+        Returns None when the layer is off, the model is unavailable or its answer is not a verdict, so
+        the rule layer's decision stands; a verdict other than allow refuses the turn.
+        """
+        if not self.model_safety:
+            return None
+        try:
+            prompt = self.library.get("safety.classify")
+            rendered = prompt.render(
+                {
+                    "ageBandLabel": AGE_BAND_LABEL.get(age_band, "a student"),
+                    "textBlock": f"<TEXT>\n{fence(text)}\n</TEXT>",
+                }
+            )
+            result = await self.provider.chat(
+                [{"role": "system", "content": rendered}, {"role": "user", "content": "Classify the TEXT. JSON only."}],
+                model=prompt.model,
+                temperature=prompt.temperature,
+                max_tokens=prompt.max_output_tokens,
+                timeout=self.tool_timeout * 4,
+            )
+        except Exception:  # noqa: BLE001 - the model layer never blocks on its own failure
+            return None
+        return parse_model_verdict(result.content)
+
     async def run(self, env: ContextEnvelope, rag_search: ToolFn | None = None) -> ResultEnvelope:
         started = time.monotonic()
         prompt = self._prompt_for(env)
@@ -181,6 +215,11 @@ class TutorAgent:
 
         rules = classify_rules(last_user, env.actor.ageBand)
         safety.categories = list(rules.categories)
+        if rules.decision == "allow":
+            verdict = await self.model_check(last_user, env.actor.ageBand)
+            if verdict is not None and verdict.decision != "allow":
+                rules = verdict
+                safety.categories = sorted(set(safety.categories) | set(verdict.categories))
         if rules.decision != "allow":
             safety.input = rules.decision
             return ResultEnvelope(

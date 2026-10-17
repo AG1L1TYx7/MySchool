@@ -30,11 +30,3 @@ class LmsToolClient:
 
     async def course_outline(self, course_id: str) -> dict[str, Any] | None:
         return await self._get(f"/courses/{course_id}/outline")
-
-    async def student_context(self, student_id: str) -> dict[str, Any] | None:
-        return await self._get(f"/students/{student_id}/context")
-
-    async def published_lessons(self, organization_id: str) -> list[dict[str, Any]]:
-        data = await self._get(f"/organizations/{organization_id}/lessons")
-        items = data.get("data") if data else None
-        return items if isinstance(items, list) else []

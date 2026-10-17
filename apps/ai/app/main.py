@@ -205,7 +205,8 @@ async def _stream_tutor(env: ContextEnvelope, runtime: Runtime) -> AsyncIterator
     prompt = runtime.tutor._prompt_for(env)  # noqa: SLF001
     last_user = env.input.messages[-1].content
     rules = classify_rules(last_user, env.actor.ageBand)
-    if rules.decision != "allow":
+    verdict = await runtime.tutor.model_check(last_user, env.actor.ageBand) if rules.decision == "allow" else None
+    if rules.decision != "allow" or (verdict is not None and verdict.decision != "allow"):
         result = await runtime.tutor.run(env)
         _trace(runtime, env, result)
         yield _sse("result", result.model_dump())

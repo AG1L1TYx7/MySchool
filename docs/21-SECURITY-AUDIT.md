@@ -155,11 +155,11 @@ Test counts after the fixes: API unit 258 of 258 (54 suites), API e2e all 27 sui
 
 ### Remaining manual actions
 
-- **F31.** Remove the unused internal AI tool routes (`internal.controller.ts` student-needs and lesson-text) until a per-request scoped token exists, or keep them and accept that the AI host's callback token reads any student's profile. Your call; the routes are listed in docs/04.
-- **F33.** `SAFETY_MODEL_CHECK` is stored and never used. Either implement the model classifier behind it or remove the setting so operators do not believe a check runs.
+- **F31.** Done in slice 33: the student-profile and lesson-list routes are removed from `internal.controller.ts` and the AI's LMS client (no agent called them); the lesson and outline routes stay, scoped to one lesson or course by id.
+- **F33.** Done in slice 33: `SAFETY_MODEL_CHECK=true` adds one classification call with the `safety.classify` prompt after the rule layer, on the plain and the streamed path; a verdict other than allow refuses the turn, a missing or malformed answer never blocks on its own (`parse_model_verdict`, `TutorAgent.model_check`).
 - **Rotate** every secret that has ever been in a `.env` on a shared machine, and the AI service token and callback token on the pilot server, now that both sides refuse placeholders.
 - **Set in production:** `TRUST_PROXY` to the proxy hops in front of the API (`uniquelocal` for the compose layout), `ENCRYPTION_KEY`, `AI_SERVICE_API_KEY`, `CORS_ORIGINS`, `SWAGGER_ENABLED` left unset, and a captcha provider (`RECAPTCHA_*`) for the public forms; without a captcha the new cooldowns are the only brake on registration and mail.
-- **GitHub settings:** enable secret scanning with push protection on the repository, and branch protection that requires the CI workflow. Dependabot is configured in the repository; its pull requests still need a reviewer.
-- **Pre-commit secret scan:** add `gitleaks` (or `git-secrets`) as a pre-commit hook on every developer machine, and run `gitleaks detect` once over the full history of this repository and the old one.
+- **GitHub settings:** secret scanning, push protection and Dependabot security updates were switched on for the repository on 17 October 2026 (slice 33); branch protection that requires the CI workflow is still yours to set. Dependabot's pull requests still need a reviewer.
+- **Pre-commit secret scan:** done in slice 33 with the repository's own scanner (`tools/secrets`, `.githooks/pre-commit`, the `Secret scan` CI job; the current tree is clean). A scan of the full git history of this repository and of the old one is still worth running once with `gitleaks detect`.
 - **Keep ignoring, knowingly:** the three Lighthouse browser-download advisories and the seven OpenTelemetry moderates are development-only; they are listed in docs/16 and re-checked by CI.
 - **Still untested** (docs/16 section 3): a human penetration test (brief in docs/22) and the prompt corpus against the live model; the passive dynamic scan and the corpus against the rule layer run in CI since slice 29.

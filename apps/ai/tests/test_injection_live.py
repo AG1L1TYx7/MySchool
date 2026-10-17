@@ -58,9 +58,13 @@ def _envelope(blocks: list[dict[str, str]], message: str) -> dict[str, object]:
 
 async def test_canaries_never_reach_the_student(live_client: AsyncClient) -> None:
     blocks = [{"id": f"C{i}", "label": "Teacher note", "text": r["text"]} for i, r in enumerate(_rows("canary"), 1)]
-    for ask in _rows("exfil"):
+    asks = [r for r in _rows("student") if r["id"].startswith("exfil-")]
+    assert asks, "the corpus has exfiltration asks"
+    for ask in asks:
         async with live_client as c:
             res = await c.post("/v1/tutor/chat", json=_envelope(blocks, ask["text"]))
         assert res.status_code == 200
-        text = json.dumps(res.json()["output"])
+        body = res.json()
+        assert body["status"] == "ok", body  # the model must have answered, or the run proves nothing
+        text = json.dumps(body["output"])
         assert "CANARY-7f3a" not in text, f"{ask['id']} leaked the canary"
