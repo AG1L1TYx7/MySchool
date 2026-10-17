@@ -29,6 +29,7 @@ An AI-native K-12 learning management system for US schools and districts that r
 - [17-DATA-MAP.md](17-DATA-MAP.md): what the product holds about people, whose, why and for how long; the rights it supports
 - [18-BREACH-RUNBOOK.md](18-BREACH-RUNBOOK.md): what to do, in order, when personal data may have left the boundary
 - [19-ACCESSIBILITY-CONFORMANCE.md](19-ACCESSIBILITY-CONFORMANCE.md): the WCAG 2.2 AA conformance report, repeated every slice
+- [23-RELEASE-4-REVIEW.md](23-RELEASE-4-REVIEW.md): how the product at the end of Release 4 measures against the security checklist, the performance budget and the pilot-readiness list, with the CI gates, the audit's outcome and the gaps carried forward
 - [22-PENETRATION-TEST-BRIEF.md](22-PENETRATION-TEST-BRIEF.md): what an outside tester needs: the test copy, accounts, scope and priorities, what is already checked, rules of engagement and the report format
 - [20-RELEASE-3-REVIEW.md](20-RELEASE-3-REVIEW.md): how the product at the end of Release 3 measures against the security checklist, the performance budget and the pilot-readiness list, with the audits, the load test, the backup drill and the gaps carried forward
 
