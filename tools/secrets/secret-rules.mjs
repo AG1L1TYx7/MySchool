@@ -8,6 +8,8 @@ export function isScannable(path) {
   if (!path) return false;
   const p = path.replace(/\\/g, '/');
   if (/(^|\/)(pnpm-lock\.yaml|package-lock\.json|yarn\.lock|openapi\.json|load-test\.json)$/.test(p)) return false;
+  // The scanner's own test holds sample credentials on purpose.
+  if (p === 'tools/secrets/secret-rules.test.mjs') return false;
   if (/\.(png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|pdf|zip|mp3|mp4|h5p|pyc)$/i.test(p)) return false;
   if (/(^|\/)(node_modules|\.next|dist|coverage|coverage-e2e|\.venv|generated)\//.test(p)) return false;
   return true;
