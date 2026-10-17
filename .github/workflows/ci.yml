@@ -205,7 +205,7 @@ jobs:
           echo '## API log (tail)' >> "$GITHUB_STEP_SUMMARY"; tail -80 api.log >> "$GITHUB_STEP_SUMMARY" || true
           echo '## Web log (tail)' >> "$GITHUB_STEP_SUMMARY"; tail -40 web.log >> "$GITHUB_STEP_SUMMARY" || true
           echo '## AI log (tail)' >> "$GITHUB_STEP_SUMMARY"; tail -40 ai.log >> "$GITHUB_STEP_SUMMARY" || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: browser-${{ matrix.check }}
