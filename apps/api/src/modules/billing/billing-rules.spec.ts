@@ -18,6 +18,7 @@ import {
   prorationCents,
   settleInvoice,
   taxCentsFor,
+  webhookAction,
 } from './billing-rules';
 
 const plan = (code: string) => PLATFORM_PLANS.find((p) => p.code === code)!;
@@ -238,5 +239,77 @@ describe('proration and tax (slice 30)', () => {
       totalCents: 0,
     });
     expect(credited.lines[0].description).toMatch(/^Credit/);
+  });
+});
+
+describe('provider webhooks (slice 34)', () => {
+  it('reads payments, refunds and disputes and ignores the rest', () => {
+    expect(
+      webhookAction({
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_1',
+            payment_intent: 'pi_1',
+            customer: 'cus_1',
+            metadata: { invoiceNumber: 'INV-2026-00001' },
+          },
+        },
+      }),
+    ).toEqual({
+      kind: 'paid',
+      invoiceNumber: 'INV-2026-00001',
+      sessionId: 'cs_1',
+      paymentRef: 'pi_1',
+      customerRef: 'cus_1',
+    });
+    expect(
+      webhookAction({
+        type: 'invoice.paid',
+        data: {
+          object: { id: 'in_1', metadata: { invoiceNumber: 'INV-2026-00001' } },
+        },
+      }),
+    ).toMatchObject({ kind: 'paid', paymentRef: null });
+    expect(
+      webhookAction({
+        type: 'checkout.session.completed',
+        data: { object: { id: 'cs_1' } },
+      }),
+    ).toEqual({ kind: 'ignore' });
+    expect(
+      webhookAction({
+        type: 'charge.refunded',
+        data: { object: { payment_intent: 'pi_1', refunded: true } },
+      }),
+    ).toEqual({ kind: 'refunded', paymentRef: 'pi_1' });
+    expect(
+      webhookAction({
+        type: 'charge.dispute.created',
+        data: { object: { payment_intent: 'pi_1' } },
+      }),
+    ).toEqual({ kind: 'disputed', paymentRef: 'pi_1' });
+    expect(
+      webhookAction({
+        type: 'charge.dispute.closed',
+        data: { object: { payment_intent: 'pi_1', status: 'won' } },
+      }),
+    ).toEqual({ kind: 'dispute_closed', paymentRef: 'pi_1', won: true });
+    expect(
+      webhookAction({ type: 'customer.created', data: { object: {} } }),
+    ).toEqual({ kind: 'ignore' });
+    expect(webhookAction(null)).toEqual({ kind: 'ignore' });
+  });
+  it('keeps refunded and disputed invoices as they are', () => {
+    const past = new Date('2020-01-01T00:00:00Z');
+    expect(
+      effectiveInvoiceStatus({ status: 'refunded', dueAt: past }, new Date()),
+    ).toBe('refunded');
+    expect(
+      effectiveInvoiceStatus({ status: 'disputed', dueAt: past }, new Date()),
+    ).toBe('disputed');
+    expect(
+      effectiveInvoiceStatus({ status: 'open', dueAt: past }, new Date()),
+    ).toBe('overdue');
   });
 });

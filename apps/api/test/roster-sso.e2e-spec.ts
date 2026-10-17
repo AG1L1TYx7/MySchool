@@ -632,8 +632,11 @@ describe('Rostering and sign-in (e2e)', () => {
     expect(counts.pushed).toBe(counts.grades);
     expect(counts.grades).toBeGreaterThanOrEqual(1);
     expect(counts.skipped).toBe(0);
-    const patch = idp.seen.find((r) =>
-      r.url.includes('/studentSubmissions/sub-s1'),
+    // The quiz's own write: the imported lab report (cw-0) is written first, with the grade Classroom already held.
+    const patch = idp.seen.find(
+      (r) =>
+        r.url.includes('/studentSubmissions/sub-s1') &&
+        !r.url.includes('/courseWork/cw-0/'),
     );
     expect(patch).toBeDefined();
     expect(JSON.parse(patch!.body)).toEqual({

@@ -163,6 +163,22 @@ describe('operations rules', () => {
       expect(ipAllowed(SECURITY_DEFAULTS, 'principal', '198.51.100.9')).toBe(
         true,
       );
+      // Slice 34: the list may hold every staff role, or everyone.
+      const staff = parseSecurityPolicy({
+        adminIpAllowlist: ['203.0.113.0/24'],
+        ipAllowlistRoles: 'staff',
+      });
+      expect(ipAllowed(staff, 'teacher', '198.51.100.9')).toBe(false);
+      expect(ipAllowed(staff, 'student', '198.51.100.9')).toBe(true);
+      const everyone = parseSecurityPolicy({
+        adminIpAllowlist: ['203.0.113.0/24'],
+        ipAllowlistRoles: 'everyone',
+      });
+      expect(ipAllowed(everyone, 'student', '198.51.100.9')).toBe(false);
+      expect(ipAllowed(everyone, 'parent', '203.0.113.9')).toBe(true);
+      expect(
+        parseSecurityPolicy({ ipAllowlistRoles: 'nonsense' }).ipAllowlistRoles,
+      ).toBe('administrators');
     });
   });
 });

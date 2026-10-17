@@ -17857,6 +17857,55 @@
         ]
       }
     },
+    "/api/v1/billing/invoices/{id}/refund": {
+      "post": {
+        "operationId": "BillingController_refund_api/v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refund a card payment in full through the provider (platform administrator)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/v1/billing/portal": {
+      "post": {
+        "operationId": "BillingController_portal_api/v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The provider's hosted portal for payment methods and receipts (after the first card payment; ?tenantId= for the platform administrator)",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
     "/api/v1/billing/invoices/{id}/pay": {
       "post": {
         "operationId": "BillingController_pay_api/v1",

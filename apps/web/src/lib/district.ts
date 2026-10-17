@@ -40,6 +40,7 @@ export interface SecurityPolicy {
   mfaRequiredRoles: string[];
   sessionMaxHours: number;
   adminIpAllowlist: string[];
+  ipAllowlistRoles: 'administrators' | 'staff' | 'everyone';
 }
 
 export interface TenantPolicies {

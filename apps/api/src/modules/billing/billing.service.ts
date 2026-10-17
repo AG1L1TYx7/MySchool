@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Logger,
   Inject,
   ConflictException,
   ForbiddenException,
@@ -22,6 +23,7 @@ import type {
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { MailService } from '../../infra/mail/mail.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
   buildInvoiceLines,
@@ -46,6 +48,7 @@ import {
   type UsageRow,
   prorationCents,
   settleInvoice,
+  webhookAction,
 } from './billing-rules';
 import type {
   GenerateInvoiceDto,
@@ -68,11 +71,13 @@ type SubscriptionRow = Subscription & {
  */
 @Injectable()
 export class BillingService {
+  private readonly log = new Logger(BillingService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
     @Inject(PAYMENT_PROVIDER) private readonly payments: PaymentProvider,
+    private readonly mail: MailService,
   ) {}
 
   // Plans ----------------------------------------------------------------------------------------------
@@ -415,6 +420,7 @@ export class BillingService {
       entityId: row.id,
       details: { tenantId, number: row.number, totalCents: row.totalCents },
     });
+    await this.sendInvoice(row.id);
     return this.toInvoice(row, now);
   }
 
@@ -450,6 +456,7 @@ export class BillingService {
       entityId: id,
       details: { provider, reference: dto.reference },
     });
+    await this.sendReceipt(updated.id);
     return this.toInvoice(updated, new Date());
   }
 
@@ -509,6 +516,71 @@ export class BillingService {
     return { url: session.url, provider: this.payments.name };
   }
 
+  /** Refunds a card payment in full through the provider (platform administrator). */
+  async refund(id: string, actor: AuthenticatedUser) {
+    const row = await this.loadInvoice(id, actor);
+    if (row.status !== 'paid')
+      throw new BadRequestException({
+        code: 'billing.invoice_not_paid',
+        detail: `Invoice is ${row.status}.`,
+      });
+    if (row.provider !== this.payments.name || !row.providerPaymentRef)
+      throw new BadRequestException({
+        code: 'billing.not_card_payment',
+        detail:
+          'This invoice was not paid by card through the provider; record the refund by hand.',
+      });
+    const refund = await this.payments.refund(row.providerPaymentRef);
+    const updated = await this.prisma.invoice.update({
+      where: { id: row.id },
+      data: { status: 'refunded', refundedAt: new Date() },
+      include: { tenant: { select: { id: true, name: true, slug: true } } },
+    });
+    await this.refreshSubscriptionStatus(row.tenantId);
+    await this.audit.record({
+      userId: actor.id,
+      organizationId: actor.organizationId,
+      action: 'billing.invoice.refunded',
+      entityType: 'Invoice',
+      entityId: row.id,
+      details: { provider: this.payments.name, refund: refund.id },
+    });
+    return this.toInvoice(updated, new Date());
+  }
+
+  /** The provider's hosted portal for the district's payment methods and receipts. */
+  async portal(actor: AuthenticatedUser, requestedTenantId?: string) {
+    const tenantId = this.tenantFor(actor, requestedTenantId);
+    const sub = await this.prisma.subscription.findUnique({
+      where: { tenantId },
+      select: { provider: true, providerRef: true },
+    });
+    if (
+      !this.payments.configured ||
+      !sub ||
+      sub.provider !== this.payments.name ||
+      !sub.providerRef
+    )
+      throw new NotFoundException({
+        code: 'billing.portal_unavailable',
+        detail:
+          'The portal opens after the first card payment; until then invoices are paid by card or recorded by hand.',
+      });
+    const web = this.config.get('WEB_APP_URL').replace(/\/$/, '');
+    const session = await this.payments.createPortalSession(
+      sub.providerRef,
+      `${web}/billing`,
+    );
+    await this.audit.record({
+      userId: actor.id,
+      organizationId: actor.organizationId,
+      action: 'billing.portal.open',
+      entityType: 'Subscription',
+      entityId: tenantId,
+    });
+    return { url: session.url };
+  }
+
   async voidInvoice(
     id: string,
     dto: InvoiceActionDto,
@@ -546,6 +618,20 @@ export class BillingService {
     actor: AuthenticatedUser,
   ): Promise<{ buffer: Buffer; fileName: string }> {
     const inv = await this.invoice(id, actor);
+    const buffer = await this.renderInvoicePdf(inv);
+    await this.audit.record({
+      userId: actor.id,
+      organizationId: actor.organizationId,
+      action: 'billing.invoice.pdf',
+      entityType: 'Invoice',
+      entityId: id,
+    });
+    return { buffer, fileName: `${inv.number}.pdf` };
+  }
+
+  private async renderInvoicePdf(
+    inv: Awaited<ReturnType<BillingService['invoice']>>,
+  ): Promise<Buffer> {
     const doc = new PDFDocument({
       size: 'LETTER',
       margin: 54,
@@ -587,14 +673,7 @@ export class BillingService {
     if (inv.note)
       doc.moveDown(1).fontSize(10).fillColor('#555555').text(inv.note);
     doc.end();
-    await this.audit.record({
-      userId: actor.id,
-      organizationId: actor.organizationId,
-      action: 'billing.invoice.pdf',
-      entityType: 'Invoice',
-      entityId: id,
-    });
-    return { buffer: await done, fileName: `${inv.number}.pdf` };
+    return done;
   }
 
   // Idempotency ----------------------------------------------------------------------------------------
@@ -791,50 +870,85 @@ export class BillingService {
         detail: 'The webhook signature does not match.',
       });
     }
-    let event: {
-      type?: string;
-      data?: {
-        object?: { id?: string; metadata?: { invoiceNumber?: string } };
-      };
-    } = {};
+    let event: unknown = {};
     try {
-      event = JSON.parse(rawBody) as typeof event;
+      event = JSON.parse(rawBody);
     } catch {
       throw new BadRequestException({
         code: 'billing.bad_payload',
         detail: 'The webhook body is not JSON.',
       });
     }
-    const number = event.data?.object?.metadata?.invoiceNumber;
-    if (
-      (event.type === 'invoice.paid' ||
-        event.type === 'checkout.session.completed') &&
-      number
-    ) {
-      const inv = await this.prisma.invoice.findUnique({ where: { number } });
-      if (inv && inv.status === 'open') {
-        await this.prisma.invoice.update({
-          where: { id: inv.id },
-          data: {
-            status: 'paid',
-            paidAt: new Date(),
-            provider: 'stripe',
-            providerRef: event.data?.object?.id ?? null,
-          },
+    const action = webhookAction(event);
+    if (action.kind === 'ignore') return { received: true, applied: false };
+    if (action.kind === 'paid') {
+      const inv = await this.prisma.invoice.findUnique({
+        where: { number: action.invoiceNumber },
+      });
+      if (!inv || inv.status !== 'open')
+        return { received: true, applied: false };
+      await this.prisma.invoice.update({
+        where: { id: inv.id },
+        data: {
+          status: 'paid',
+          paidAt: new Date(),
+          provider: 'stripe',
+          providerRef: action.sessionId ?? inv.providerRef,
+          providerPaymentRef: action.paymentRef ?? inv.providerPaymentRef,
+        },
+      });
+      // The customer the provider created is remembered so the district can open its portal later.
+      if (action.customerRef && inv.subscriptionId)
+        await this.prisma.subscription.updateMany({
+          where: { id: inv.subscriptionId },
+          data: { provider: 'stripe', providerRef: action.customerRef },
         });
-        await this.refreshSubscriptionStatus(inv.tenantId);
-        await this.audit.record({
-          userId: null,
-          organizationId: null,
-          action: 'billing.invoice.paid',
-          entityType: 'Invoice',
-          entityId: inv.id,
-          details: { provider: 'stripe', reference: event.data?.object?.id },
-        });
-        return { received: true, applied: true };
-      }
+      await this.refreshSubscriptionStatus(inv.tenantId);
+      await this.audit.record({
+        userId: null,
+        organizationId: null,
+        action: 'billing.invoice.paid',
+        entityType: 'Invoice',
+        entityId: inv.id,
+        details: { provider: 'stripe', reference: action.sessionId },
+      });
+      await this.sendReceipt(inv.id);
+      return { received: true, applied: true };
     }
-    return { received: true, applied: false };
+    const inv = await this.prisma.invoice.findFirst({
+      where: { providerPaymentRef: action.paymentRef },
+    });
+    if (!inv) return { received: true, applied: false };
+    const status =
+      action.kind === 'refunded'
+        ? 'refunded'
+        : action.kind === 'disputed'
+          ? 'disputed'
+          : action.won
+            ? 'paid'
+            : 'refunded';
+    if (inv.status === status) return { received: true, applied: false };
+    await this.prisma.invoice.update({
+      where: { id: inv.id },
+      data: {
+        status,
+        ...(status === 'refunded' ? { refundedAt: new Date() } : {}),
+      },
+    });
+    await this.refreshSubscriptionStatus(inv.tenantId);
+    await this.audit.record({
+      userId: null,
+      organizationId: null,
+      action: `billing.invoice.${status}`,
+      entityType: 'Invoice',
+      entityId: inv.id,
+      details: {
+        provider: 'stripe',
+        event: action.kind,
+        reference: action.paymentRef,
+      },
+    });
+    return { received: true, applied: true };
   }
 
   // Helpers --------------------------------------------------------------------------------------------
@@ -903,6 +1017,56 @@ export class BillingService {
     return seatsFor(counts);
   }
 
+  /** The invoice to the billing contact with its PDF; nothing is sent without a contact. */
+  private async sendInvoice(invoiceId: string): Promise<void> {
+    const row = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: { tenant: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!row || !row.subscriptionId) return;
+    const sub = await this.prisma.subscription.findUnique({
+      where: { id: row.subscriptionId },
+      select: { billingEmail: true, billingName: true },
+    });
+    if (!sub?.billingEmail) return;
+    const view = this.toInvoice(row, new Date());
+    const web = this.config.get('WEB_APP_URL').replace(/\/$/, '');
+    try {
+      const pdf = await this.renderInvoicePdf(view);
+      await this.mail.send({
+        to: sub.billingEmail,
+        subject: `SmartSchool invoice ${row.number} for ${row.tenant.name}`,
+        text: `Hello ${sub.billingName ?? ''},\n\nInvoice ${row.number} for ${row.tenant.name} is attached: ${view.total} due by ${row.dueAt.toISOString().slice(0, 10)}.\n\nPay it or see every invoice at ${web}/billing.`,
+        attachments: [{ filename: `${row.number}.pdf`, content: pdf }],
+      });
+    } catch (err) {
+      this.log.warn(`invoice email not sent: ${(err as Error).message}`);
+    }
+  }
+
+  private async sendReceipt(invoiceId: string): Promise<void> {
+    const row = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: { tenant: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!row || !row.subscriptionId) return;
+    const sub = await this.prisma.subscription.findUnique({
+      where: { id: row.subscriptionId },
+      select: { billingEmail: true, billingName: true },
+    });
+    if (!sub?.billingEmail) return;
+    const view = this.toInvoice(row, new Date());
+    try {
+      await this.mail.send({
+        to: sub.billingEmail,
+        subject: `Payment received for SmartSchool invoice ${row.number}`,
+        text: `Hello ${sub.billingName ?? ''},\n\nThank you. Invoice ${row.number} for ${row.tenant.name} (${view.total}) is paid${row.providerRef ? ` (reference ${row.providerRef})` : ''}.`,
+      });
+    } catch (err) {
+      this.log.warn(`receipt email not sent: ${(err as Error).message}`);
+    }
+  }
+
   private async refreshSubscriptionStatus(tenantId: string): Promise<void> {
     const sub = await this.prisma.subscription.findUnique({
       where: { tenantId },
@@ -966,6 +1130,10 @@ export class BillingService {
       canceledAt: s.canceledAt,
       createdAt: s.createdAt,
       cardPayments: this.payments.configured,
+      portalAvailable:
+        this.payments.configured &&
+        s.provider === this.payments.name &&
+        !!s.providerRef,
     };
   }
 

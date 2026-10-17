@@ -203,7 +203,24 @@ export interface SecurityPolicy {
   sessionMaxHours: number;
   /** Administrators (principal, superintendent) may sign in only from these IPv4 ranges; empty means anywhere. */
   adminIpAllowlist: string[];
+  /** Whom the allowlist holds (slice 34): administrators only, every staff role, or every account including students and families. */
+  ipAllowlistRoles: IpAllowlistRoles;
 }
+
+export const IP_ALLOWLIST_ROLES = [
+  'administrators',
+  'staff',
+  'everyone',
+] as const;
+export type IpAllowlistRoles = (typeof IP_ALLOWLIST_ROLES)[number];
+export const STAFF_ROLES: readonly string[] = [
+  'super_admin',
+  'superintendent',
+  'principal',
+  'teacher',
+  'counselor',
+  'assistant',
+];
 
 export const PLATFORM_PASSWORD_MIN = 12;
 export const PASSWORD_MAX = 128;
@@ -219,6 +236,7 @@ export const SECURITY_DEFAULTS: SecurityPolicy = {
   mfaRequiredRoles: [],
   sessionMaxHours: 0,
   adminIpAllowlist: [],
+  ipAllowlistRoles: 'administrators',
 };
 
 const ROLE_NAME = /^[a-z_]{3,24}$/;
@@ -261,6 +279,11 @@ export function parseSecurityPolicy(raw: unknown): SecurityPolicy {
     mfaRequiredRoles: list(r.mfaRequiredRoles, (s) => ROLE_NAME.test(s)),
     sessionMaxHours: n(r.sessionMaxHours, 0, SESSION_MAX_HOURS_LIMIT, 0),
     adminIpAllowlist: list(r.adminIpAllowlist, isValidCidr),
+    ipAllowlistRoles: (IP_ALLOWLIST_ROLES as readonly string[]).includes(
+      r.ipAllowlistRoles as string,
+    )
+      ? (r.ipAllowlistRoles as IpAllowlistRoles)
+      : 'administrators',
   };
 }
 
@@ -319,7 +342,13 @@ export function ipAllowed(
   ip: string | null,
 ): boolean {
   if (policy.adminIpAllowlist.length === 0) return true;
-  if (!ADMIN_ROLES.includes(roleApiName)) return true;
+  const held =
+    policy.ipAllowlistRoles === 'everyone'
+      ? true
+      : policy.ipAllowlistRoles === 'staff'
+        ? STAFF_ROLES.includes(roleApiName)
+        : ADMIN_ROLES.includes(roleApiName);
+  if (!held) return true;
   if (!ip) return false;
   if (ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1')
     return true;

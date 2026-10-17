@@ -216,6 +216,16 @@ function SubscriptionView({ q, manage }: { q: string; manage: boolean }) {
               </dd>
             </div>
           )}
+          {s?.portalAvailable && (
+            <div>
+              <dt className="text-xs text-slate-500">Card on file</dt>
+              <dd>
+                <Button variant="secondary" onClick={() => void api<{ url: string }>(`/billing/portal${view.tenant ? `?tenantId=${view.tenant.id}` : ''}`, { method: 'POST', body: {} }).then((r) => window.location.assign(r.url)).catch((e) => setError(errorMessage(e)))}>
+                  Manage payment methods and receipts
+                </Button>
+              </dd>
+            </div>
+          )}
           {s?.billingEmail && (
             <div>
               <dt className="text-xs text-slate-500">Billing contact</dt>
@@ -334,6 +344,11 @@ function InvoicesView({ q, manage }: { q: string; manage: boolean }) {
                   <Button variant="ghost" onClick={() => void download(`/billing/invoices/${i.id}/pdf`, `${i.number}.pdf`)}>
                     PDF
                   </Button>
+                  {manage && i.status === 'paid' && i.providerRef && (
+                    <Button variant="danger" loading={busy === `refund-${i.id}`} onClick={() => void act(`refund-${i.id}`, () => api(`/billing/invoices/${i.id}/refund`, { method: 'POST', body: {} }), `Invoice ${i.number} refunded through the provider.`)}>
+                      Refund
+                    </Button>
+                  )}
                   {cardPayments && (i.status === 'open' || i.status === 'overdue') && i.totalCents > 0 && (
                     <Button loading={busy === `card-${i.id}`} onClick={() => void payByCard(i.id)}>
                       Pay by card

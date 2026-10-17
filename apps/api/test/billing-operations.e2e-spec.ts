@@ -100,11 +100,21 @@ describe('Billing and operations (e2e)', () => {
           authorization: String(req.headers.authorization ?? ''),
         });
         res.writeHead(200, { 'content-type': 'application/json' });
+        const path = req.url ?? '';
         res.end(
-          JSON.stringify({
-            id: 'cs_test_1',
-            url: 'https://checkout.stripe.test/cs_test_1',
-          }),
+          JSON.stringify(
+            path.startsWith('/v1/refunds')
+              ? { id: 're_test_1', status: 'succeeded' }
+              : path.startsWith('/v1/billing_portal/sessions')
+                ? {
+                    id: 'bps_test_1',
+                    url: 'https://billing.stripe.test/bps_test_1',
+                  }
+                : {
+                    id: 'cs_test_1',
+                    url: 'https://checkout.stripe.test/cs_test_1',
+                  },
+          ),
         );
       });
     });
@@ -383,7 +393,12 @@ describe('Billing and operations (e2e)', () => {
     const event = JSON.stringify({
       type: 'checkout.session.completed',
       data: {
-        object: { id: 'cs_test_1', metadata: { invoiceNumber: issued.number } },
+        object: {
+          id: 'cs_test_1',
+          payment_intent: 'pi_test_1',
+          customer: 'cus_test_1',
+          metadata: { invoiceNumber: issued.number },
+        },
       },
     });
     await request(server)
@@ -407,6 +422,99 @@ describe('Billing and operations (e2e)', () => {
     ).body as { status: string; providerRef: string | null };
     expect(paid.status).toBe('paid');
     expect(paid.providerRef).toBe('cs_test_1');
+    // The provider's customer is remembered: the portal opens; a dispute and its outcome, then a refund, follow the seam (slice 34).
+    const sub = (
+      await request(server)
+        .get('/api/v1/billing/subscription')
+        .set(as('superintendent'))
+        .expect(200)
+    ).body as { subscription: { portalAvailable: boolean } };
+    expect(sub.subscription.portalAvailable).toBe(true);
+    const portal = (
+      await request(server)
+        .post('/api/v1/billing/portal')
+        .set(as('superintendent'))
+        .send({})
+        .expect(201)
+    ).body as { url: string };
+    expect(portal.url).toBe('https://billing.stripe.test/bps_test_1');
+    expect(
+      new URLSearchParams(
+        paymentCalls.find((c) =>
+          c.path.startsWith('/v1/billing_portal/sessions'),
+        )!.body,
+      ).get('customer'),
+    ).toBe('cus_test_1');
+    const signed = (body: string) =>
+      request(server)
+        .post('/api/v1/billing/webhooks/provider')
+        .set('Content-Type', 'application/json')
+        .set(
+          'Stripe-Signature',
+          signProviderPayload(
+            body,
+            process.env.STRIPE_WEBHOOK_SECRET ?? '',
+            new Date(),
+          ),
+        )
+        .send(body);
+    await signed(
+      JSON.stringify({
+        type: 'charge.dispute.created',
+        data: { object: { id: 'dp_1', payment_intent: 'pi_test_1' } },
+      }),
+    ).expect(200);
+    expect(
+      (
+        (
+          await request(server)
+            .get(`/api/v1/billing/invoices/${issued.id}`)
+            .set(as('superintendent'))
+            .expect(200)
+        ).body as { status: string }
+      ).status,
+    ).toBe('disputed');
+    await signed(
+      JSON.stringify({
+        type: 'charge.dispute.closed',
+        data: {
+          object: { id: 'dp_1', payment_intent: 'pi_test_1', status: 'won' },
+        },
+      }),
+    ).expect(200);
+    expect(
+      (
+        (
+          await request(server)
+            .get(`/api/v1/billing/invoices/${issued.id}`)
+            .set(as('superintendent'))
+            .expect(200)
+        ).body as { status: string }
+      ).status,
+    ).toBe('paid');
+    await request(server)
+      .post(`/api/v1/billing/invoices/${issued.id}/refund`)
+      .set(as('superintendent'))
+      .send({})
+      .expect(403);
+    const refunded = (
+      await request(server)
+        .post(`/api/v1/billing/invoices/${issued.id}/refund`)
+        .set(as('superadmin'))
+        .send({})
+        .expect(201)
+    ).body as { status: string };
+    expect(refunded.status).toBe('refunded');
+    expect(
+      new URLSearchParams(
+        paymentCalls.find((c) => c.path.startsWith('/v1/refunds'))!.body,
+      ).get('payment_intent'),
+    ).toBe('pi_test_1');
+    await request(server)
+      .post(`/api/v1/billing/invoices/${issued.id}/refund`)
+      .set(as('superadmin'))
+      .send({})
+      .expect(400);
     await request(server)
       .post(`/api/v1/billing/invoices/${issued.id}/checkout`)
       .set(as('superintendent'))
@@ -551,6 +659,42 @@ describe('Billing and operations (e2e)', () => {
       where: { action: 'operations.incident.update', entityId: incidentId },
     });
     expect(audit).not.toBeNull();
+  });
+
+  it('the network list can hold every account, not only administrators (slice 34)', async () => {
+    await request(server)
+      .put(`/api/v1/tenants/${tenantId}/policies`)
+      .set(as('superintendent'))
+      .send({
+        security: {
+          adminIpAllowlist: ['203.0.113.0/24'],
+          ipAllowlistRoles: 'everyone',
+        },
+      })
+      .expect(200);
+    const outside = await request(server)
+      .get('/api/v1/classes')
+      .set(as('teacher'))
+      .set('X-Forwarded-For', '198.51.100.7')
+      .expect(403);
+    expect((outside.body as Problem).code).toBe('security.ip_not_allowed');
+    const inside = await request(server)
+      .get('/api/v1/classes')
+      .set(as('teacher'))
+      .set('X-Forwarded-For', '203.0.113.9');
+    expect((inside.body as Problem).code).not.toBe('security.ip_not_allowed');
+    const reset = await request(server)
+      .put(`/api/v1/tenants/${tenantId}/policies`)
+      .set(as('superintendent'))
+      .set('X-Forwarded-For', '203.0.113.9')
+      .send({
+        security: { adminIpAllowlist: [], ipAllowlistRoles: 'administrators' },
+      })
+      .expect(200);
+    expect(
+      (reset.body as { policies: { security: { ipAllowlistRoles: string } } })
+        .policies.security.ipAllowlistRoles,
+    ).toBe('administrators');
   });
 
   it('the district security policy limits administrator networks, session age, password length and 2FA roles', async () => {

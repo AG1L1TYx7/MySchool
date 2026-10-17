@@ -15,7 +15,14 @@ export const SUBSCRIPTION_STATUSES = [
 ] as const;
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
-export const INVOICE_STATUSES = ['open', 'paid', 'void', 'overdue'] as const;
+export const INVOICE_STATUSES = [
+  'open',
+  'paid',
+  'void',
+  'overdue',
+  'refunded',
+  'disputed',
+] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
 export const PROVIDERS = ['manual', 'stripe'] as const;
@@ -233,6 +240,63 @@ export function settleInvoice(
   };
 }
 
+/** What a provider webhook means for an invoice (slice 34); anything else is ignored. */
+export type WebhookAction =
+  | {
+      kind: 'paid';
+      invoiceNumber: string;
+      sessionId: string | null;
+      paymentRef: string | null;
+      customerRef: string | null;
+    }
+  | { kind: 'refunded'; paymentRef: string }
+  | { kind: 'disputed'; paymentRef: string }
+  | { kind: 'dispute_closed'; paymentRef: string; won: boolean }
+  | { kind: 'ignore' };
+
+export function webhookAction(event: unknown): WebhookAction {
+  const e = (event ?? {}) as {
+    type?: unknown;
+    data?: { object?: Record<string, unknown> };
+  };
+  const o = e.data?.object ?? {};
+  const str = (v: unknown): string | null =>
+    typeof v === 'string' && v ? v : null;
+  const meta = (o.metadata ?? {}) as Record<string, unknown>;
+  const invoiceNumber = str(meta.invoiceNumber);
+  switch (e.type) {
+    case 'invoice.paid':
+    case 'checkout.session.completed':
+      return invoiceNumber
+        ? {
+            kind: 'paid',
+            invoiceNumber,
+            sessionId: str(o.id),
+            paymentRef: str(o.payment_intent),
+            customerRef: str(o.customer),
+          }
+        : { kind: 'ignore' };
+    case 'charge.refunded': {
+      const ref = str(o.payment_intent);
+      return ref && (o.refunded === true || o.refunded === undefined)
+        ? { kind: 'refunded', paymentRef: ref }
+        : { kind: 'ignore' };
+    }
+    case 'charge.dispute.created': {
+      const ref = str(o.payment_intent);
+      return ref ? { kind: 'disputed', paymentRef: ref } : { kind: 'ignore' };
+    }
+    case 'charge.dispute.closed': {
+      const ref = str(o.payment_intent);
+      return ref
+        ? { kind: 'dispute_closed', paymentRef: ref, won: o.status === 'won' }
+        : { kind: 'ignore' };
+    }
+    default:
+      return { kind: 'ignore' };
+  }
+}
+
 export function dueDateFor(issuedAt: Date, netDays = NET_DAYS): Date {
   return new Date(issuedAt.getTime() + netDays * 86_400_000);
 }
@@ -243,7 +307,12 @@ export function effectiveInvoiceStatus(
   now: Date,
   graceDays = GRACE_DAYS,
 ): InvoiceStatus {
-  if (invoice.status === 'paid' || invoice.status === 'void')
+  if (
+    invoice.status === 'paid' ||
+    invoice.status === 'void' ||
+    invoice.status === 'refunded' ||
+    invoice.status === 'disputed'
+  )
     return invoice.status;
   return now.getTime() > invoice.dueAt.getTime() + graceDays * 86_400_000
     ? 'overdue'

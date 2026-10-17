@@ -201,6 +201,32 @@ export class BillingController {
     return this.billing.checkout(id, actor);
   }
 
+  @Post('invoices/:id/refund')
+  @RequireFeature('billing.manage')
+  @ApiOperation({
+    summary:
+      'Refund a card payment in full through the provider (platform administrator)',
+  })
+  refund(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.billing.refund(id, actor);
+  }
+
+  @Post('portal')
+  @RequireFeature('billing.view')
+  @ApiOperation({
+    summary:
+      "The provider's hosted portal for payment methods and receipts (after the first card payment; ?tenantId= for the platform administrator)",
+  })
+  portal(
+    @Query('tenantId') tenantId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.billing.portal(actor, tenantId || undefined);
+  }
+
   @Post('invoices/:id/pay')
   @RequireFeature('billing.manage')
   @ApiOperation({ summary: 'Record a payment received outside the platform' })

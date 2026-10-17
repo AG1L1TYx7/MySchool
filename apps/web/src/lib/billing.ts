@@ -27,6 +27,7 @@ export interface Subscription {
   taxRatePercent: number;
   pendingAdjustmentCents: number;
   cardPayments: boolean;
+  portalAvailable: boolean;
   canceledAt: string | null;
 }
 
@@ -48,7 +49,7 @@ export interface Invoice {
   id: string;
   tenant: { id: string; name: string; slug: string };
   number: string;
-  status: 'open' | 'paid' | 'void' | 'overdue';
+  status: 'open' | 'paid' | 'void' | 'overdue' | 'refunded' | 'disputed';
   periodStart: string;
   periodEnd: string;
   lines: InvoiceLine[];
@@ -133,7 +134,7 @@ export interface StatusCheck {
 export const dollars = (cents: number) => `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const SUBSCRIPTION_LABELS: Record<Subscription['status'], string> = { trialing: 'Trial', active: 'Active', past_due: 'Past due', canceled: 'Canceled' };
-export const INVOICE_LABELS: Record<Invoice['status'], string> = { open: 'Open', paid: 'Paid', void: 'Void', overdue: 'Overdue' };
+export const INVOICE_LABELS: Record<Invoice['status'], string> = { open: 'Open', paid: 'Paid', void: 'Void', overdue: 'Overdue', refunded: 'Refunded', disputed: 'Disputed' };
 export const COMPONENT_LABELS: Record<ComponentState, string> = { operational: 'Operational', degraded: 'Slower than usual', down: 'Down', disabled: 'Not in use' };
 export const STATUS_TONES: Record<OverallState, string> = {
   operational: 'bg-green-50 text-green-800 ring-green-200',
@@ -160,7 +161,10 @@ export function invoiceClass(status: Invoice['status']): string {
     case 'paid':
       return 'bg-green-50 text-green-700';
     case 'overdue':
+    case 'disputed':
       return 'bg-red-50 text-red-700';
+    case 'refunded':
+      return 'bg-slate-100 text-slate-700';
     case 'void':
       return 'bg-slate-200 text-slate-700';
     default:
