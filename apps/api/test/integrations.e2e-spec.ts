@@ -1536,6 +1536,109 @@ describe('Integrations (e2e)', () => {
       .expect(204);
   });
 
+  it('lets a teacher hand an assignment made here to a tool for grading (slice 34)', async () => {
+    const tool = await prisma.ltiTool.findFirstOrThrow({
+      where: { name: `Graphing ${stamp}` },
+    });
+    const created = await request(server)
+      .post('/api/v1/assignments')
+      .set(as('teacher'))
+      .send({
+        classId,
+        title: `Tool graded ${stamp}`,
+        maxPoints: 40,
+        dueAt: '2027-01-01T00:00:00Z',
+      })
+      .expect(201);
+    const assignmentId = (created.body as { id: string }).id;
+    await request(server)
+      .post(`/api/v1/classes/${classId}/lti-line-items`)
+      .set(as('student'))
+      .send({ assignmentId, toolId: tool.id })
+      .expect(403);
+    const item = (
+      await request(server)
+        .post(`/api/v1/classes/${classId}/lti-line-items`)
+        .set(as('teacher'))
+        .send({ assignmentId, toolId: tool.id })
+        .expect(201)
+    ).body as { id: string; scoreMaximum: number; resourceId: string };
+    expect(item.scoreMaximum).toBe(40);
+    expect(item.resourceId).toBe(assignmentId);
+    const lineItemId = item.id.split('/').pop() ?? '';
+    const listed = (
+      await request(server)
+        .get(`/api/v1/classes/${classId}/lti-line-items`)
+        .set(as('student'))
+        .expect(200)
+    ).body as Array<{
+      id: string;
+      assignment: { id: string } | null;
+      tool: { id: string };
+    }>;
+    expect(
+      listed.some(
+        (l) =>
+          l.id === lineItemId &&
+          l.assignment?.id === assignmentId &&
+          l.tool.id === tool.id,
+      ),
+    ).toBe(true);
+    // The tool sees it among its line items and grades it.
+    const sec = Math.floor(Date.now() / 1000);
+    const assertion = signWith(toolKey.privateKey, 'tool-k1', {
+      iss: tool.clientId,
+      sub: tool.clientId,
+      aud: 'http://localhost:5000/api/v1/lti/token',
+      iat: sec,
+      exp: sec + 300,
+      jti: `j3-${stamp}`,
+    });
+    const granted = await request(server)
+      .post('/api/v1/lti/token')
+      .type('form')
+      .send({
+        grant_type: 'client_credentials',
+        client_assertion_type:
+          'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+        client_assertion: assertion,
+        scope: `${LTI_SCOPE.lineItemRead} ${LTI_SCOPE.score}`,
+      })
+      .expect(200);
+    const bearer = {
+      Authorization: `Bearer ${(granted.body as { access_token: string }).access_token}`,
+    };
+    const mine = (
+      await request(server)
+        .get(`/api/v1/lti/ags/classes/${classId}/lineitems`)
+        .set(bearer)
+        .expect(200)
+    ).body as Array<{ id: string }>;
+    expect(mine.some((l) => l.id === item.id)).toBe(true);
+    const enrolled = await prisma.classEnrollment.findFirstOrThrow({
+      where: { classId, status: 'ENROLLED' },
+      include: { student: true },
+    });
+    await request(server)
+      .post(`/api/v1/lti/ags/lineitems/${lineItemId}/scores`)
+      .set(bearer)
+      .send({
+        userId: enrolled.student.userId,
+        scoreGiven: 32,
+        scoreMaximum: 40,
+        gradingProgress: 'FullyGraded',
+        timestamp: new Date().toISOString(),
+      })
+      .expect(200);
+    const grade = await prisma.grade.findUniqueOrThrow({
+      where: {
+        assignmentId_studentId: { assignmentId, studentId: enrolled.studentId },
+      },
+    });
+    expect(Number(grade.score)).toBe(32);
+    expect(Number(grade.percentage)).toBe(80);
+  });
+
   // ---------------------------------------------------------------------------
   // Exports and the audit trail
   // ---------------------------------------------------------------------------

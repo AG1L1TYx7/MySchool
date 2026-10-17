@@ -32,6 +32,20 @@ export function ClassroomCard({ classId, canPush }: { classId: string; canPush: 
   }, [classId]);
   useEffect(load, [load]);
   if (!status?.linked) return null;
+  const importWork = async () => {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      const r = await api<{ courseWork: number; assignmentsCreated: number; gradesImported: number; skipped: number }>(`/classes/${classId}/classroom/import`, { method: 'POST', body: {} });
+      setNote(`Imported ${r.assignmentsCreated} new assignments from ${r.courseWork} pieces of Classroom work and ${r.gradesImported} grades${r.skipped ? ` (${r.skipped} grades belong to people not rostered here)` : ''}.`);
+      load();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const push = async () => {
     setBusy(true);
     setError(null);
@@ -47,7 +61,7 @@ export function ClassroomCard({ classId, canPush }: { classId: string; canPush: 
     }
   };
   return (
-    <Card title="Google Classroom" description="This class came from a Google Classroom course. Grades posted here can be written to the course's gradebook; each published assignment becomes a piece of course work there.">
+    <Card title="Google Classroom" description="This class came from a Google Classroom course. Import brings its published work in as assignments with the grades Classroom holds; Send writes grades posted here back to the course's gradebook.">
       {error && <Alert>{error}</Alert>}
       {note && <Alert kind="success">{note}</Alert>}
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -56,9 +70,14 @@ export function ClassroomCard({ classId, canPush }: { classId: string; canPush: 
           {status.lastPushAt ? ` · last sent ${new Date(status.lastPushAt).toLocaleString()}` : ' · nothing sent yet'}
         </p>
         {canPush && (
-          <Button loading={busy} onClick={() => void push()}>
-            Send grades to Classroom
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" loading={busy} onClick={() => void importWork()}>
+              Import from Classroom
+            </Button>
+            <Button loading={busy} onClick={() => void push()}>
+              Send grades to Classroom
+            </Button>
+          </div>
         )}
       </div>
     </Card>

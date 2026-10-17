@@ -7840,6 +7840,35 @@
         ]
       }
     },
+    "/api/v1/classes/{classId}/classroom/import": {
+      "post": {
+        "operationId": "ClassroomController_importWork_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Import the course's published Classroom work as assignments, with the grades Classroom already holds",
+        "tags": [
+          "Rostering"
+        ]
+      }
+    },
     "/api/v1/classes/{classId}/classroom/push-grades": {
       "post": {
         "operationId": "ClassroomController_push_api/v1",
@@ -13953,6 +13982,72 @@
           }
         ],
         "summary": "Remove a piece of tool content from the class (its teachers)",
+        "tags": [
+          "LTI"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/lti-line-items": {
+      "get": {
+        "operationId": "LtiLinksController_lineItems_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Line items tools grade in this class, with their assignment and score count",
+        "tags": [
+          "LTI"
+        ]
+      },
+      "post": {
+        "operationId": "LtiLinksController_assignLineItem_api/v1",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignLineItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Let a tool grade an assignment made here: a line item the tool posts scores to",
         "tags": [
           "LTI"
         ]
@@ -22376,6 +22471,23 @@
             }
           }
         }
+      },
+      "AssignLineItemDto": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "description": "The assignment the tool will grade"
+          },
+          "toolId": {
+            "type": "string",
+            "description": "The tool that will post scores"
+          }
+        },
+        "required": [
+          "assignmentId",
+          "toolId"
+        ]
       },
       "CreateLibraryItemDto": {
         "type": "object",

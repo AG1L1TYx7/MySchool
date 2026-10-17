@@ -27,6 +27,20 @@ export class ClassroomController {
     return this.classroom.status(classId, actor);
   }
 
+  @Post('import')
+  @Throttle(PROBE_LIMIT)
+  @RequireFeature('grades.edit')
+  @ApiOperation({
+    summary:
+      "Import the course's published Classroom work as assignments, with the grades Classroom already holds",
+  })
+  importWork(
+    @Param('classId', ParseUUIDPipe) classId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.classroom.importCourseWork(classId, actor);
+  }
+
   @Post('push-grades')
   @Throttle(PROBE_LIMIT)
   @RequireFeature('grades.edit')

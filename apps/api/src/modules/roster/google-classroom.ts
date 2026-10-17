@@ -53,6 +53,65 @@ export interface ClassroomCourseWork {
   title: string;
   maxPoints?: number;
   state?: string;
+  description?: string;
+  workType?: string;
+  dueDate?: { year?: number; month?: number; day?: number };
+  dueTime?: { hours?: number; minutes?: number };
+}
+
+/** The due moment of a piece of course work in UTC, or null when Classroom gave none. */
+export function courseWorkDueAt(cw: ClassroomCourseWork): Date | null {
+  const d = cw.dueDate;
+  if (!d || !d.year || !d.month || !d.day) return null;
+  const t = cw.dueTime ?? {};
+  return new Date(
+    Date.UTC(d.year, d.month - 1, d.day, t.hours ?? 23, t.minutes ?? 59),
+  );
+}
+
+/** Published assignments in Classroom that SmartSchool does not hold yet, as assignment inputs. */
+export function importableCourseWork(
+  items: ClassroomCourseWork[],
+  linkedIds: ReadonlySet<string>,
+): Array<{
+  courseWorkId: string;
+  title: string;
+  maxPoints: number;
+  description: string | null;
+  dueAt: Date | null;
+}> {
+  const out: Array<{
+    courseWorkId: string;
+    title: string;
+    maxPoints: number;
+    description: string | null;
+    dueAt: Date | null;
+  }> = [];
+  for (const cw of items) {
+    if (!cw.id || linkedIds.has(cw.id)) continue;
+    if ((cw.state ?? 'PUBLISHED') !== 'PUBLISHED') continue;
+    if (
+      cw.workType &&
+      cw.workType !== 'ASSIGNMENT' &&
+      cw.workType !== 'SHORT_ANSWER_QUESTION' &&
+      cw.workType !== 'MULTIPLE_CHOICE_QUESTION'
+    )
+      continue;
+    out.push({
+      courseWorkId: cw.id,
+      title: (cw.title || `Classroom work ${cw.id}`).slice(0, 200),
+      maxPoints:
+        typeof cw.maxPoints === 'number' && cw.maxPoints > 0
+          ? cw.maxPoints
+          : 100,
+      description:
+        typeof cw.description === 'string' && cw.description.trim()
+          ? cw.description.slice(0, 20000)
+          : null,
+      dueAt: courseWorkDueAt(cw),
+    });
+  }
+  return out;
 }
 
 export interface ClassroomSubmission {

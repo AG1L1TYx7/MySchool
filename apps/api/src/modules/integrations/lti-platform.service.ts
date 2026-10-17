@@ -550,6 +550,103 @@ export class LtiPlatformService {
     return { classId: klass.id, created };
   }
 
+  /** The line items of a class with their tool and assignment, for the people of the class. */
+  async classLineItems(classId: string, actor: AuthenticatedUser) {
+    const klass = await this.prisma.class.findFirst({
+      where: { id: classId, deletedAt: null },
+      select: { organizationId: true },
+    });
+    if (!klass)
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'Class not found.',
+      });
+    if (!isDistrictRole(actor))
+      assertOrganizationAccess(actor, klass.organizationId);
+    const rows = await this.prisma.ltiLineItem.findMany({
+      where: { classId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        tool: { select: { id: true, name: true } },
+        assignment: { select: { id: true, title: true, deletedAt: true } },
+        _count: { select: { scores: true } },
+      },
+    });
+    return rows
+      .filter((r) => !r.assignment || r.assignment.deletedAt === null)
+      .map((r) => ({
+        id: r.id,
+        label: r.label,
+        scoreMaximum: Number(r.scoreMaximum),
+        tool: r.tool,
+        assignment: r.assignment
+          ? { id: r.assignment.id, title: r.assignment.title }
+          : null,
+        scores: r._count.scores,
+        createdAt: r.createdAt,
+      }));
+  }
+
+  /**
+   * An assignment made in SmartSchool gets a line item owned by a tool (slice 34): the tool sees it in its
+   * line items for the class and posts scores to it, which become grades like any other.
+   */
+  async lineItemForAssignment(
+    classId: string,
+    assignmentId: string,
+    toolId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.assertTeaches(classId, actor);
+    const assignment = await this.prisma.assignment.findFirst({
+      where: { id: assignmentId, classId, deletedAt: null },
+      select: { id: true, title: true, maxPoints: true, organizationId: true },
+    });
+    if (!assignment)
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'Assignment not found in this class.',
+      });
+    const tool = await this.prisma.ltiTool.findFirst({
+      where: {
+        id: toolId,
+        organizationId: assignment.organizationId,
+        isActive: true,
+      },
+    });
+    if (!tool)
+      throw new NotFoundException({
+        code: 'resource.not_found',
+        detail: 'Tool not found.',
+      });
+    const row = await this.prisma.ltiLineItem.upsert({
+      where: { assignmentId: assignment.id },
+      create: {
+        id: newId(),
+        toolId: tool.id,
+        classId,
+        assignmentId: assignment.id,
+        label: assignment.title.slice(0, 200),
+        scoreMaximum: assignment.maxPoints,
+        resourceId: assignment.id,
+      },
+      update: {
+        toolId: tool.id,
+        label: assignment.title.slice(0, 200),
+        scoreMaximum: assignment.maxPoints,
+      },
+    });
+    await this.audit.record({
+      userId: actor.id,
+      organizationId: assignment.organizationId,
+      action: 'lti.lineitem.assign',
+      entityType: 'LtiLineItem',
+      entityId: row.id,
+      details: { toolId: tool.id, assignmentId: assignment.id },
+    });
+    return lineItemView(this.lineItemsBase(), row);
+  }
+
   async linksForClass(classId: string, actor: AuthenticatedUser) {
     const klass = await this.prisma.class.findFirst({
       where: { id: classId, deletedAt: null },

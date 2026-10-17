@@ -1,9 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, Select } from '@/components/ui';
 import { api, errorMessage, tokenStore } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+
+interface LineItem {
+  id: string;
+  label: string;
+  scoreMaximum: number;
+  tool: { id: string; name: string };
+  assignment: { id: string; title: string } | null;
+  scores: number;
+}
 
 interface ToolLink {
   id: string;
@@ -21,6 +30,9 @@ export function LtiToolsCard({ classId, organizationId }: { classId: string; org
   const { can } = useAuth();
   const [tools, setTools] = useState<Array<{ id: string; name: string }> | null>(null);
   const [links, setLinks] = useState<ToolLink[]>([]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [assignments, setAssignments] = useState<Array<{ id: string; title: string }>>([]);
+  const [pick, setPick] = useState({ assignmentId: '', toolId: '' });
   const [error, setError] = useState<string | null>(null);
   const staff = can('assignments.create');
   const load = useCallback(() => {
@@ -30,7 +42,14 @@ export function LtiToolsCard({ classId, organizationId }: { classId: string; org
     api<ToolLink[]>(`/classes/${classId}/lti-links`)
       .then(setLinks)
       .catch(() => setLinks([]));
-  }, [classId]);
+    api<LineItem[]>(`/classes/${classId}/lti-line-items`)
+      .then(setLineItems)
+      .catch(() => setLineItems([]));
+    if (staff)
+      api<{ data: Array<{ id: string; title: string }> }>(`/assignments?classId=${classId}&pageSize=200`)
+        .then((r) => setAssignments(r.data))
+        .catch(() => setAssignments([]));
+  }, [classId, staff]);
   useEffect(load, [load]);
   if (!tools || (tools.length === 0 && links.length === 0)) return null;
   const openPage = async (path: string, method: 'GET' | 'POST') => {
@@ -47,6 +66,16 @@ export function LtiToolsCard({ classId, organizationId }: { classId: string; org
     w.document.close();
     // The tool's page must not be able to navigate this tab (docs/21 F34).
     w.opener = null;
+  };
+  const assign = async () => {
+    if (!pick.assignmentId || !pick.toolId) return;
+    try {
+      await api(`/classes/${classId}/lti-line-items`, { method: 'POST', body: pick });
+      setPick({ assignmentId: '', toolId: '' });
+      load();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
   };
   const remove = async (id: string) => {
     try {
@@ -83,6 +112,38 @@ export function LtiToolsCard({ classId, organizationId }: { classId: string; org
             </li>
           ))}
         </ul>
+      )}
+      {lineItems.length > 0 && (
+        <ul className="mb-3 text-sm text-slate-700">
+          {lineItems.map((l) => (
+            <li key={l.id} className="py-1">
+              {l.assignment?.title ?? l.label} is graded by {l.tool.name} ({l.scoreMaximum} points{l.scores ? `, ${l.scores} scores received` : ''})
+            </li>
+          ))}
+        </ul>
+      )}
+      {staff && tools.length > 0 && assignments.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-end gap-2">
+          <Select label="Let a tool grade an assignment" id="li-assignment" value={pick.assignmentId} onChange={(e) => setPick({ ...pick, assignmentId: e.target.value })}>
+            <option value="">Choose an assignment</option>
+            {assignments.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.title}
+              </option>
+            ))}
+          </Select>
+          <Select label="Tool" id="li-tool" value={pick.toolId} onChange={(e) => setPick({ ...pick, toolId: e.target.value })}>
+            <option value="">Choose a tool</option>
+            {tools.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+          <Button variant="secondary" disabled={!pick.assignmentId || !pick.toolId} onClick={() => void assign()}>
+            Connect
+          </Button>
+        </div>
       )}
       <ul className="flex flex-wrap gap-2">
         {tools.map((t) => (

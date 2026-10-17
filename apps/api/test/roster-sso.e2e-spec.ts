@@ -35,13 +35,22 @@ function startIdp(port: number): {
   server: HttpServer;
   nextProfile: Record<string, unknown>;
   seen: Array<{ url: string; body: string }>;
-  courseWork: Array<{ id: string; title: string }>;
+  courseWork: Array<Record<string, unknown> & { id: string; title: string }>;
 } {
   const state = {
     server: null as unknown as HttpServer,
     nextProfile: {} as Record<string, unknown>,
     seen: [] as Array<{ url: string; body: string }>,
-    courseWork: [] as Array<{ id: string; title: string }>,
+    // One piece of work Classroom already holds, graded for the first student.
+    courseWork: [
+      {
+        id: 'cw-0',
+        title: 'Lab report',
+        maxPoints: 50,
+        state: 'PUBLISHED',
+        dueDate: { year: 2027, month: 2, day: 1 },
+      },
+    ] as Array<Record<string, unknown> & { id: string; title: string }>,
   };
   const codes = new Map<string, Record<string, unknown>>();
   state.server = createServer((req, res) => {
@@ -151,10 +160,15 @@ function startIdp(port: number): {
         )
           res.end(
             JSON.stringify({
-              studentSubmissions: [
-                { id: 'sub-s1', userId: 'g-s1' },
-                { id: 'sub-s2', userId: 'g-s2' },
-              ],
+              studentSubmissions: p.includes('/courseWork/cw-0/')
+                ? [
+                    { id: 'sub-s1', userId: 'g-s1', assignedGrade: 45 },
+                    { id: 'sub-s2', userId: 'g-s2' },
+                  ]
+                : [
+                    { id: 'sub-s1', userId: 'g-s1' },
+                    { id: 'sub-s2', userId: 'g-s2' },
+                  ],
             }),
           );
         else if (
@@ -526,6 +540,42 @@ describe('Rostering and sign-in (e2e)', () => {
         where: { classId: klass.id, teacherId: teacher.id },
       }),
     ).toBe(1);
+    // Work Classroom already holds comes in as an assignment with the grade it carries (slice 34).
+    const imported = (
+      await request(server)
+        .post(`/api/v1/classes/${klass.id}/classroom/import`)
+        .set(as('principal'))
+        .expect(201)
+    ).body as {
+      courseWork: number;
+      assignmentsCreated: number;
+      gradesImported: number;
+      skipped: number;
+    };
+    expect(imported.courseWork).toBeGreaterThanOrEqual(1);
+    expect(imported.gradesImported).toBeGreaterThanOrEqual(1);
+    const lab = await prisma.assignment.findFirstOrThrow({
+      where: { classId: klass.id, title: 'Lab report', deletedAt: null },
+    });
+    expect(lab).toMatchObject({
+      submissionType: 'EXTERNAL',
+      status: 'PUBLISHED',
+    });
+    expect(Number(lab.maxPoints)).toBe(50);
+    expect(lab.dueAt?.toISOString()).toBe('2027-02-01T23:59:00.000Z');
+    const s1Early = enrolled.find(
+      (e) => e.student.user?.email === 'gc-s1@school.test',
+    )!;
+    const labGrade = await prisma.grade.findUniqueOrThrow({
+      where: {
+        assignmentId_studentId: {
+          assignmentId: lab.id,
+          studentId: s1Early.studentId,
+        },
+      },
+    });
+    expect(Number(labGrade.score)).toBe(45);
+    expect(Number(labGrade.percentage)).toBe(90);
     // Grades go back: a published assignment becomes course work, each grade a submission patch.
     const created2 = await request(server)
       .post('/api/v1/assignments')
@@ -576,7 +626,9 @@ describe('Rostering and sign-in (e2e)', () => {
     };
     // Earlier runs of this suite may have left assignments in the course; every one gets course work.
     expect(counts.assignments).toBeGreaterThanOrEqual(1);
-    expect(counts.courseWorkCreated).toBe(counts.assignments);
+    // Every assignment except the imported lab report (already course work in Classroom) gets course work.
+    expect(counts.courseWorkCreated).toBeGreaterThanOrEqual(1);
+    expect(counts.courseWorkCreated).toBeLessThan(counts.assignments);
     expect(counts.pushed).toBe(counts.grades);
     expect(counts.grades).toBeGreaterThanOrEqual(1);
     expect(counts.skipped).toBe(0);
